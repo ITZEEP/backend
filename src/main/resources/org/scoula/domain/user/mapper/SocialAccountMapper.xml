@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.user.mapper.SocialAccountMapper">
+
+    <!-- Result Map -->
+    <resultMap id="socialAccountResultMap" type="org.scoula.domain.user.vo.SocialAccount">
+        <id property="socialId" column="social_id"/>
+        <result property="socialType" column="social_type"/>
+        <result property="userId" column="user_id"/>
+    </resultMap>
+
+    <!-- 소셜 계정 등록 -->
+    <insert id="insert" parameterType="org.scoula.domain.user.vo.SocialAccount">
+        INSERT INTO social_account (social_id, social_type, user_id)
+        VALUES (#{socialId}, #{socialType}, #{userId})
+    </insert>
+
+    <!-- 소셜 ID와 소셜 타입으로 계정 조회 -->
+    <select id="selectBySocialIdAndSocialType" resultMap="socialAccountResultMap">
+        SELECT social_id, social_type, user_id
+        FROM social_account
+        WHERE social_id = #{socialId} AND social_type = #{socialType}
+    </select>
+
+    <!-- 사용자 ID로 소셜 계정 조회 -->
+    <select id="selectByUserId" resultMap="socialAccountResultMap">
+        SELECT social_id, social_type, user_id
+        FROM social_account
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 사용자 ID와 소셜 타입으로 소셜 계정 조회 -->
+    <select id="selectByUserIdAndSocialType" resultMap="socialAccountResultMap">
+        SELECT social_id, social_type, user_id
+        FROM social_account
+        WHERE user_id = #{userId} AND social_type = #{socialType}
+    </select>
+
+</mapper>

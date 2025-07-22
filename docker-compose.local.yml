@@ -1,0 +1,74 @@
+version: '3.8'
+
+include:
+  - docker-compose.base.yml
+
+services:
+  backend-local:
+    <<: *backend-common
+    container_name: itzeep-backend-local
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:MaxMetaspaceSize=256m
+      # Server
+      - SERVER_PORT=8080
+      # Database
+      - DATABASE_HOST=${LOCAL_DATABASE_HOST:-itzeep-mysql-local}
+      - DATABASE_PORT=${LOCAL_DATABASE_PORT:-3306}
+      - DATABASE_NAME=${LOCAL_DATABASE_NAME:-itzeep_local}
+      - DATABASE_URL=jdbc:mysql://${LOCAL_DATABASE_HOST:-itzeep-mysql-local}:${LOCAL_DATABASE_PORT:-3306}/${LOCAL_DATABASE_NAME:-itzeep_local}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      - DATABASE_USERNAME=${LOCAL_DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${LOCAL_DATABASE_PASSWORD}
+      # Redis
+      - REDIS_HOST=itzeep-redis-local
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${LOCAL_REDIS_PASSWORD}
+      - REDIS_DATABASE=0
+      # JWT
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_VALIDITY=3600
+      - JWT_REFRESH_TOKEN_VALIDITY=604800
+      # OAuth2
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - KAKAO_REDIRECT_URI=http://localhost:8080/oauth2/callback/kakao
+      # AWS S3
+      - AWS_S3_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_S3_SECRET_KEY=${AWS_SECRET_KEY}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET}
+      - AWS_S3_REGION=ap-northeast-2
+      # Email
+      - MAIL_HOST=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      # Application Settings
+      - SWAGGER_ENABLED=true
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+      - WEBSOCKET_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+      # MongoDB (if needed)
+      - MONGODB_HOST=localhost
+      - MONGODB_PORT=27017
+      - MONGODB_DATABASE=itzeep
+      - MONGODB_USERNAME=
+      - MONGODB_PASSWORD=
+      - MONGODB_AUTH_DATABASE=admin
+    volumes:
+      - ./logs:/usr/local/tomcat/logs
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis-local:
+        condition: service_healthy
+
+  redis-local:
+    <<: *redis-common
+    container_name: itzeep-redis-local
+    command: redis-server --requirepass ${LOCAL_REDIS_PASSWORD} --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-local-data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  redis-local-data:

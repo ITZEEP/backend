@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  spotless:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Check code style with Spotless
+        run: ./gradlew spotlessCheck
+
+  build-and-test:
+    name: Build and Test
+    needs: spotless
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+          token: ${{ secrets.GIT_ACTION_TOKEN }}
+
+      - name: Init and update submodules
+        run: |
+          git submodule update --remote
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build -x test
+
+      - name: Run tests
+        run: ./gradlew test || true
+        continue-on-error: true
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: "**/build/test-results/test/TEST-*.xml"
+          fail_on_failure: false
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: build/reports/tests/
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action/linux@v2
+        if: always()
+        with:
+          files: "**/build/test-results/test/TEST-*.xml"

@@ -1,0 +1,259 @@
+plugins {
+    id 'java'
+    id 'war'
+    id 'com.diffplug.spotless' version '6.25.0'
+}
+
+group 'org.scoula'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    junitVersion = '5.10.3'
+    springVersion = '5.3.39'
+    springBatchVersion = '4.3.10'
+    springSecurityVersion = '5.8.15'
+    lombokVersion = '1.18.34'
+    log4jVersion = '2.24.1'
+    jacksonVersion = '2.18.1'
+    mybatisVersion = '3.5.16'
+    mybatisSpringVersion = '2.1.2'
+    nettyVersion = '4.1.115.Final'
+}
+
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    // 스프링
+    implementation ("org.springframework:spring-context:${springVersion}")
+            { exclude group: 'commons-logging', module: 'commons-logging' }
+    implementation "org.springframework:spring-webmvc:${springVersion}"
+    implementation "org.springframework:spring-tx:${springVersion}"
+    implementation "org.springframework:spring-jdbc:${springVersion}"
+    implementation 'javax.inject:javax.inject:1'
+
+    // Spring Security
+    implementation "org.springframework.security:spring-security-core:${springSecurityVersion}"
+    implementation "org.springframework.security:spring-security-web:${springSecurityVersion}"
+    implementation "org.springframework.security:spring-security-config:${springSecurityVersion}"
+
+    // JWT 처리 (카카오 토큰 검증용)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // AOP
+    implementation 'org.aspectj:aspectjrt:1.9.22.1'
+    implementation 'org.aspectj:aspectjweaver:1.9.22.1'
+
+    // JSP, SERVLET, JSTL
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
+    compileOnly 'javax.servlet.jsp:javax.servlet.jsp-api:2.3.3'
+    implementation 'javax.servlet:jstl:1.2'
+    
+    // Validation
+    implementation 'javax.validation:validation-api:2.0.1.Final'
+    implementation 'org.hibernate.validator:hibernate-validator:6.2.5.Final'
+    
+    // Spring Data (for pagination utilities)
+    implementation "org.springframework.data:spring-data-commons:2.7.18"
+    
+    // Redis
+    implementation "org.springframework.data:spring-data-redis:2.7.18"
+    implementation "redis.clients:jedis:3.9.0"
+    
+    // MongoDB
+    implementation "org.springframework.data:spring-data-mongodb:3.4.18"
+    implementation "org.mongodb:mongodb-driver-sync:4.6.1"
+
+    // Logging
+    implementation "org.apache.logging.log4j:log4j-api:${log4jVersion}"
+    implementation "org.apache.logging.log4j:log4j-core:${log4jVersion}"
+    implementation "org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}"
+    // SQL 로깅을 위한 log4jdbc-log4j2
+    implementation 'org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:1.16'
+
+    // DB
+    implementation 'com.mysql:mysql-connector-j:8.4.0'
+    implementation 'com.zaxxer:HikariCP:5.1.0'
+
+    // MyBatis
+    implementation "org.mybatis:mybatis:${mybatisVersion}"
+    implementation "org.mybatis:mybatis-spring:${mybatisSpringVersion}"
+
+    // Spring Kafka (Apache Kafka 클라이언트 포함)
+    implementation "org.springframework.kafka:spring-kafka:2.9.13"
+
+    // Spring Batch
+    implementation "org.springframework.batch:spring-batch-core:${springBatchVersion}"
+    implementation "org.springframework.batch:spring-batch-infrastructure:${springBatchVersion}"
+
+    // WebSocket & STOMP
+    implementation "org.springframework:spring-websocket:${springVersion}"
+    implementation "org.springframework:spring-messaging:${springVersion}"
+
+    // Netty (비동기 네트워킹)
+    implementation "io.netty:netty-all:${nettyVersion}"
+
+    // Mail (SMTP)
+    implementation "org.springframework:spring-context-support:${springVersion}"
+    implementation 'javax.mail:javax.mail-api:1.6.2'
+    implementation 'com.sun.mail:javax.mail:1.6.2'
+
+    // SpringFox Swagger
+    implementation 'io.springfox:springfox-swagger2:2.9.2'
+    implementation 'io.springfox:springfox-swagger-ui:2.9.2'
+
+    // RestTemplate
+    implementation 'org.apache.httpcomponents:httpcore:4.4.16'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.14'
+
+    // xml내 한글 처리
+    implementation 'xerces:xercesImpl:2.12.2'
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    // Jackson - Json 처리
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
+
+    // AWS SDK v2
+    implementation 'software.amazon.awssdk:s3:2.28.25'
+    implementation 'software.amazon.awssdk:auth:2.28.25'
+    
+    // 테스트
+    testImplementation "org.springframework:spring-test:${springVersion}"
+    testImplementation "org.springframework.batch:spring-batch-test:${springBatchVersion}"
+    testImplementation "org.springframework.kafka:spring-kafka-test:2.9.13"
+    testImplementation "org.springframework.security:spring-security-test:${springSecurityVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    
+    // Mockito for testing
+    testImplementation 'org.mockito:mockito-core:5.12.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.12.0'
+    
+    // AssertJ for fluent assertions
+    testImplementation 'org.assertj:assertj-core:3.25.3'
+    
+    // JsonPath for MockMvc tests
+    testImplementation 'com.jayway.jsonpath:json-path:2.9.0'
+    testImplementation 'com.jayway.jsonpath:json-path-assert:2.9.0'
+    
+    // Servlet API for testing
+    testImplementation 'javax.servlet:javax.servlet-api:4.0.1'
+}
+
+test {
+    useJUnitPlatform()
+    
+    // 테스트 실행 정보 출력
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = false
+        
+        // 테스트 완료 후 요약 정보 출력
+        afterSuite { desc, result ->
+            if (!desc.parent) { // 최상위 스위트(전체 테스트)일 때만 출력
+                println "\n테스트 결과 요약:"
+                println "총 ${result.testCount}개 테스트 실행"
+                println "성공: ${result.successfulTestCount}개"
+                println "실패: ${result.failedTestCount}개"
+                println "건너뜀: ${result.skippedTestCount}개"
+                println "결과: ${result.resultType}"
+            }
+        }
+    }
+}
+
+tasks.named('compileJava') {
+    dependsOn 'spotlessApply'
+}
+
+tasks.named('compileTestJava') {
+    dependsOn 'spotlessApply'
+}
+
+spotless {
+    java {
+        googleJavaFormat().aosp().reflowLongStrings()
+        importOrder('java', 'javax', 'jakarta', 'org', 'com')
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+
+        // 4칸 들여쓰기를 위한 커스텀 포맷팅
+        custom 'indent', {
+            it.replaceAll(/(?m)^( {2})/, '    ')  // 2칸을 4칸으로 변경
+        }
+    }
+}
+
+
+// Git submodule에서 properties 파일 복사
+task copyProperties {
+    description = 'Copy properties files from git submodule'
+    
+    doLast {
+        def submoduleDir = file("${project.rootDir}/config-submodule")
+        def targetDir = file("${project.rootDir}/src/main/resources")
+        
+        if (!submoduleDir.exists()) {
+            println "WARNING: Config submodule directory not found at ${submoduleDir.absolutePath}"
+            println "Please run: git submodule update --init --recursive"
+            return
+        }
+        
+        // 복사할 properties 파일 목록
+        def propertyFiles = [
+            'application.properties',
+            'application-default.properties',
+            'application-dev.properties',
+            'application-prod.properties',
+            'application-secret.properties',
+            'log4jdbc.log4j2.properties'
+        ]
+        
+        propertyFiles.each { fileName ->
+            def sourceFile = file("${submoduleDir}/${fileName}")
+            def targetFile = file("${targetDir}/${fileName}")
+            
+            if (sourceFile.exists()) {
+                copy {
+                    from sourceFile
+                    into targetDir
+                }
+                println "Copied: ${fileName}"
+            } else {
+                println "WARNING: ${fileName} not found in submodule"
+            }
+        }
+    }
+}
+
+// 빌드 전에 properties 복사
+compileJava.dependsOn copyProperties
+processResources.dependsOn copyProperties
+
+// 빌드 시 자동으로 spotless 적용
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile).configureEach {
+        dependsOn 'spotlessApply'
+    }
+}

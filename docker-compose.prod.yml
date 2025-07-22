@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  backend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: itzeep-backend-prod
+    restart: unless-stopped
+    networks:
+      - itzeep-network
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xms1g -Xmx2g -XX:MaxMetaspaceSize=512m
+      # Database (외부 RDS 사용)
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT:-3306}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_URL=jdbc:mysql://${DATABASE_HOST}:${DATABASE_PORT:-3306}/${DATABASE_NAME}?useSSL=true&requireSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      # Redis
+      - REDIS_HOST=itzeep-redis-prod
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      # MongoDB
+      - MONGODB_HOST=itzeep-mongo-prod
+      - MONGODB_PORT=27017
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-itzeep}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+      # JWT
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_VALIDITY=${JWT_ACCESS_TOKEN_VALIDITY:-3600}
+      - JWT_REFRESH_TOKEN_VALIDITY=${JWT_REFRESH_TOKEN_VALIDITY:-604800}
+      # OAuth2
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI:-https://api.itzeep.com/oauth/callback/kakao}
+      # AWS S3
+      - AWS_S3_ACCESS_KEY=${AWS_S3_ACCESS_KEY}
+      - AWS_S3_SECRET_KEY=${AWS_S3_SECRET_KEY}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+      - AWS_S3_REGION=${AWS_S3_REGION:-ap-northeast-2}
+      # Email
+      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      # Application Settings
+      - SWAGGER_ENABLED=${SWAGGER_ENABLED:-false}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://itzeep.com,https://www.itzeep.com,https://api.itzeep.com}
+      - WEBSOCKET_ALLOWED_ORIGINS=${WEBSOCKET_ALLOWED_ORIGINS:-https://itzeep.com,https://www.itzeep.com,https://api.itzeep.com}
+    volumes:
+      - ./logs:/usr/local/tomcat/logs
+    ports:
+      - "8081:8080"
+    depends_on:
+      redis-prod:
+        condition: service_healthy
+      mongo-prod:
+        condition: service_healthy
+
+  redis-prod:
+    image: redis:7-alpine
+    container_name: itzeep-redis-prod
+    restart: unless-stopped
+    command: >
+      sh -c '
+        if [ -z "$${REDIS_PASSWORD}" ]; then
+          redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10 --save 60 10000
+        else
+          redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory 512mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10 --save 60 10000
+        fi
+      '
+    networks:
+      - itzeep-network
+    volumes:
+      - redis-prod-data:/data
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mongo-prod:
+    image: mongo:6-jammy
+    container_name: itzeep-mongo-prod
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGODB_DATABASE:-itzeep}
+    networks:
+      - itzeep-network
+    volumes:
+      - mongo-prod-data:/data/db
+      - mongo-prod-config:/data/configdb
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis-prod-data:
+  mongo-prod-data:
+  mongo-prod-config:
+
+networks:
+  itzeep-network:
+    external: true

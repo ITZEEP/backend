@@ -1,0 +1,7 @@
+[submodule "config"]
+	path = config
+	url = https://github.com/ITZEEP/backend-config.git
+	branch = main
+[submodule "config-submodule"]
+	path = config-submodule
+	url = https://github.com/ITZEEP/backend-config.git

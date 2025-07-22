@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+    <!-- Appender, Layout 설정 -->
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout charset="UTF-8" pattern=" %-5level %c(%M:%L) - %m%n"/>
+        </Console>
+    </Appenders>
+    <!-- Logger 설정 -->
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="console"/>
+        </Root>
+
+        <Logger name="_org.springframework.web.servlet.HandlerMapping.Mappings" level="DEBUG" additivity="false" >
+            <AppenderRef ref="console"/>
+        </Logger>
+
+        <Logger name="org.scoula" level="WARN" additivity="false" >
+            <AppenderRef ref="console"/>
+        </Logger>
+        
+        <!-- OAuth2 관련 서비스 DEBUG 레벨로 상세 로그 출력 -->
+        <Logger name="org.scoula.global.auth.service" level="DEBUG" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.scoula.domain.user.service" level="DEBUG" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.scoula.global.file.service" level="DEBUG" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        
+        <!-- 테스트 컨트롤러만 INFO 레벨로 중요한 로그만 출력 -->
+        <Logger name="org.scoula.global.auth.controller" level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.scoula.global.email.controller" level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.scoula.global.redis.controller" level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.springframework" level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+    </Loggers>
+</Configuration>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.user.mapper.UserMapper">
+
+    <!-- Result Map -->
+    <resultMap id="userResultMap" type="org.scoula.domain.user.vo.User">
+        <id property="userId" column="user_id"/>
+        <result property="nickname" column="nickname"/>
+        <result property="email" column="email"/>
+        <result property="password" column="password"/>
+        <result property="birthDate" column="birth_date"/>
+        <result property="gender" column="gender"/>
+        <result property="profileImgUrl" column="profile_img_url"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="role" column="role"/>
+    </resultMap>
+
+    <!-- 사용자 등록 -->
+    <insert id="insert" parameterType="org.scoula.domain.user.vo.User" 
+            useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO user (
+            nickname, email, password, birth_date, gender, 
+            profile_img_url, role, created_at, updated_at
+        ) VALUES (
+            #{nickname}, #{email}, #{password}, #{birthDate}, #{gender},
+            #{profileImgUrl}, #{role}, NOW(), NOW()
+        )
+    </insert>
+
+    <!-- 사용자 ID로 조회 -->
+    <select id="selectById" resultMap="userResultMap">
+        SELECT user_id, nickname, email, password, birth_date, gender,
+               profile_img_url, created_at, updated_at, role
+        FROM user
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 이메일로 사용자 조회 -->
+    <select id="selectByEmail" resultMap="userResultMap">
+        SELECT user_id, nickname, email, password, birth_date, gender,
+               profile_img_url, created_at, updated_at, role
+        FROM user
+        WHERE email = #{email}
+    </select>
+
+    <!-- 닉네임 존재 여부 확인 -->
+    <select id="existsByNickname" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM user
+        WHERE nickname = #{nickname}
+    </select>
+
+    <!-- 이메일 존재 여부 확인 -->
+    <select id="existsByEmail" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM user
+        WHERE email = #{email}
+    </select>
+
+    <!-- 사용자 정보 업데이트 -->
+    <update id="update" parameterType="org.scoula.domain.user.vo.User">
+        UPDATE user
+        SET 
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="profileImgUrl != null">profile_img_url = #{profileImgUrl},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+</mapper>

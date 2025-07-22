@@ -1,0 +1,26 @@
+version: '3.8'
+
+x-backend-common: &backend-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  networks:
+    - itzeep-network
+  labels:
+    - "com.centurylinklabs.watchtower.enable=true"
+
+x-redis-common: &redis-common
+  image: redis:7-alpine
+  restart: unless-stopped
+  networks:
+    - itzeep-network
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+
+networks:
+  itzeep-network:
+    external: true
