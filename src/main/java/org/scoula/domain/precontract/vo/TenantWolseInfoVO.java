@@ -20,9 +20,9 @@ public class TenantWolseInfoVO {
       private Boolean wolseInsurancePlan;
 
       // DTO -> VO
-      public static TenantWolseInfoVO toVO(TenantPreContractDTO dto) {
+      public static TenantWolseInfoVO toVO(TenantPreContractDTO dto, Long tenantPrecheckId) {
           return TenantWolseInfoVO.builder()
-                  .tenantPrecheckId(dto.getTenantPreCheckId())
+                  .tenantPrecheckId(tenantPrecheckId)
                   .wolseLoanPlan(dto.getLoanPlan())
                   .wolseInsurancePlan(dto.getInsurancePlan())
                   .build();

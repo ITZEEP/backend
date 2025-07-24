@@ -41,8 +41,7 @@ public class PreContractServiceImpl implements PreContractService {
           TenantPreContractDTO preContractRequest;
 
           if (rentType == RentType.JEONSE) {
-              request.setTenantPreCheckId(preContractCheck.getTenantPrecheckId());
-              TenantJeonseInfoVO jeonseInfo = TenantJeonseInfoVO.toVO(request);
+              TenantJeonseInfoVO jeonseInfo = TenantJeonseInfoVO.toVO(request, preContractCheck.getTenantPrecheckId());
               tenantMapper.insertJeonseInfo(jeonseInfo);
               preContractRequest =
                       TenantPreContractDTO.toDTO(
@@ -51,7 +50,7 @@ public class PreContractServiceImpl implements PreContractService {
                               jeonseInfo.getJeonseInsurancePlan());
           } else if (rentType == RentType.WOLSE) {
               request.setTenantPreCheckId(preContractCheck.getTenantPrecheckId());
-              TenantWolseInfoVO wolseInfo = TenantWolseInfoVO.toVO(request);
+              TenantWolseInfoVO wolseInfo = TenantWolseInfoVO.toVO(request, preContractCheck.getTenantPrecheckId());
               tenantMapper.insertWolseInfo(wolseInfo);
               preContractRequest =
                       TenantPreContractDTO.toDTO(
