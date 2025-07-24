@@ -3,7 +3,7 @@ package org.scoula.domain.precontract.dto;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.scoula.domain.precontract.vo.TenantPreContractCheck;
+import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
 import org.scoula.global.common.constant.Constants;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TenantPreContract {
+public class TenantPreContractDTO {
 
       @ApiModelProperty(value = "[PK] 임차인 계약전 사전 정보 ID")
       private Long tenantPreCheckId;
@@ -122,4 +122,37 @@ public class TenantPreContract {
 
       @ApiModelProperty(value = "관계", example = "남편")
       private String relation;
+
+      // VO -> DTO
+      public static TenantPreContractDTO toDTO(
+              TenantPreContractCheckVO vo, Boolean loanPlan, Boolean insurancePlan) {
+          return TenantPreContractDTO.builder()
+                  .tenantPreCheckId(vo.getTenantPrecheckId())
+                  .contractChatId(vo.getContractChatId())
+                  .identityId(vo.getIdentityId())
+                  .riskckId(vo.getRiskckId())
+                  .riskType(vo.getRiskType().name())
+                  .rentType(vo.getRentType().name())
+                  .loanPlan(loanPlan)
+                  .insurancePlan(insurancePlan)
+                  .expectedMoveInDate(vo.getExpectedMoveInDate())
+                  .contractDuration(vo.getContractDuration().name())
+                  .renewalIntent(vo.getRenewalIntent().name())
+                  .facilityRepairNeeded(vo.getFacilityRepairNeeded())
+                  .interiorCleaningNeeded(vo.getInteriorCleaningNeeded())
+                  .applianceInstallationPlan(vo.getApplianceInstallationPlan())
+                  .hasPet(vo.getHasPet())
+                  .petInfo(vo.getPetInfo())
+                  .petCount(vo.getPetCount())
+                  .indoorSmokingPlan(vo.getIndoorSmokingPlan())
+                  .earlyTerminationRisk(vo.getEarlyTerminationRisk())
+                  .nonresidentialUsePlan(vo.getNonresidentialUsePlan().name())
+                  .requestToOwner(vo.getRequestToOwner())
+                  .checkedAt(vo.getCheckedAt())
+                  .residentCount(vo.getResidentCount())
+                  .occupation(vo.getOccupation())
+                  .emergencyContact(vo.getEmergencyContact())
+                  .relation(vo.getRelation())
+                  .build();
+      }
 }
