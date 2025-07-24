@@ -1,6 +1,6 @@
 package org.scoula.domain.precontract.vo;
 
-import org.scoula.domain.precontract.dto.TenantPreContract;
+import org.scoula.domain.precontract.dto.TenantPreContractDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TenantJeonseInfo {
+public class TenantJeonseInfoVO {
 
       private Long tenantJeonseRentId; // PK
       private Long tenantPrecheckId; // FK
@@ -20,11 +20,11 @@ public class TenantJeonseInfo {
       private Boolean jeonseInsurancePlan;
 
       // DTO -> VO
-      public static TenantJeonseInfo toVO(TenantPreContract dto) {
-            return TenantJeonseInfo.builder()
-                    .tenantPrecheckId(dto.getTenantPreCheckId())
-                    .jeonseLoanPlan(dto.getLoanPlan())
-                    .jeonseInsurancePlan(dto.getInsurancePlan())
-                    .build();
+      public static TenantJeonseInfoVO toVO(TenantPreContractDTO dto) {
+          return TenantJeonseInfoVO.builder()
+                  .tenantPrecheckId(dto.getTenantPreCheckId())
+                  .jeonseLoanPlan(dto.getLoanPlan())
+                  .jeonseInsurancePlan(dto.getInsurancePlan())
+                  .build();
       }
 }

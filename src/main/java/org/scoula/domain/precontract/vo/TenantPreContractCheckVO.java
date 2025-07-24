@@ -3,7 +3,7 @@ package org.scoula.domain.precontract.vo;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.scoula.domain.precontract.dto.TenantPreContract;
+import org.scoula.domain.precontract.dto.TenantPreContractDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TenantPreContractCheck {
+public class TenantPreContractCheckVO {
 
       private Long tenantPrecheckId; // PK -> column명 바꿔도 되는지 물어보기 -> erd(노션)도 바꾸기
       private Long contractChatId; // FK
@@ -72,8 +72,8 @@ public class TenantPreContractCheck {
       }
 
       // DTO -> VO
-      public static TenantPreContractCheck toVO(TenantPreContract dto) {
-          return TenantPreContractCheck.builder()
+      public static TenantPreContractCheckVO toVO(TenantPreContractDTO dto) {
+          return TenantPreContractCheckVO.builder()
                   .tenantPrecheckId(dto.getTenantPreCheckId())
                   .contractChatId(dto.getContractChatId())
                   .identityId(dto.getIdentityId())
