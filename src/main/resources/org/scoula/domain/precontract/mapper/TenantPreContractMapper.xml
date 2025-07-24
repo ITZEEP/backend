@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.precontract.mapper.TenantPreContractMapper">
+    <!-- 임차인 계약 전 전세 정보 등록 -->
+    <insert id="insertJeonseInfo" parameterType="org.scoula.domain.precontract.vo.TenantJeonseInfo" useGeneratedKeys="true" keyProperty="tenantJeonseRentId">
+        INSERT INTO tenant_jeonse_info (tenant_precheck_id, jeonse_loan_plan, jeonse_insurance_plan)
+        VALUES (#{tenantPrecheckId}, #{jeonseLoanPlan}, #{jeonseInsurancePlan})
+    </insert>
+
+    <!-- 임차인 계약 전 월세 정보 등록 -->
+    <insert id="insertWolseInfo" parameterType="org.scoula.domain.precontract.vo.TenantWolseInfo" useGeneratedKeys="true" keyProperty="tenantWolseRentId">
+        INSERT INTO tenant_wolse_info (tenant_precheck_id, wolse_loan_plan, wolse_insurance_plan)
+        VALUES (#{tenantPrecheckId}, #{wolseLoanPlan}, #{wolseInsurancePlan})
+    </insert>
+
+    <!-- 임차인 계약 전 사전 정보 등록-->
+    <insert id="insertPreContractCheck" parameterType="org.scoula.domain.precontract.vo.TenantPreContractCheck" useGeneratedKeys="true" keyProperty="tenantPrecheckId">
+        INSERT INTO tenant_precontract_check (contract_chat_id, identity_id, riskck_id, risk_type, rent_type, expected_move_in_date, contract_duration, renewal_intent, facility_repair_needed, interior_cleaning_needed, appliance_installation_plan, has_pet, pet_info, pet_count, indoor_smoking_plan, early_termination_risk, nonresidential_use_plan, request_to_owner, checked_at, resident_count, occupation, emergency_contact, relation)
+        VALUES (#{contractChatId}, #{identityId}, #{riskckId}, #{riskType}, #{rentType}, #{expectedMoveInDate}, #{contractDuration}, #{renewalIntent}, #{facilityRepairNeeded}, #{interiorCleaningNeeded}, #{applianceInstallationPlan}, #{hasPet}, #{petInfo}, #{petCount}, #{indoorSmokingPlan}, #{earlyTerminationRisk}, #{nonresidentialUsePlan}, #{requestToOwner}, #{checkedAt}, #{residentCount}, #{occupation}, #{emergencyContact}, #{relation})
+    </insert>
+</mapper>
