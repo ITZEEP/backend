@@ -30,6 +30,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
               "org.scoula.global.websocket.controller",
               "org.scoula.global.file.controller",
               "org.scoula.global.oauth2.controller",
+              "org.scoula.domain.precontract.controller",
           })
 public class ServletConfig implements WebMvcConfigurer {
 
