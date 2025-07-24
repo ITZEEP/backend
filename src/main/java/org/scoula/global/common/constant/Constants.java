@@ -87,8 +87,8 @@ public class Constants {
           public static final int MAX_CONNECTIONS_PER_ROUTE = 20;
       }
 
-      /** 번호 상수 */
-      public static class number {
+      /** 번호 형식 관련 상수 */
+      public static class Number {
           public static final String PHONE = "^01[016789]-\\d{3,4}-\\d{4}$";
       }
 }
