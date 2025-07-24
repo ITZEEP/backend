@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class PreContractServiceImpl implements PreContractService {
 
       /** {@inheritDoc} */
       @Override
+      @Transactional
       public TenantPreContractDTO saveTenantInfo(TenantPreContractDTO request) {
           // 1. RentType으로 전세인지 월세인지 판별한다
           RentType rentType = RentType.valueOf(request.getRentType());
