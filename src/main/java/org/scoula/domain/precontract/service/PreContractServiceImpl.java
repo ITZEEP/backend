@@ -28,7 +28,7 @@ public class PreContractServiceImpl implements PreContractService {
           // 1. RentType으로 전세인지 월세인지 판별한다
           RentType rentType;
           try {
-              RentType.valueOf(request.getRentType());
+              rentType = RentType.valueOf(request.getRentType());
           } catch (IllegalArgumentException e) {
               throw new BusinessException(PreContractErrorCode.ENUM_VALUE_OF);
           }
