@@ -26,7 +26,12 @@ public class PreContractServiceImpl implements PreContractService {
       @Transactional
       public TenantPreContractDTO saveTenantInfo(TenantPreContractDTO request) {
           // 1. RentType으로 전세인지 월세인지 판별한다
-          RentType rentType = RentType.valueOf(request.getRentType());
+          RentType rentType;
+          try {
+              RentType.valueOf(request.getRentType());
+          } catch (IllegalArgumentException e) {
+              throw new BusinessException(PreContractErrorCode.ENUM_VALUE_OF);
+          }
 
           // 2. Request값으로 tenant_precontract_check 테이블을 완성한다 : dto -> vo
           TenantPreContractCheckVO preContractCheck = TenantPreContractCheckVO.toVO(request);
