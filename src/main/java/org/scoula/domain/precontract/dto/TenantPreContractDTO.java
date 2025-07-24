@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TenantPreContractDTO {
 
-      @ApiModelProperty(value = "[PK] 임차인 계약전 사전 정보 ID")
+      @ApiModelProperty(value = "[PK] 임차인 계약전 사전 정보 ID", hidden = true)
       private Long tenantPreCheckId;
 
       @ApiModelProperty(value = "[FK] 계약 채팅 ID", example = "1", required = true)
