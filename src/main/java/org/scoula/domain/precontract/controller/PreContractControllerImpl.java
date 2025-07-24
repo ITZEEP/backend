@@ -22,7 +22,8 @@ public class PreContractControllerImpl implements PreContractController {
 
       @Override
       @PostMapping
-      public ResponseEntity<ApiResponse<TenantPreContractDTO>> saveTenantInfo(@RequestBody TenantPreContractDTO tenantPreContractDTO) {
+      public ResponseEntity<ApiResponse<TenantPreContractDTO>> saveTenantInfo(
+              @RequestBody TenantPreContractDTO tenantPreContractDTO) {
           return ResponseEntity.ok(ApiResponse.success(service.saveTenantInfo(tenantPreContractDTO)));
       }
 }
