@@ -1,15 +1,15 @@
 package org.scoula.domain.precontract.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
-import org.scoula.domain.precontract.vo.TenantJeonseInfo;
-import org.scoula.domain.precontract.vo.TenantPreContractCheck;
-import org.scoula.domain.precontract.vo.TenantWolseInfo;
+import org.scoula.domain.precontract.vo.TenantJeonseInfoVO;
+import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
+import org.scoula.domain.precontract.vo.TenantWolseInfoVO;
 
 @Mapper
 public interface TenantPreContractMapper {
-      int insertJeonseInfo(TenantJeonseInfo jeonseInfo);
+      int insertJeonseInfo(TenantJeonseInfoVO jeonseInfo);
 
-      int insertWolseInfo(TenantWolseInfo wolseInfo);
+      int insertWolseInfo(TenantWolseInfoVO wolseInfo);
 
-      int insertPreContractCheck(TenantPreContractCheck preContractCheck);
+      int insertPreContractCheck(TenantPreContractCheckVO preContractCheck);
 }
