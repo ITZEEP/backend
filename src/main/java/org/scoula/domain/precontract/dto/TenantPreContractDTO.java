@@ -116,7 +116,7 @@ public class TenantPreContractDTO {
       @ApiModelProperty(value = "직업", example = "외교관")
       private String occupation;
 
-      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.number.PHONE)
+      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.Number.PHONE)
       @ApiModelProperty(value = "비상 연락처", example = "010-1234-5678")
       private String emergencyContact;
 
