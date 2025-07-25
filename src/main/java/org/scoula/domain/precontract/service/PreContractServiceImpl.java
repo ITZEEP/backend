@@ -9,10 +9,10 @@ import org.scoula.domain.precontract.vo.TenantPreContractCheckVO.RentType;
 import org.scoula.domain.precontract.vo.TenantWolseInfoVO;
 import org.scoula.global.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +41,8 @@ public class PreContractServiceImpl implements PreContractService {
           TenantPreContractDTO preContractRequest;
 
           if (rentType == RentType.JEONSE) {
-              TenantJeonseInfoVO jeonseInfo = TenantJeonseInfoVO.toVO(request, preContractCheck.getTenantPrecheckId());
+              TenantJeonseInfoVO jeonseInfo =
+                      TenantJeonseInfoVO.toVO(request, preContractCheck.getTenantPrecheckId());
               tenantMapper.insertJeonseInfo(jeonseInfo);
               preContractRequest =
                       TenantPreContractDTO.toDTO(
@@ -50,7 +51,8 @@ public class PreContractServiceImpl implements PreContractService {
                               jeonseInfo.getJeonseInsurancePlan());
           } else if (rentType == RentType.WOLSE) {
               request.setTenantPreCheckId(preContractCheck.getTenantPrecheckId());
-              TenantWolseInfoVO wolseInfo = TenantWolseInfoVO.toVO(request, preContractCheck.getTenantPrecheckId());
+              TenantWolseInfoVO wolseInfo =
+                      TenantWolseInfoVO.toVO(request, preContractCheck.getTenantPrecheckId());
               tenantMapper.insertWolseInfo(wolseInfo);
               preContractRequest =
                       TenantPreContractDTO.toDTO(
