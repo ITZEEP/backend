@@ -24,6 +24,15 @@ public interface OAuth2ManualServiceInterface {
       OAuth2TokenResponse exchangeCodeForToken(String authorizationCode);
 
       /**
+       * Authorization code로 access token 획득 (redirect URI 지정)
+       *
+       * @param authorizationCode 인증 코드
+       * @param redirectUri 리다이렉트 URI
+       * @return OAuth2TokenResponse 토큰 응답
+       */
+      OAuth2TokenResponse exchangeCodeForToken(String authorizationCode, String redirectUri);
+
+      /**
        * Access token으로 사용자 정보 획득
        *
        * @param accessToken 액세스 토큰
@@ -38,6 +47,15 @@ public interface OAuth2ManualServiceInterface {
        * @return JWT 토큰 정보
        */
       Map<String, String> processOAuth2Login(String authorizationCode);
+
+      /**
+       * OAuth2 완전 처리 (code -> token -> user info -> JWT) (redirect URI 지정)
+       *
+       * @param authorizationCode 인증 코드
+       * @param redirectUri 리다이렉트 URI
+       * @return JWT 토큰 정보
+       */
+      Map<String, String> processOAuth2Login(String authorizationCode, String redirectUri);
 
       /**
        * Access token 새로고침

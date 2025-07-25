@@ -34,7 +34,7 @@ public class OAuth2CallbackController {
 
       private final OAuth2ManualServiceInterface oauth2ManualService;
 
-      @Value("${oauth2.success.redirect-url:http://localhost:3000/oauth/callback}")
+      @Value("${oauth2.success.redirect-url:http://localhost:5173/oauth/callback}")
       private String frontendRedirectUrl;
 
       @GetMapping("/callback/{registrationId}")
@@ -110,10 +110,13 @@ public class OAuth2CallbackController {
       @PostMapping("/login/complete")
       @ApiOperation(value = "OAuth2 완전 로그인 처리", notes = "Authorization code부터 JWT 토큰 생성까지 전체 처리")
       public ResponseEntity<ApiResponse<Map<String, String>>> completeLogin(
-              @ApiParam(value = "Authorization Code", required = true) @RequestParam String code) {
+              @ApiParam(value = "Authorization Code", required = true) @RequestParam String code,
+              @ApiParam(value = "Redirect URI", required = false) @RequestParam(required = false)
+                      String redirectUri) {
 
           try {
-              Map<String, String> loginResult = oauth2ManualService.processOAuth2Login(code);
+              Map<String, String> loginResult =
+                      oauth2ManualService.processOAuth2Login(code, redirectUri);
               return ResponseEntity.ok(ApiResponse.success(loginResult, "OAuth2 로그인 완료"));
           } catch (Exception e) {
               log.error("OAuth2 로그인 처리 실패", e);
