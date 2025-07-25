@@ -10,22 +10,26 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+      static {
+          System.err.println("🚨🚨🚨 WebSocketConfig 클래스 로딩됨!");
+      }
+
+      public WebSocketConfig() {
+          System.err.println("🚨🚨🚨 WebSocketConfig 생성자 호출됨!");
+      }
+
       @Override
       public void configureMessageBroker(MessageBrokerRegistry config) {
-          // 클라이언트로 메시지를 보낼 때 사용할 prefix
-          config.enableSimpleBroker("/topic", "/queue");
-          // 클라이언트에서 메시지를 보낼 때 사용할 prefix
+          System.err.println("🚨🚨🚨 MessageBroker 설정 시작");
+          config.enableSimpleBroker("/topic");
           config.setApplicationDestinationPrefixes("/app");
-          // 특정 사용자에게 메시지를 보낼 때 사용할 prefix
-          config.setUserDestinationPrefix("/user");
+          System.err.println("🚨🚨🚨 MessageBroker 설정 완료");
       }
 
       @Override
       public void registerStompEndpoints(StompEndpointRegistry registry) {
-          // WebSocket 연결 엔드포인트
-          registry.addEndpoint("/ws").setAllowedOrigins("*").withSockJS();
-
-          // SockJS를 사용하지 않는 순수 WebSocket 엔드포인트
-          registry.addEndpoint("/ws-raw").setAllowedOrigins("*");
+          System.err.println("🚨🚨🚨 STOMP 엔드포인트 등록 시작");
+          registry.addEndpoint("/ws").setAllowedOriginPatterns("*").withSockJS();
+          System.err.println("🚨🚨🚨 STOMP 엔드포인트 등록 완료");
       }
 }
