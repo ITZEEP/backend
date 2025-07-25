@@ -44,7 +44,10 @@ public class SwaggerConfig {
                   .build()
                   .apiInfo(apiInfo())
                   .securityContexts(Arrays.asList(securityContext()))
-                  .securitySchemes(Arrays.asList(apiKey()));
+                  .securitySchemes(Arrays.asList(apiKey()))
+                  .ignoredParameterTypes(
+                          org.springframework.security.core.Authentication.class,
+                          java.security.Principal.class);
       }
 
       private ApiInfo apiInfo() {

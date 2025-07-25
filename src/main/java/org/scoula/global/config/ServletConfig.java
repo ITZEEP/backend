@@ -21,6 +21,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 @ComponentScan(
           basePackages = {
               "org.scoula.domain",
+              "org.scoula.domain.chat.controller",
               "org.scoula.global.common.exception",
               "org.scoula.global.common.controller",
               "org.scoula.global.auth.controller",

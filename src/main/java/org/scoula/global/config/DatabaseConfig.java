@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 /** 데이터베이스 설정 클래스 */
 @Configuration
 @EnableTransactionManagement
-@MapperScan(basePackages = {"org.scoula.domain.user.mapper"})
+@MapperScan(basePackages = {"org.scoula.domain.user.mapper", "org.scoula.domain.chat.mapper"})
 @RequiredArgsConstructor
 public class DatabaseConfig {
 

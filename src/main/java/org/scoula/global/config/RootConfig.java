@@ -41,6 +41,7 @@ import org.springframework.context.annotation.PropertySource;
               "org.scoula.global.file.service",
               "org.scoula.global.oauth2.service",
               "org.scoula.domain.user.service",
+              "org.scoula.domain.chat"
           })
 public class RootConfig {
       // 각 도메인별 설정은 별도의 Config 클래스로 분리됨
