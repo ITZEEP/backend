@@ -113,8 +113,7 @@ class FraudRiskServiceImplTest {
           @Test
           @DisplayName("파일이 null인 경우 예외 발생")
           void analyzeDocuments_NullFile_ThrowsException() {
-              // given
-              when(fraudRiskMapper.existsHome(homeId)).thenReturn(true);
+              // given - existsHome 호출은 validateFile 이후에 일어나므로 stubbing 불필요
 
               // when & then
               assertThatThrownBy(
@@ -132,7 +131,7 @@ class FraudRiskServiceImplTest {
               MultipartFile emptyFile =
                       new MockMultipartFile(
                               "registryFile", "registry.pdf", "application/pdf", new byte[0]);
-              when(fraudRiskMapper.existsHome(homeId)).thenReturn(true);
+              // existsHome 호출은 validateFile 이후에 일어나므로 stubbing 불필요
 
               // when & then
               assertThatThrownBy(
@@ -151,7 +150,7 @@ class FraudRiskServiceImplTest {
               MultipartFile largeFile =
                       new MockMultipartFile(
                               "registryFile", "registry.pdf", "application/pdf", largeContent);
-              when(fraudRiskMapper.existsHome(homeId)).thenReturn(true);
+              // existsHome 호출은 validateFile 이후에 일어나므로 stubbing 불필요
 
               // when & then
               assertThatThrownBy(
@@ -172,7 +171,7 @@ class FraudRiskServiceImplTest {
                               "registry.txt",
                               "text/plain",
                               "text content".getBytes());
-              when(fraudRiskMapper.existsHome(homeId)).thenReturn(true);
+              // existsHome 호출은 validateFile 이후에 일어나므로 stubbing 불필요
 
               // when & then
               assertThatThrownBy(
@@ -291,8 +290,9 @@ class FraudRiskServiceImplTest {
           @DisplayName("위험도 분석 중 예외 발생 시 예외 전파")
           void analyzeRisk_Exception_ThrowsException() {
               // given
-              when(fraudRiskMapper.insertRiskCheck(any(RiskCheckVO.class)))
-                      .thenThrow(new RuntimeException("DB 오류"));
+              doThrow(new RuntimeException("DB 오류"))
+                      .when(fraudRiskMapper)
+                      .insertRiskCheck(any(RiskCheckVO.class));
 
               // when & then
               assertThatThrownBy(() -> fraudRiskService.analyzeRisk(userId, request))
@@ -316,9 +316,9 @@ class FraudRiskServiceImplTest {
                       Arrays.asList(
                               RiskCheckListResponse.builder()
                                       .riskCheckId(1L)
-                                      .homeId(100L)
                                       .address("서울시 강남구")
-                                      .riskType(RiskType.SAFE)
+                                      .detailAddress("101동 1503호")
+                                      .residenceType("아파트")
                                       .checkedAt(LocalDateTime.now())
                                       .build());
 
@@ -487,7 +487,7 @@ class FraudRiskServiceImplTest {
                                       .address("서울시 강남구")
                                       .residenceType("아파트")
                                       .leaseType("JEONSE")
-                                      .depositPrice(300000000L)
+                                      .depositPrice(300000000)
                                       .build());
 
               when(homeLikeMapper.selectLikedHomesByUserId(userId)).thenReturn(mockHomes);
@@ -520,8 +520,8 @@ class FraudRiskServiceImplTest {
                                       .address("서울시 송파구")
                                       .residenceType("오피스텔")
                                       .leaseType("WOLSE")
-                                      .depositPrice(10000000L)
-                                      .monthlyRent(500000L)
+                                      .depositPrice(10000000)
+                                      .monthlyRent(500000)
                                       .build());
 
               when(homeLikeMapper.selectChattingHomesByUserId(userId, pageRequest))
