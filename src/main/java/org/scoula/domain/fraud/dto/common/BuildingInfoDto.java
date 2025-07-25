@@ -28,4 +28,9 @@ public class BuildingInfoDto {
 
       @ApiModelProperty(value = "가격 (원)", example = "500000000")
       private Long price;
+
+      @ApiModelProperty(
+              value = "건물 이미지 URL",
+              example = "https://example.com/property-images/home-1.jpg")
+      private String imageUrl;
 }

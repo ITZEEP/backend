@@ -52,4 +52,10 @@ public class DocumentAnalysisResponse {
 
       @ApiModelProperty(value = "경고 메시지 목록")
       private String[] warnings;
+
+      @ApiModelProperty(value = "등기부등본 파일 URL", example = "/files/registry/1234567890.pdf")
+      private String registryFileUrl;
+
+      @ApiModelProperty(value = "건축물대장 파일 URL", example = "/files/building/0987654321.pdf")
+      private String buildingFileUrl;
 }

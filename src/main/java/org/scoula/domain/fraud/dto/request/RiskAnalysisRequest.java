@@ -33,4 +33,10 @@ public class RiskAnalysisRequest {
       @NotNull(message = "건축물대장 정보는 필수입니다")
       @Valid
       private BuildingDocumentDto buildingDocument;
+
+      @ApiModelProperty(value = "등기부등본 파일 URL", example = "/files/registry/1234567890.pdf")
+      private String registryFileUrl;
+
+      @ApiModelProperty(value = "건축물대장 파일 URL", example = "/files/building/0987654321.pdf")
+      private String buildingFileUrl;
 }
