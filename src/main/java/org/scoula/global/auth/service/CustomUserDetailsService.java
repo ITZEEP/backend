@@ -1,11 +1,9 @@
 package org.scoula.global.auth.service;
 
-import java.util.Collections;
 import java.util.Optional;
 
 import org.scoula.domain.user.service.UserServiceInterface;
 import org.scoula.domain.user.vo.User;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -51,17 +49,10 @@ public class CustomUserDetailsService implements UserDetailsService {
           // 사용자 권한 설정
           String authority = user.getRole().name();
 
-          return org.springframework.security.core.userdetails.User.builder()
-                  .username(user.getEmail())
-                  .password(
-                          user.getPassword() != null
-                                  ? user.getPassword()
-                                  : "{noop}oauth2") // OAuth2 사용자는 패스워드 불필요
-                  .authorities(Collections.singletonList(new SimpleGrantedAuthority(authority)))
-                  .accountExpired(false)
-                  .accountLocked(false)
-                  .credentialsExpired(false)
-                  .disabled(false)
-                  .build();
+          return new org.scoula.global.auth.dto.CustomUserDetails(
+                  user.getUserId(),
+                  user.getEmail(),
+                  user.getPassword() != null ? user.getPassword() : "{noop}oauth2",
+                  authority);
       }
 }
