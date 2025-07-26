@@ -2,6 +2,7 @@ package org.scoula.global.config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -14,8 +15,6 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @EnableWebMvc
 @ComponentScan(
@@ -31,8 +30,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
               "org.scoula.global.websocket.controller",
               "org.scoula.global.file.controller",
               "org.scoula.global.oauth2.controller",
+              "org.scoula.domain.precontract.controller",
           })
 public class ServletConfig implements WebMvcConfigurer {
+
+      @Autowired private ObjectMapper objectMapper;
 
       @Bean
       public MultipartResolver multipartResolver() {
@@ -62,10 +64,6 @@ public class ServletConfig implements WebMvcConfigurer {
       @Override
       public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
           MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-          ObjectMapper objectMapper = new ObjectMapper();
-          objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-          objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-          objectMapper.registerModule(new JavaTimeModule());
           converter.setObjectMapper(objectMapper);
           converters.add(converter);
       }
