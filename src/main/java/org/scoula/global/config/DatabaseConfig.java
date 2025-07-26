@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
@@ -20,7 +21,11 @@ import lombok.RequiredArgsConstructor;
 /** 데이터베이스 설정 클래스 */
 @Configuration
 @EnableTransactionManagement
-@MapperScan(basePackages = {"org.scoula.domain.user.mapper", "org.scoula.domain.fraud.mapper"})
+@MapperScan(basePackages = {
+      "org.scoula.domain.user.mapper", 
+      "org.scoula.domain.fraud.mapper",
+      "org.scoula.domain.precontract.mapper"
+})
 @RequiredArgsConstructor
 public class DatabaseConfig {
 
@@ -61,5 +66,10 @@ public class DatabaseConfig {
       @Bean
       public DataSourceTransactionManager transactionManager() {
           return new DataSourceTransactionManager(dataSource());
+      }
+
+      @Bean
+      public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+          return new JdbcTemplate(dataSource);
       }
 }

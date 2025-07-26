@@ -75,3 +75,4 @@ certbot/
 *.tmp
 *.temp
 .claude
+.idea

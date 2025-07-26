@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
               "org.scoula.global.websocket.controller",
               "org.scoula.global.file.controller",
               "org.scoula.global.oauth2.controller",
+              "org.scoula.domain.precontract.controller",
           })
 public class ServletConfig implements WebMvcConfigurer {
 
