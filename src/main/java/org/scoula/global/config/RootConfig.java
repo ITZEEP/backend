@@ -6,10 +6,15 @@ import org.scoula.global.file.config.S3Config;
 import org.scoula.global.mongodb.config.MongoConfig;
 import org.scoula.global.oauth2.config.OAuth2ManualConfig;
 import org.scoula.global.websocket.config.WebSocketConfig;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /** 루트 설정 클래스 - 전체 애플리케이션의 공통 설정을 관리합니다 */
 @Configuration
@@ -41,8 +46,18 @@ import org.springframework.context.annotation.PropertySource;
               "org.scoula.global.file.service",
               "org.scoula.global.oauth2.service",
               "org.scoula.domain.user.service",
+              "org.scoula.domain.fraud.service",
               "org.scoula.domain.precontract.service",
           })
 public class RootConfig {
       // 각 도메인별 설정은 별도의 Config 클래스로 분리됨
+
+      @Bean
+      public ObjectMapper objectMapper() {
+          ObjectMapper objectMapper = new ObjectMapper();
+          objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+          objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+          objectMapper.registerModule(new JavaTimeModule());
+          return objectMapper;
+      }
 }
