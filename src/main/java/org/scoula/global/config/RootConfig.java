@@ -46,7 +46,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
               "org.scoula.global.file.service",
               "org.scoula.global.oauth2.service",
               "org.scoula.domain.user.service",
-              "org.scoula.domain.chat"
+              "org.scoula.domain.chat",
               "org.scoula.domain.fraud.service",
               "org.scoula.domain.precontract.service",
           })
