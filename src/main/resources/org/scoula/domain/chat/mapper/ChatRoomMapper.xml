@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.chat.mapper.ChatRoomMapper">
+
+    <resultMap id="ChatRoomResultMap" type="org.scoula.domain.chat.vo.ChatRoom">
+        <id property="chatRoomId" column="chatroom_id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="buyerId" column="buyer_id"/>
+        <result property="homeId" column="home_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="lastMessageAt" column="last_message_at"/>
+        <result property="lastMessage" column="last_message"/>
+        <result property="unreadMessageCount" column="unread_message_count"/>
+    </resultMap>
+
+    <select id="findById" resultMap="ChatRoomResultMap">
+        SELECT chatroom_id, owner_id, buyer_id, home_id, created_at,
+               last_message_at, last_message, unread_message_count
+        FROM chatroom
+        WHERE chatroom_id = #{chatRoomId}
+    </select>
+
+    <select id="findPropertyOwnerId" parameterType="long" resultType="long">
+        SELECT user_id
+        FROM home
+        WHERE home_id = #{propertyId}
+    </select>
+
+    <select id="findByOwnerId" resultMap="ChatRoomResultMap">
+        SELECT chatroom_id, owner_id, buyer_id, home_id, created_at,
+               last_message_at, last_message, unread_message_count
+        FROM chatroom
+        WHERE owner_id = #{ownerId}
+        ORDER BY last_message_at DESC, created_at DESC
+    </select>
+
+    <select id="findByBuyerId" resultMap="ChatRoomResultMap">
+        SELECT chatroom_id, owner_id, buyer_id, home_id, created_at,
+               last_message_at, last_message, unread_message_count
+        FROM chatroom
+        WHERE buyer_id = #{buyerId}
+        ORDER BY last_message_at DESC, created_at DESC
+    </select>
+
+    <select id="findByUserAndHome" resultMap="ChatRoomResultMap">
+        SELECT chatroom_id, owner_id, buyer_id, home_id, created_at,
+               last_message_at, last_message, unread_message_count
+        FROM chatroom
+        WHERE owner_id = #{ownerId}
+          AND buyer_id = #{buyerId}
+          AND home_id = #{homeId}
+    </select>
+
+    <insert id="insertChatRoom" useGeneratedKeys="true" keyProperty="chatRoomId">
+        INSERT INTO chatroom (owner_id, buyer_id, home_id, created_at, last_message_at, last_message, unread_message_count)
+        VALUES (#{ownerId}, #{buyerId}, #{homeId}, #{createdAt}, NULL, NULL, 0)
+    </insert>
+
+    <update id="updateLastMessage">
+        UPDATE chatroom
+        SET last_message = #{lastMessage},
+            last_message_at = #{lastMessageTime}
+        WHERE chatroom_id = #{chatRoomId}
+    </update>
+
+    <update id="incrementUnreadMessageCount">
+        UPDATE chatroom
+        SET unread_message_count = unread_message_count + 1
+        WHERE chatroom_id = #{chatRoomId}
+    </update>
+
+    <update id="resetUnreadMessageCount">
+        UPDATE chatroom
+        SET unread_message_count = 0
+        WHERE chatroom_id = #{chatRoomId}
+    </update>
+
+    <update id="updateUnreadCount">
+        UPDATE chatroom
+        SET unread_message_count = #{count}
+        WHERE chatroom_id = #{chatRoomId}
+    </update>
+
+    <select id="getChatRoomInfoWithProperty" resultType="org.scoula.domain.chat.dto.ChatRoomInfoDto">
+        SELECT c.chatroom_id,
+               c.owner_id,
+               c.buyer_id,
+               c.home_id AS property_id,
+               c.created_at,
+               c.last_message_at,
+               c.last_message,
+               c.unread_message_count,
+               h.addr2 AS property_address,
+               CONCAT(CASE h.lease_type
+                          WHEN 'JEONSE' THEN '전세'
+                          WHEN 'WOLSE' THEN '월세'
+                          ELSE h.lease_type END,
+                      ' - ',
+                      FORMAT(h.deposit_price, 0), '만원',
+                      CASE WHEN h.monthly_rent > 0
+                               THEN CONCAT(' / ', FORMAT(h.monthly_rent, 0), '만원')
+                           ELSE '' END) AS property_title,
+               (SELECT hi.image_url
+                FROM home_image hi
+                WHERE hi.home_id = c.home_id
+                LIMIT 1) AS property_image_url,
+               h.deposit_price AS property_price,
+               h.lease_type AS property_type
+        FROM chatroom c
+                 JOIN home h ON c.home_id = h.home_id
+        WHERE c.chatroom_id = #{chatRoomId}
+          AND (c.owner_id = #{userId} OR c.buyer_id = #{userId})
+    </select>
+
+</mapper>

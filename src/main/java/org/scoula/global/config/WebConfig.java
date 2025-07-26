@@ -8,7 +8,7 @@ import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatche
 
 public class WebConfig extends AbstractAnnotationConfigDispatcherServletInitializer {
 
-      final String LOCATION = "c:/upload";
+      final String LOCATION = System.getProperty("java.io.tmpdir");
       final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
       final long MAX_REQUEST_SIZE = 20L * 1024 * 1024; // 20MB
       final int FILE_SIZE_THRESHOLD = 5 * 1024 * 1024; // 5MB
