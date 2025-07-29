@@ -3,21 +3,182 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="org.scoula.domain.precontract.mapper.TenantPreContractMapper">
+
+    <!--=============== 사기 위험도 확인 & 기본 세팅 ==================-->
+
+    <select id="selectRiskId" resultType="Long">
+        select rc.riskck_id
+        FROM contract_chat cc
+        INNER JOIN risk_check rc
+        ON cc.home_id = rc.home_id
+        WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
+        AND DATE(rc.checked_at) = CURRENT_DATE
+        ORDER BY checked_at DESC
+        LIMIT 1
+    </select>
+    
+    <select id="selectRiskType" resultType="String">
+        select rc.risk_type
+        FROM contract_chat cc
+                 INNER JOIN risk_check rc
+                            ON cc.home_id = rc.home_id
+        WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
+          AND DATE(rc.checked_at) = CURRENT_DATE
+        ORDER BY checked_at DESC
+        LIMIT 1
+    </select>
+
+
+    <select id="selectIdentityId" resultType="Long">
+        SELECT iv.identity_id
+        FROM contract_chat cc
+        INNER JOIN identity_verification iv
+        ON cc.buyer_id = iv.user_id
+        WHERE cc.buyer_id = #{userId}
+    </select>
+
+    <insert id="insertPreContractSet">
+        INSERT INTO tenant_precontract_check (contract_chat_id, identity_id, riskck_id, rent_type, risk_type)
+        VALUES (#{contractChatId}, #{identityId}, #{riskId}, #{rentType}, #{riskType})
+    </insert>
+    
+    <select id="selectRentType" resultType="String">
+        select h.lease_type
+        FROM contract_chat cc
+        INNER JOIN home h
+        ON cc.home_id = h.home_id
+        WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
+    </select>
+
+    <!--=============== step 1 ==================-->
+
+    <select id="selectLeaseType" resultType="String">
+        select h.lease_type
+        FROM contract_chat cc
+        INNER JOIN home h
+        ON cc.home_id = h.home_id
+        WHERE cc.contract_chat_id = #{contractChatId}
+        AND cc.buyer_id = #{userId}
+    </select>
+
     <!-- 임차인 계약 전 전세 정보 등록 -->
     <insert id="insertJeonseInfo" parameterType="org.scoula.domain.precontract.vo.TenantJeonseInfoVO" useGeneratedKeys="true" keyProperty="tenantJeonseRentId">
         INSERT INTO tenant_jeonse_info (tenant_precheck_id, jeonse_loan_plan, jeonse_insurance_plan)
-        VALUES (#{tenantPrecheckId}, #{jeonseLoanPlan}, #{jeonseInsurancePlan})
+        VALUES (#{vo.tenantPrecheckId}, #{vo.jeonseLoanPlan}, #{vo.jeonseInsurancePlan})
     </insert>
 
     <!-- 임차인 계약 전 월세 정보 등록 -->
     <insert id="insertWolseInfo" parameterType="org.scoula.domain.precontract.vo.TenantWolseInfoVO" useGeneratedKeys="true" keyProperty="tenantWolseRentId">
         INSERT INTO tenant_wolse_info (tenant_precheck_id, wolse_loan_plan, wolse_insurance_plan)
-        VALUES (#{tenantPrecheckId}, #{wolseLoanPlan}, #{wolseInsurancePlan})
+        VALUES (#{vo.tenantPrecheckId}, #{vo.wolseLoanPlan}, #{vo.wolseInsurancePlan})
     </insert>
 
-    <!-- 임차인 계약 전 사전 정보 등록-->
-    <insert id="insertPreContractCheck" parameterType="org.scoula.domain.precontract.vo.TenantPreContractCheckVO" useGeneratedKeys="true" keyProperty="tenantPrecheckId">
-        INSERT INTO tenant_precontract_check (contract_chat_id, identity_id, riskck_id, risk_type, rent_type, expected_move_in_date, contract_duration, renewal_intent, facility_repair_needed, interior_cleaning_needed, appliance_installation_plan, has_pet, pet_info, pet_count, indoor_smoking_plan, early_termination_risk, nonresidential_use_plan, request_to_owner, checked_at, resident_count, occupation, emergency_contact, relation)
-        VALUES (#{contractChatId}, #{identityId}, #{riskckId}, #{riskType}, #{rentType}, #{expectedMoveInDate}, #{contractDuration}, #{renewalIntent}, #{facilityRepairNeeded}, #{interiorCleaningNeeded}, #{applianceInstallationPlan}, #{hasPet}, #{petInfo}, #{petCount}, #{indoorSmokingPlan}, #{earlyTerminationRisk}, #{nonresidentialUsePlan}, #{requestToOwner}, #{checkedAt}, #{residentCount}, #{occupation}, #{emergencyContact}, #{relation})
-    </insert>
+    <update id="updateStep1">
+        UPDATE tenant_precontract_check
+        SET rent_type = #{rentType}, expected_move_in_date = #{vo.expectedMoveInDate}, contract_duration = #{vo.contractDuration}, renewal_intent = #{vo.renewalIntent}
+        WHERE contract_chat_id = #{contractChatId}
+    </update>
+
+    <select id="selectIsPet" resultType="boolean">
+        select hd.is_pet
+        FROM contract_chat cc
+        INNER JOIN home_detail hd
+        ON cc.home_id = hd.home_id
+        WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
+    </select>
+
+    <select id="selectStep1" resultType="org.scoula.domain.precontract.dto.TenantStep1DTO">
+        select
+            CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_loan_plan
+                 WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_loan_plan
+                END AS loan_plan,
+
+            CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_insurance_plan
+                 WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
+                END AS insurance_plan,
+            tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent
+        FROM tenant_precontract_check tpc
+                 LEFT JOIN tenant_jeonse_info tji ON tpc.contract_chat_id = tji.tenant_precheck_id
+                 LEFT JOIN tenant_wolse_info twi ON tpc.contract_chat_id = twi.tenant_precheck_id
+        WHERE tpc.contract_chat_id = #{contractChatId}
+    </select>
+
+    <!--=============== step 2 ==================-->
+
+    <update id="updateStep2">
+        UPDATE tenant_precontract_check
+        SET facility_repair_needed = #{vo.facilityRepairNeeded}, interior_cleaning_needed = #{vo.interiorCleaningNeeded}, appliance_installation_plan = #{vo.applianceInstallationPlan},
+        <if test ="vo.hasPet != null">
+            has_pet = #{vo.hasPet},
+        </if>
+        <if test="vo.petInfo != null">
+            pet_info = #{vo.petInfo},
+        </if>
+        <if test="vo.petCount != null">
+            pet_count = #{vo.petCount}
+        </if>
+        WHERE contract_chat_id = #{contractChatId}
+    </update>
+
+    <select id="selectStep2" resultType="org.scoula.domain.precontract.dto.TenantStep2DTO">
+        select tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan, tpc.has_pet, tpc.pet_info, tpc.pet_count
+        FROM tenant_precontract_check tpc
+        WHERE tpc.contract_chat_id = #{contractChatId}
+    </select>
+    
+    <!--=============== step 3 ==================-->
+    <update id="updateStep3">
+        UPDATE tenant_precontract_check
+        SET indoor_smoking_plan = #{vo.indoorSmokingPlan}, early_termination_risk = #{vo.earlyTerminationRisk}, nonresidential_use_plan = #{vo.nonresidentialUsePlan}, request_to_owner = #{vo.requestToOwner},
+            checked_at = now(), resident_count = #{vo.residentCount}, occupation = #{vo.occupation}, emergency_contact = #{vo.emergencyContact}, relation = #{vo.relation}
+        WHERE contract_chat_id = #{contractChatId}
+    </update>
+
+    <select id="selectStep3" resultType="org.scoula.domain.precontract.dto.TenantStep3DTO">
+        SELECT tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
+        FROM tenant_precontract_check tpc
+        WHERE tpc.contract_chat_id = #{contractChatId}
+    </select>
+
+    <!--=============== 최종 ==================-->
+    <select id="selectPreCon" resultType="org.scoula.domain.precontract.dto.TenantPreContractDTO">
+        SELECT
+            h.addr1, h.addr2, h.residence_type, CONCAT(FORMAT(h.deposit_price,0),'원') AS depositPrice , CONCAT(FORMAT(h.monthly_rent,0),'원') AS monthlyRent,
+            (SELECT hi.image_url
+             FROM contract_chat hicc
+             INNER JOIN  home_image hi
+             ON hicc.home_id = hi.home_id
+             WHERE hicc.contract_chat_id = tpc.contract_chat_id
+             LIMIT 1
+             ) AS image_url,
+            (SELECT rc.checked_at
+             FROM contract_chat rccc
+             INNER JOIN risk_check rc
+             ON rccc.home_id = rc.home_id
+             WHERE rccc.contract_chat_id = tpc.contract_chat_id
+             ORDER BY checked_at DESC
+             LIMIT 1
+             ) AS riskCheckedAt,
+               tpc.contract_chat_id, tpc.identity_id,tpc.riskck_id, tpc.risk_type,
+               tpc.rent_type,
+               CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_loan_plan
+                    WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_loan_plan
+                   END AS loan_plan,
+
+               CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_insurance_plan
+                    WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
+                   END AS insurance_plan,
+               tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
+               tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
+
+
+        FROM tenant_precontract_check tpc
+        INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id
+        INNER JOIN home h ON cc.home_id = h.home_id
+        LEFT JOIN tenant_jeonse_info tji ON tpc.contract_chat_id = tji.tenant_precheck_id
+        LEFT JOIN tenant_wolse_info twi ON tpc.contract_chat_id = twi.tenant_precheck_id
+
+        WHERE tpc.contract_chat_id = #{contractChatId}
+
+    </select>
 </mapper>
