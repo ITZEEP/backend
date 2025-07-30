@@ -3,9 +3,9 @@ package org.scoula.domain.precontract.vo;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.scoula.domain.precontract.dto.TenantStep1DTO;
-import org.scoula.domain.precontract.dto.TenantStep2DTO;
-import org.scoula.domain.precontract.dto.TenantStep3DTO;
+import org.scoula.domain.precontract.dto.tenant.TenantStep1DTO;
+import org.scoula.domain.precontract.dto.tenant.TenantStep2DTO;
+import org.scoula.domain.precontract.dto.tenant.TenantStep3DTO;
 import org.scoula.domain.precontract.enums.*;
 
 import lombok.AllArgsConstructor;

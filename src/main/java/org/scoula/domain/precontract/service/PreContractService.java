@@ -1,6 +1,6 @@
 package org.scoula.domain.precontract.service;
 
-import org.scoula.domain.precontract.dto.*;
+import org.scoula.domain.precontract.dto.tenant.*;
 
 public interface PreContractService {
 

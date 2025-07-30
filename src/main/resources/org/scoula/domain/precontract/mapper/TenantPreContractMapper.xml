@@ -93,7 +93,7 @@
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
     </select>
 
-    <select id="selectStep1" resultType="org.scoula.domain.precontract.dto.TenantStep1DTO">
+    <select id="selectStep1" resultType="org.scoula.domain.precontract.dto.tenant.TenantStep1DTO">
         select
             CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_loan_plan
                  WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_loan_plan
@@ -126,7 +126,7 @@
         WHERE contract_chat_id = #{contractChatId}
     </update>
 
-    <select id="selectStep2" resultType="org.scoula.domain.precontract.dto.TenantStep2DTO">
+    <select id="selectStep2" resultType="org.scoula.domain.precontract.dto.tenant.TenantStep2DTO">
         select tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan, tpc.has_pet, tpc.pet_info, tpc.pet_count
         FROM tenant_precontract_check tpc
         WHERE tpc.contract_chat_id = #{contractChatId}
@@ -140,14 +140,14 @@
         WHERE contract_chat_id = #{contractChatId}
     </update>
 
-    <select id="selectStep3" resultType="org.scoula.domain.precontract.dto.TenantStep3DTO">
+    <select id="selectStep3" resultType="org.scoula.domain.precontract.dto.tenant.TenantStep3DTO">
         SELECT tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
         FROM tenant_precontract_check tpc
         WHERE tpc.contract_chat_id = #{contractChatId}
     </select>
 
     <!--=============== 최종 ==================-->
-    <select id="selectPreCon" resultType="org.scoula.domain.precontract.dto.TenantPreContractDTO">
+    <select id="selectPreCon" resultType="org.scoula.domain.precontract.dto.tenant.TenantPreContractDTO">
         SELECT
             h.addr1, h.addr2, h.residence_type, CONCAT(FORMAT(h.deposit_price,0),'원') AS depositPrice , CONCAT(FORMAT(h.monthly_rent,0),'원') AS monthlyRent,
             (SELECT hi.image_url
@@ -187,7 +187,7 @@
 
     </select>
 
-    <select id="selectMongo" resultType="org.scoula.domain.precontract.dto.TenantMongoDTO">
+    <select id="selectMongo" resultType="org.scoula.domain.precontract.dto.tenant.TenantMongoDTO">
         SELECT
             tpc.contract_chat_id,
             tpc.rent_type,

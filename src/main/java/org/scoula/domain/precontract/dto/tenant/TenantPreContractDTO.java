@@ -1,4 +1,4 @@
-package org.scoula.domain.precontract.dto;
+package org.scoula.domain.precontract.dto.tenant;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -151,36 +151,4 @@ public class TenantPreContractDTO {
       @ApiModelProperty(value = "관계", example = "남편")
       private String relation;
 
-      //            // VO -> DTO
-      //            public static TenantPreContractDTO toDTO(
-      //                    TenantPreContractCheckVO vo, Boolean loanPlan, Boolean insurancePlan) {
-      //                return TenantPreContractDTO.builder()
-      //                        .tenantPreCheckId(vo.getTenantPrecheckId())
-      //                        .contractChatId(vo.getContractChatId())
-      //                        .identityId(vo.getIdentityId())
-      //                        .riskckId(vo.getRiskckId())
-      //                        .riskType(vo.getRiskType().name())
-      //                        .rentType(vo.getRentType().name())
-      //                        .loanPlan(loanPlan)
-      //                        .insurancePlan(insurancePlan)
-      //                        .expectedMoveInDate(vo.getExpectedMoveInDate())
-      //                        .contractDuration(vo.getContractDuration().name())
-      //                        .renewalIntent(vo.getRenewalIntent().name())
-      //                        .facilityRepairNeeded(vo.getFacilityRepairNeeded())
-      //                        .interiorCleaningNeeded(vo.getInteriorCleaningNeeded())
-      //                        .applianceInstallationPlan(vo.getApplianceInstallationPlan())
-      //                        .hasPet(vo.getHasPet())
-      //                        .petInfo(vo.getPetInfo())
-      //                        .petCount(vo.getPetCount())
-      //                        .indoorSmokingPlan(vo.getIndoorSmokingPlan())
-      //                        .earlyTerminationRisk(vo.getEarlyTerminationRisk())
-      //                        .nonresidentialUsePlan(vo.getNonresidentialUsePlan().name())
-      //                        .requestToOwner(vo.getRequestToOwner())
-      //                        .checkedAt(vo.getCheckedAt())
-      //                        .residentCount(vo.getResidentCount())
-      //                        .occupation(vo.getOccupation())
-      //                        .emergencyContact(vo.getEmergencyContact())
-      //                        .relation(vo.getRelation())
-      //                        .build();
-      //            }
 }

@@ -1,6 +1,6 @@
 package org.scoula.domain.precontract.controller;
 
-import org.scoula.domain.precontract.dto.*;
+import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +12,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
 @Api(tags = "계약전 사전조사 API", description = "임대인/임차인 사전조사")
-public interface PreContractController {
+public interface TenantPreContractController {
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 

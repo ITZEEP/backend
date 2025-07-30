@@ -1,7 +1,7 @@
 package org.scoula.domain.precontract.service;
 
 import org.scoula.domain.precontract.document.TenantMongoDocument;
-import org.scoula.domain.precontract.dto.*;
+import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
 import org.scoula.domain.precontract.mapper.TenantPreContractMapper;

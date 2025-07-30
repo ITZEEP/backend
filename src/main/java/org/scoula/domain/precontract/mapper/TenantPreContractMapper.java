@@ -4,7 +4,7 @@ import java.util.Optional;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.scoula.domain.precontract.dto.*;
+import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.vo.TenantJeonseInfoVO;
 import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;

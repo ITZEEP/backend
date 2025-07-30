@@ -1,7 +1,7 @@
 package org.scoula.domain.precontract.repository;
 
 import org.scoula.domain.precontract.document.TenantMongoDocument;
-import org.scoula.domain.precontract.dto.TenantMongoDTO;
+import org.scoula.domain.precontract.dto.tenant.TenantMongoDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Repository;

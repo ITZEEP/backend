@@ -1,6 +1,6 @@
 package org.scoula.domain.precontract.controller;
 
-import org.scoula.domain.precontract.dto.*;
+import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.service.PreContractService;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
@@ -15,7 +15,7 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 @RequestMapping("/api/pre-contract/{contractChatId}/buyer") // /api/도메인명
 @Log4j2
-public class PreContractControllerImpl implements PreContractController {
+public class TenantPreContractControllerImpl implements TenantPreContractController {
 
       private final PreContractService service;
 
@@ -97,7 +97,8 @@ public class PreContractControllerImpl implements PreContractController {
       @Override
       @PatchMapping("/step3")
       public ResponseEntity<ApiResponse<Void>> updateTenantStep3(
-              Long contractChatId, CustomUserDetails userDetails, TenantStep3DTO step3DTO) {
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails, TenantStep3DTO step3DTO) {
           return ResponseEntity.ok(
                   ApiResponse.success(
                           service.updateTenantStep3(
@@ -107,7 +108,8 @@ public class PreContractControllerImpl implements PreContractController {
       @Override
       @GetMapping("/step3")
       public ResponseEntity<ApiResponse<TenantStep3DTO>> selectTenantStep3(
-              Long contractChatId, CustomUserDetails userDetails) {
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails) {
           return ResponseEntity.ok(
                   ApiResponse.success(
                           service.selectTenantStep3(contractChatId, userDetails.getUserId())));
@@ -118,7 +120,8 @@ public class PreContractControllerImpl implements PreContractController {
       @Override
       @GetMapping("/pre-con")
       public ResponseEntity<ApiResponse<TenantPreContractDTO>> selectTenantPreCon(
-              Long contractChatId, CustomUserDetails userDetails) {
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails) {
           return ResponseEntity.ok(
                   ApiResponse.success(
                           service.selectTenantPreCon(contractChatId, userDetails.getUserId())));

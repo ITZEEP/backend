@@ -3,7 +3,7 @@ package org.scoula.domain.precontract.document;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.scoula.domain.precontract.dto.TenantMongoDTO;
+import org.scoula.domain.precontract.dto.tenant.TenantMongoDTO;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;

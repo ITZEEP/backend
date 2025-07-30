@@ -1,6 +1,6 @@
 package org.scoula.domain.precontract.vo;
 
-import org.scoula.domain.precontract.dto.TenantStep1DTO;
+import org.scoula.domain.precontract.dto.tenant.TenantStep1DTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

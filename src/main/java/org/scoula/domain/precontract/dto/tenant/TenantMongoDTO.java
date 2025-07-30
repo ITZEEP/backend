@@ -1,4 +1,4 @@
-package org.scoula.domain.precontract.dto;
+package org.scoula.domain.precontract.dto.tenant;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
