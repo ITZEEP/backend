@@ -28,7 +28,7 @@ public interface PreContractService {
       // =============== step 1 ==================
 
       /**
-       * 계약채팅이 만들어지면 그곳에서 호출되어 '임차인 계약 전 사전 정보' 컬럼이 만들어진다.
+       * 계약채팅이 만들어지면 그곳에서 호출되어 '임차인 계약 전 사전 정보 step1' 컬럼이 만들어진다.
        *
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디
@@ -48,7 +48,7 @@ public interface PreContractService {
       // =============== step 2 ==================
 
       /**
-       * 계약채팅이 만들어지면 그곳에서 호출되어 '임차인 계약 전 사전 정보' 컬럼이 만들어진다.
+       * 계약채팅이 만들어지면 그곳에서 호출되어 '임차인 계약 전 사전 정보 step2' 컬럼이 만들어진다.
        *
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디
@@ -68,7 +68,7 @@ public interface PreContractService {
       // =============== step 3 ==================
 
       /**
-       * 계약채팅이 만들어지면 그곳에서 호출되어 '임차인 계약 전 사전 정보' 컬럼이 만들어진다.
+       * 계약채팅이 만들어지면 그곳에서 호출되어 '임차인 계약 전 사전 정보 step3' 컬럼이 만들어진다.
        *
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디
