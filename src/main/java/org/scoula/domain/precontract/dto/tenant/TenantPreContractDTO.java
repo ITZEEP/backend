@@ -150,5 +150,4 @@ public class TenantPreContractDTO {
 
       @ApiModelProperty(value = "관계", example = "남편")
       private String relation;
-
 }

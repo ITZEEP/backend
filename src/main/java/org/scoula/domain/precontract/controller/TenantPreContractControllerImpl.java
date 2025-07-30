@@ -98,7 +98,8 @@ public class TenantPreContractControllerImpl implements TenantPreContractControl
       @PatchMapping("/step3")
       public ResponseEntity<ApiResponse<Void>> updateTenantStep3(
               @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails, TenantStep3DTO step3DTO) {
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @RequestBody TenantStep3DTO step3DTO) {
           return ResponseEntity.ok(
                   ApiResponse.success(
                           service.updateTenantStep3(
