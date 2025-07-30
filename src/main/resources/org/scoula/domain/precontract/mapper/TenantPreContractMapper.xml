@@ -177,7 +177,6 @@
                tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
                tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
 
-
         FROM tenant_precontract_check tpc
         INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id
         INNER JOIN home h ON cc.home_id = h.home_id
@@ -186,5 +185,27 @@
 
         WHERE tpc.contract_chat_id = #{contractChatId}
 
+    </select>
+
+    <select id="selectMongo" resultType="org.scoula.domain.precontract.dto.TenantMongoDTO">
+        SELECT
+            tpc.contract_chat_id,
+            tpc.rent_type,
+            CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_loan_plan
+                 WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_loan_plan
+                END AS loan_plan,
+
+            CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_insurance_plan
+                 WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
+                END AS insurance_plan,
+            tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
+            tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
+
+        FROM tenant_precontract_check tpc
+                 INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id
+                 LEFT JOIN tenant_jeonse_info tji ON tpc.contract_chat_id = tji.tenant_precheck_id
+                 LEFT JOIN tenant_wolse_info twi ON tpc.contract_chat_id = twi.tenant_precheck_id
+
+        WHERE tpc.contract_chat_id = #{contractChatId}
     </select>
 </mapper>
