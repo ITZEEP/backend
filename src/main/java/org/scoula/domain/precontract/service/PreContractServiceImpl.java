@@ -16,9 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
-// 처음에 정보를 보내서 (전,월세 / 펫 여부) 그걸 로컬 스토리지에 저장하게 한다
-// 동재님이 받아오는 값에 있는 메서드가 두개가 섞여 있는것 같은데 그거 정리하기
-
 @Service
 @RequiredArgsConstructor
 @Log4j2
