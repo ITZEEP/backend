@@ -123,4 +123,13 @@ public class PreContractControllerImpl implements PreContractController {
                   ApiResponse.success(
                           service.selectTenantPreCon(contractChatId, userDetails.getUserId())));
       }
+
+      @Override
+      @PostMapping("/save-mongo")
+      public ResponseEntity<ApiResponse<Void>> saveMongoDB(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails) {
+          return ResponseEntity.ok(
+                  ApiResponse.success(service.saveMongoDB(contractChatId, userDetails.getUserId())));
+      }
 }

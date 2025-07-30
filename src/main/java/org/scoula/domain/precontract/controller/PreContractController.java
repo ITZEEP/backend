@@ -71,4 +71,9 @@ public interface PreContractController {
       ResponseEntity<ApiResponse<TenantPreContractDTO>> selectTenantPreCon(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
+
+      @ApiOperation(value = "임차인 : step5 몽고DB에 저장", notes = "임차인의 계약전 작성 사항을 AI로 보내기 위해 몽고DB에 저장한다.")
+      ResponseEntity<ApiResponse<Void>> saveMongoDB(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails);
 }
