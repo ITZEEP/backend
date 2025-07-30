@@ -33,7 +33,6 @@ public interface PreContractService {
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디
        * @param step1DTO 계약전 step1 입력사항
-       * @return 애완동물 가능 여부를 boolean으로 리턴 (다음 페이지를 위해서)
        */
       Void updateTenantStep1(Long contractChatId, Long userId, TenantStep1DTO step1DTO);
 
