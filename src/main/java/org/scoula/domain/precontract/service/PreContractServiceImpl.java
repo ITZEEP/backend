@@ -79,7 +79,6 @@ public class PreContractServiceImpl implements PreContractService {
                           .selectRiskType(contractChatId, userId)
                           .orElseThrow(
                                   () -> new BusinessException(PreContractErrorCode.TENANT_SELECT));
-          log.error("risktype : {}", riskType);
 
           // 1-4. 전세/월세 여부도 넣기 위해서 찾기
           String rentType =
