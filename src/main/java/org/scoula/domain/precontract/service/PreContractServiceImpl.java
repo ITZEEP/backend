@@ -10,6 +10,7 @@ import org.scoula.domain.precontract.vo.TenantJeonseInfoVO;
 import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
 import org.scoula.domain.precontract.vo.TenantWolseInfoVO;
 import org.scoula.global.common.exception.BusinessException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -268,8 +269,11 @@ public class PreContractServiceImpl implements PreContractService {
           if (dto == null) throw new BusinessException(PreContractErrorCode.TENANT_SELECT);
 
           // 2. 몽고 DB에 저장하기
-          TenantMongoDocument document = mongoRepository.insert(dto);
-          if (document == null) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+          try{
+              mongoRepository.insert(dto);
+          } catch (DataAccessException e) {
+              throw new BusinessException(PreContractErrorCode.TENANT_INSERT, e);
+          }
 
           return null;
       }
