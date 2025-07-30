@@ -113,15 +113,15 @@
 
     <update id="updateStep2">
         UPDATE tenant_precontract_check
-        SET facility_repair_needed = #{vo.facilityRepairNeeded}, interior_cleaning_needed = #{vo.interiorCleaningNeeded}, appliance_installation_plan = #{vo.applianceInstallationPlan},
+        SET facility_repair_needed = #{vo.facilityRepairNeeded}, interior_cleaning_needed = #{vo.interiorCleaningNeeded}, appliance_installation_plan = #{vo.applianceInstallationPlan}
         <if test ="vo.hasPet != null">
-            has_pet = #{vo.hasPet},
+            , has_pet = #{vo.hasPet}
         </if>
         <if test="vo.petInfo != null">
-            pet_info = #{vo.petInfo},
+            , pet_info = #{vo.petInfo}
         </if>
         <if test="vo.petCount != null">
-            pet_count = #{vo.petCount}
+            , pet_count = #{vo.petCount}
         </if>
         WHERE contract_chat_id = #{contractChatId}
     </update>
