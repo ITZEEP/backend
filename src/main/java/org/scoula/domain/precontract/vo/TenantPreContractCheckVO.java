@@ -27,7 +27,7 @@ public class TenantPreContractCheckVO {
       private RentType rentType;
       private LocalDate expectedMoveInDate;
       private ContractDuration contractDuration;
-      private RenewsalIntent renewalIntent;
+      private RenewalIntent renewalIntent;
       private Boolean facilityRepairNeeded;
       private Boolean interiorCleaningNeeded;
       private Boolean applianceInstallationPlan;
@@ -49,7 +49,7 @@ public class TenantPreContractCheckVO {
           return TenantPreContractCheckVO.builder()
                   .expectedMoveInDate(dto.getExpectedMoveInDate())
                   .contractDuration(ContractDuration.valueOf(dto.getContractDuration()))
-                  .renewalIntent(RenewsalIntent.valueOf(dto.getRenewalIntent()))
+                  .renewalIntent(RenewalIntent.valueOf(dto.getRenewalIntent()))
                   .build();
       }
 

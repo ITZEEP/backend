@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum RenewsalIntent {
+public enum RenewalIntent {
       YES("갱신 의사 있음"),
       NO("갱신 의사 없음"),
       UNDECIDED("갱신 의사 미정");
