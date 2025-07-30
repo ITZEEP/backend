@@ -4,10 +4,7 @@ import java.util.Optional;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.scoula.domain.precontract.dto.TenantPreContractDTO;
-import org.scoula.domain.precontract.dto.TenantStep1DTO;
-import org.scoula.domain.precontract.dto.TenantStep2DTO;
-import org.scoula.domain.precontract.dto.TenantStep3DTO;
+import org.scoula.domain.precontract.dto.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.vo.TenantJeonseInfoVO;
 import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
@@ -97,5 +94,9 @@ public interface TenantPreContractMapper {
 
       // 최종 데이터 조회하기
       TenantPreContractDTO selectPreCon(
+              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
+
+      // 몽고 DB에 데이터 넘기기
+      TenantMongoDTO selectMongo(
               @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
 }
