@@ -1,9 +1,11 @@
 package org.scoula.domain.precontract.service;
 
+import org.scoula.domain.precontract.document.TenantMongoDocument;
 import org.scoula.domain.precontract.dto.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
 import org.scoula.domain.precontract.mapper.TenantPreContractMapper;
+import org.scoula.domain.precontract.repository.TenantMongoRepository;
 import org.scoula.domain.precontract.vo.TenantJeonseInfoVO;
 import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
 import org.scoula.domain.precontract.vo.TenantWolseInfoVO;
@@ -23,6 +25,7 @@ import lombok.extern.log4j.Log4j2;
 public class PreContractServiceImpl implements PreContractService {
 
       private final TenantPreContractMapper tenantMapper;
+      private final TenantMongoRepository mongoRepository;
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
@@ -250,5 +253,24 @@ public class PreContractServiceImpl implements PreContractService {
 
           // 2. 조회된 값을 반환하기
           return dto;
+      }
+
+      /** {@inheritDoc} */
+      @Override
+      public Void saveMongoDB(Long contractChatId, Long userId) {
+          // 0. UserId 검증하기
+          tenantMapper
+                  .selectBuyerId(contractChatId)
+                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          // 1. 매퍼에서 보낼것들을 조회해오기
+          TenantMongoDTO dto = tenantMapper.selectMongo(userId, contractChatId);
+          if (dto == null) throw new BusinessException(PreContractErrorCode.TENANT_SELECT);
+
+          // 2. 몽고 DB에 저장하기
+          TenantMongoDocument document = mongoRepository.insert(dto);
+          if (document == null) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+
+          return null;
       }
 }

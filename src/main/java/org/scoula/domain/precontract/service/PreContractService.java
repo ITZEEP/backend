@@ -96,4 +96,12 @@ public interface PreContractService {
        * @return 계약전 최종본 조회
        */
       TenantPreContractDTO selectTenantPreCon(Long contractChatId, Long userId);
+
+      /**
+       * 임차인 계약 전 최종본 mongoDB에 저장
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       */
+      Void saveMongoDB(Long contractChatId, Long userId);
 }
