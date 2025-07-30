@@ -1,9 +1,6 @@
 package org.scoula.domain.precontract.controller;
 
-import org.scoula.domain.precontract.dto.TenantPreContractDTO;
-import org.scoula.domain.precontract.dto.TenantStep1DTO;
-import org.scoula.domain.precontract.dto.TenantStep2DTO;
-import org.scoula.domain.precontract.dto.TenantStep3DTO;
+import org.scoula.domain.precontract.dto.*;
 import org.scoula.domain.precontract.service.PreContractService;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
@@ -33,9 +30,11 @@ public class PreContractControllerImpl implements PreContractController {
                   ApiResponse.success(service.getCheckRisk(contractChatId, userDetails.getUserId())));
       }
 
+      // =============== 본인인증 하기 ==================
+
       @Override
       @PostMapping("/init-con")
-      public ResponseEntity<ApiResponse<String>> saveTenantInfo(
+      public ResponseEntity<ApiResponse<TenantInitRespDTO>> saveTenantInfo(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
           return ResponseEntity.ok(
@@ -50,7 +49,7 @@ public class PreContractControllerImpl implements PreContractController {
 
       @Override
       @PatchMapping("/step1")
-      public ResponseEntity<ApiResponse<Boolean>> updateTenantStep1(
+      public ResponseEntity<ApiResponse<Void>> updateTenantStep1(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody TenantStep1DTO step1DTO) {

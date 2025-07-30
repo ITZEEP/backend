@@ -1,5 +1,9 @@
 package org.scoula.domain.precontract.dto;
 
+import org.scoula.global.common.constant.Constants;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
@@ -34,7 +38,8 @@ public class TenantStep3DTO {
       @ApiModelProperty(value = "임차인 직업", example = "개발자")
       private String occupation;
 
-      @ApiModelProperty(value = "비상 연락처", example = "01012345678")
+      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.Number.PHONE)
+      @ApiModelProperty(value = "비상 연락처", example = "010-1234-5678")
       private String emergencyContact;
 
       @ApiModelProperty(value = "비상 연락처와의 관계", example = "남편")

@@ -1,5 +1,7 @@
 package org.scoula.domain.precontract.mapper;
 
+import java.util.Optional;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.scoula.domain.precontract.dto.TenantPreContractDTO;
@@ -14,17 +16,28 @@ import org.scoula.domain.precontract.vo.TenantWolseInfoVO;
 @Mapper
 public interface TenantPreContractMapper {
 
+      // =============== UserId 확인하기 ==================
+
+      Optional<Long> selectContractBuyerId(@Param("contractChatId") Long contractChatId);
+
+      Optional<Long> selectBuyerId(@Param("contractChatId") Long contractChatId);
+
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
-      // risk_check에 맞는 risk_id가 있는지 확인하기
-      Long selectRiskId(@Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
+      // identity_verification에서 identity_id 가져오기
+      Optional<Long> selectIdentityId(@Param("userId") Long userId);
 
-      // risk type 가져오기
-      String selectRiskType(
+      // risk_check에 맞는 risk_id가 있는지 확인하기
+      Optional<Long> selectRiskId(
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
 
-      // identity_verification에서 identity_id 가져오기
-      Long selectIdentityId(@Param("userId") Long userId);
+      // risk type 가져오기
+      Optional<String> selectRiskType(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
+
+      // RentType 조회 (전/월세)
+      Optional<String> selectRentType(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
 
       // tenant_preCheck_check에 기본 세팅 하기 (나머지는 다 Null)
       int insertPreContractSet(
@@ -34,14 +47,7 @@ public interface TenantPreContractMapper {
               @Param("rentType") String rentType,
               @Param("riskType") String riskType);
 
-      String selectRentType(
-              @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
-
       // =============== step 1 ==================
-
-      // 전세 / 월세 확인하기
-      String selectLeaseType(
-              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
 
       // 전세 정보 테이블 입력
       int insertJeonseInfo(@Param("vo") TenantJeonseInfoVO jeonseInfo);

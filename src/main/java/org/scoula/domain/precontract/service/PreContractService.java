@@ -1,9 +1,6 @@
 package org.scoula.domain.precontract.service;
 
-import org.scoula.domain.precontract.dto.TenantPreContractDTO;
-import org.scoula.domain.precontract.dto.TenantStep1DTO;
-import org.scoula.domain.precontract.dto.TenantStep2DTO;
-import org.scoula.domain.precontract.dto.TenantStep3DTO;
+import org.scoula.domain.precontract.dto.*;
 
 public interface PreContractService {
 
@@ -18,13 +15,15 @@ public interface PreContractService {
        */
       Boolean getCheckRisk(Long contractChatId, Long userId);
 
+      // =============== 본인인증 하기 ==================
+
       /**
        * 계약채팅이 만들어지면 그곳에서 호출되어 '임차인 계약 전 사전 정보' 컬럼이 만들어진다. -> 임차인 사전 정보 기본 세팅
        *
        * @param contractChatId 채팅방 아이디
        * @param buyerId 유저 아이디
        */
-      String saveTenantInfo(Long contractChatId, Long buyerId);
+      TenantInitRespDTO saveTenantInfo(Long contractChatId, Long buyerId);
 
       // =============== step 1 ==================
 
@@ -36,7 +35,7 @@ public interface PreContractService {
        * @param step1DTO 계약전 step1 입력사항
        * @return 애완동물 가능 여부를 boolean으로 리턴 (다음 페이지를 위해서)
        */
-      Boolean updateTenantStep1(Long contractChatId, Long userId, TenantStep1DTO step1DTO);
+      Void updateTenantStep1(Long contractChatId, Long userId, TenantStep1DTO step1DTO);
 
       /**
        * 임차인 계약 전 step1 조회

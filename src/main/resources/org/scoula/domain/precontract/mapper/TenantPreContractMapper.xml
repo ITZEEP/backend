@@ -4,7 +4,30 @@
 
 <mapper namespace="org.scoula.domain.precontract.mapper.TenantPreContractMapper">
 
+    <!--=============== UserId 확인하기 ==================-->
+    <select id="selectContractBuyerId" resultType="Long">
+        SELECT buyer_id
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
+    <select id="selectBuyerId" resultType="Long">
+        SELECT cc.buyer_id
+        FROM tenant_precontract_check tpc
+        INNER JOIN contract_chat cc
+        ON cc.contract_chat_id = tpc.contract_chat_id
+        WHERE tpc.contract_chat_id = #{contractChatId}
+    </select>
+
     <!--=============== 사기 위험도 확인 & 기본 세팅 ==================-->
+
+    <select id="selectIdentityId" resultType="Long">
+        SELECT iv.identity_id
+        FROM contract_chat cc
+                 INNER JOIN identity_verification iv
+                            ON cc.buyer_id = iv.user_id
+        WHERE cc.buyer_id = #{userId}
+    </select>
 
     <select id="selectRiskId" resultType="Long">
         select rc.riskck_id
@@ -12,9 +35,17 @@
         INNER JOIN risk_check rc
         ON cc.home_id = rc.home_id
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
-        AND DATE(rc.checked_at) = CURRENT_DATE
+#         AND DATE(rc.checked_at) = CURRENT_DATE
         ORDER BY checked_at DESC
         LIMIT 1
+    </select>
+
+    <select id="selectRentType" resultType="String">
+        select h.lease_type
+        FROM contract_chat cc
+                 INNER JOIN home h
+                            ON cc.home_id = h.home_id
+        WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
     </select>
     
     <select id="selectRiskType" resultType="String">
@@ -23,43 +54,18 @@
                  INNER JOIN risk_check rc
                             ON cc.home_id = rc.home_id
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
-          AND DATE(rc.checked_at) = CURRENT_DATE
+#           AND DATE(rc.checked_at) = CURRENT_DATE
         ORDER BY checked_at DESC
         LIMIT 1
-    </select>
-
-
-    <select id="selectIdentityId" resultType="Long">
-        SELECT iv.identity_id
-        FROM contract_chat cc
-        INNER JOIN identity_verification iv
-        ON cc.buyer_id = iv.user_id
-        WHERE cc.buyer_id = #{userId}
     </select>
 
     <insert id="insertPreContractSet">
         INSERT INTO tenant_precontract_check (contract_chat_id, identity_id, riskck_id, rent_type, risk_type)
         VALUES (#{contractChatId}, #{identityId}, #{riskId}, #{rentType}, #{riskType})
     </insert>
-    
-    <select id="selectRentType" resultType="String">
-        select h.lease_type
-        FROM contract_chat cc
-        INNER JOIN home h
-        ON cc.home_id = h.home_id
-        WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
-    </select>
+
 
     <!--=============== step 1 ==================-->
-
-    <select id="selectLeaseType" resultType="String">
-        select h.lease_type
-        FROM contract_chat cc
-        INNER JOIN home h
-        ON cc.home_id = h.home_id
-        WHERE cc.contract_chat_id = #{contractChatId}
-        AND cc.buyer_id = #{userId}
-    </select>
 
     <!-- 임차인 계약 전 전세 정보 등록 -->
     <insert id="insertJeonseInfo" parameterType="org.scoula.domain.precontract.vo.TenantJeonseInfoVO" useGeneratedKeys="true" keyProperty="tenantJeonseRentId">
