@@ -23,9 +23,7 @@ import lombok.NoArgsConstructor;
 public class TenantPreContractDTO {
 
       // 매물
-      @ApiModelProperty(
-              value = "매물 지역 주소",
-              example = "서울시 강남구 신사동")
+      @ApiModelProperty(value = "매물 지역 주소", example = "서울시 강남구 신사동")
       private String addr1; // 지역 주소
 
       @ApiModelProperty(value = "매물 상세 주소", example = "123-45")
@@ -43,6 +41,7 @@ public class TenantPreContractDTO {
       @ApiModelProperty(value = "매물 대표 사진", example = "url")
       private String imageUrl;
 
+      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.DateTime.DEFAULT_DATE_FORMAT)
       @ApiModelProperty(value = "사기 위험도 조회 날짜", example = "2025-07-22")
       private LocalDateTime riskCheckedAt;
 

@@ -1,6 +1,5 @@
 package org.scoula.domain.precontract.service;
 
-import org.scoula.domain.precontract.document.TenantMongoDocument;
 import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
@@ -269,7 +268,7 @@ public class PreContractServiceImpl implements PreContractService {
           if (dto == null) throw new BusinessException(PreContractErrorCode.TENANT_SELECT);
 
           // 2. 몽고 DB에 저장하기
-          try{
+          try {
               mongoRepository.insert(dto);
           } catch (DataAccessException e) {
               throw new BusinessException(PreContractErrorCode.TENANT_INSERT, e);
