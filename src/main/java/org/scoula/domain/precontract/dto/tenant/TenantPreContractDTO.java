@@ -25,34 +25,28 @@ public class TenantPreContractDTO {
       // 매물
       @ApiModelProperty(
               value = "매물 지역 주소",
-              example = "서울시 강남구 신사동") // 이걸 두개로 나눠야 하나? 나눠서 가져올 수 있는지 확인
+              example = "서울시 강남구 신사동")
       private String addr1; // 지역 주소
 
       @ApiModelProperty(value = "매물 상세 주소", example = "123-45")
       private String addr2; // 상세 주소
 
-      // 매물 종료 : 오피스텔
       @ApiModelProperty(value = "매물 종류", example = "APARTMENT")
       private ResidenceType residenceType;
 
-      //    private LeaseType leaseType; // 전월세 타입 -> 이것도 있는것 같다.
-      @ApiModelProperty(value = "계약 보증금 or 전세금", example = "5") // -> 이거 int 인지 확인하기
-      private String depositPrice; // 계약 보증금 or 전세금
+      @ApiModelProperty(value = "계약 보증금 or 전세금", example = "5")
+      private String depositPrice;
 
       @ApiModelProperty(value = "월세비", example = "50")
-      private String monthlyRent; // 월세비 (월세일때만)
+      private String monthlyRent; // 월세일때만
 
-      // 매물 사진
-      @ApiModelProperty(value = "매물 대표 사진", example = "url") // url 맞나? 예시 넣어도 좋을듯
-      private String imageUrl; // 매물 사진 주소
+      @ApiModelProperty(value = "매물 대표 사진", example = "url")
+      private String imageUrl;
 
-      // 사기 위험도 -> 다른데 있는건가??
-      // 위험도
-      @ApiModelProperty(value = "사기 위험도 조회 날짜", example = "2025-07-22") // 해당 날짜니까 이게 맞는지 확인, 시간도?
-      private LocalDateTime riskCheckedAt; // 조회 날짜
+      @ApiModelProperty(value = "사기 위험도 조회 날짜", example = "2025-07-22")
+      private LocalDateTime riskCheckedAt;
 
-      /////////////////////////////////
-
+      // tenant_precontract_check 테이블
       @ApiModelProperty(value = "[PK/FK] 임차인 계약전 사전 정보 ID / 계약 채팅 ID", example = "1", required = true)
       private Long contractChatId;
 
