@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import javax.validation.Valid;
 
 import org.scoula.global.common.dto.ApiResponse;
+import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.file.dto.S3Dto;
 import org.scoula.global.file.service.S3ServiceInterface;
 import org.springframework.http.HttpHeaders;
@@ -134,6 +135,10 @@ public class S3TestControllerImpl implements S3TestController {
                               .build();
 
               return ResponseEntity.ok(ApiResponse.success(response, "S3 파일 삭제 성공"));
+          } catch (BusinessException e) {
+              log.error("S3 파일 삭제 실패: {}", e.getMessage());
+              return ResponseEntity.status(e.getErrorCode().getHttpStatus())
+                      .body(ApiResponse.error(e.getErrorCode().getCode(), e.getMessage()));
           } catch (Exception e) {
               log.error("S3 파일 삭제 실패", e);
               return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -165,6 +170,10 @@ public class S3TestControllerImpl implements S3TestController {
                               .build();
 
               return ResponseEntity.ok(ApiResponse.success(response, "S3 미리 서명된 URL 생성 성공"));
+          } catch (BusinessException e) {
+              log.error("S3 미리 서명된 URL 생성 실패: {}", e.getMessage());
+              return ResponseEntity.status(e.getErrorCode().getHttpStatus())
+                      .body(ApiResponse.error(e.getErrorCode().getCode(), e.getMessage()));
           } catch (Exception e) {
               log.error("S3 미리 서명된 URL 생성 실패", e);
               return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
