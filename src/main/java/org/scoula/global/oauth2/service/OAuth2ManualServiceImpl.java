@@ -61,7 +61,18 @@ public class OAuth2ManualServiceImpl implements OAuth2ManualServiceInterface {
        * @return OAuth2TokenResponse 토큰 응답
        */
       public OAuth2TokenResponse exchangeCodeForToken(String authorizationCode) {
-          log.info("Authorization code를 access token으로 교환 시작");
+          return exchangeCodeForToken(authorizationCode, kakaoRedirectUri);
+      }
+
+      /**
+       * Authorization code로 access token 획득 (redirect URI 지정)
+       *
+       * @param authorizationCode 인증 코드
+       * @param redirectUri 리다이렉트 URI
+       * @return OAuth2TokenResponse 토큰 응답
+       */
+      public OAuth2TokenResponse exchangeCodeForToken(String authorizationCode, String redirectUri) {
+          log.info("Authorization code를 access token으로 교환 시작 - redirectUri: {}", redirectUri);
 
           try {
               // 토큰 요청 헤더 설정
@@ -72,7 +83,7 @@ public class OAuth2ManualServiceImpl implements OAuth2ManualServiceInterface {
               params.add("grant_type", "authorization_code");
               params.add("client_id", kakaoClientId);
               params.add("client_secret", kakaoClientSecret);
-              params.add("redirect_uri", kakaoRedirectUri);
+              params.add("redirect_uri", redirectUri);
               params.add("code", authorizationCode);
 
               HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
@@ -153,11 +164,25 @@ public class OAuth2ManualServiceImpl implements OAuth2ManualServiceInterface {
        * @return JWT 토큰 정보
        */
       public Map<String, String> processOAuth2Login(String authorizationCode) {
+          return processOAuth2Login(authorizationCode, null);
+      }
+
+      /**
+       * OAuth2 완전 처리 (code -> token -> user info -> JWT) (redirect URI 지정)
+       *
+       * @param authorizationCode 인증 코드
+       * @param redirectUri 리다이렉트 URI
+       * @return JWT 토큰 정보
+       */
+      public Map<String, String> processOAuth2Login(String authorizationCode, String redirectUri) {
           log.info("OAuth2 수동 로그인 처리 시작");
 
           try {
               // 1. Authorization code로 access token 획득
-              OAuth2TokenResponse tokenResponse = exchangeCodeForToken(authorizationCode);
+              OAuth2TokenResponse tokenResponse =
+                      redirectUri != null
+                              ? exchangeCodeForToken(authorizationCode, redirectUri)
+                              : exchangeCodeForToken(authorizationCode);
 
               // 2. Access token으로 사용자 정보 획득
               OAuth2UserResponse userResponse = getUserInfo(tokenResponse.getAccessToken());
