@@ -33,13 +33,13 @@ public class JwtUtil {
       @Value("${jwt.secret}")
       private String secret;
 
-      @Value("${jwt.access-token-validity-in-seconds}") // 24시간 (밀리초)
+      @Value("${jwt.access-token-validity-in-seconds}") // 1시간 (초)
       private Long expiration;
 
-      @Value("${jwt.refresh-token-validity-in-seconds}") // 7일 (밀리초)
+      @Value("${jwt.refresh-token-validity-in-seconds}") // 7일 (초)
       private Long refreshExpiration;
 
-      @Value("${jwt.issuer}")
+      @Value("${jwt.issuer:issuer}")
       private String issuer;
 
       // 로그아웃 기능을 위한 토큰 블랙리스트
@@ -115,7 +115,7 @@ public class JwtUtil {
        * @return 만료 시간 (초)
        */
       public Long getAccessTokenExpiration() {
-          return expiration / 1000;
+          return expiration;
       }
 
       /**
@@ -124,14 +124,14 @@ public class JwtUtil {
        * @return 만료 시간 (초)
        */
       public Long getRefreshTokenExpiration() {
-          return refreshExpiration / 1000;
+          return refreshExpiration;
       }
 
       /**
        * 사용자 정의 만료 시간으로 토큰 생성
        *
        * @param username 토큰을 생성할 사용자명
-       * @param tokenExpiration 사용자 정의 만료 시간 (밀리초)
+       * @param tokenExpiration 사용자 정의 만료 시간 (초)
        * @return JWT 토큰
        * @throws BusinessException 매개변수가 유효하지 않은 경우
        */
@@ -140,7 +140,7 @@ public class JwtUtil {
           validateExpiration(tokenExpiration);
 
           Date now = new Date();
-          Date expiryDate = new Date(now.getTime() + tokenExpiration);
+          Date expiryDate = new Date(now.getTime() + (tokenExpiration * 1000));
 
           try {
               String token =
@@ -301,8 +301,8 @@ public class JwtUtil {
               throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "만료 시간은 양수여야 합니다");
           }
 
-          // 최대 30일
-          if (expiration > Constants.Jwt.MAX_EXPIRATION_DAYS * 24 * 60 * 60 * 1000) {
+          // 최대 30일 (초 단위)
+          if (expiration > Constants.Jwt.MAX_EXPIRATION_DAYS * 24 * 60 * 60) {
               throw new BusinessException(
                       CommonErrorCode.INVALID_INPUT_VALUE, "만료 시간이 너무 깁니다 (최대 30일)");
           }
