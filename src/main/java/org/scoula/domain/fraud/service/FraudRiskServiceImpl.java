@@ -58,7 +58,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       @Transactional
       public DocumentAnalysisResponse analyzeDocuments(
               Long userId, MultipartFile registryFile, MultipartFile buildingFile, Long homeId) {
-          log.info("문서 분석 시작 - homeId: {}", LogSanitizerUtil.sanitize(homeId));
+          log.info("문서 분석 시작 - homeId: {}", LogSanitizerUtil.sanitizeValue(homeId));
 
           // 1. 파일 유효성 검증
           validateFile(registryFile, "등기부등본");
@@ -135,7 +135,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       @Override
       @Transactional
       public RiskAnalysisResponse analyzeRisk(Long userId, RiskAnalysisRequest request) {
-          log.info("위험도 분석 시작 - homeId: {}", LogSanitizerUtil.sanitize(request.getHomeId()));
+          log.info("위험도 분석 시작 - homeId: {}", LogSanitizerUtil.sanitizeValue(request.getHomeId()));
 
           try {
               // 1. risk_check 레코드 생성
@@ -163,8 +163,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
                   log.info(
                           "AI 분석 결과 - riskType: {}, riskScore: {}",
-                          LogSanitizerUtil.sanitize(riskType),
-                          LogSanitizerUtil.sanitize(
+                          LogSanitizerUtil.sanitizeValue(riskType),
+                          LogSanitizerUtil.sanitizeValue(
                                   aiResponse != null ? aiResponse.getRiskScore() : null));
               } catch (Exception e) {
                   log.error("AI 분석 실패", e);
@@ -436,7 +436,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
       @Override
       public List<LikedHomeResponse> getLikedHomes(Long userId) {
-          log.info("찜한 매물 목록 조회 - userId: {}", LogSanitizerUtil.sanitize(userId));
+          log.info("찜한 매물 목록 조회 - userId: {}", LogSanitizerUtil.sanitizeValue(userId));
           return homeLikeMapper.selectLikedHomesByUserId(userId);
       }
 
@@ -444,9 +444,9 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public PageResponse<LikedHomeResponse> getChattingHomes(Long userId, PageRequest pageRequest) {
           log.info(
                   "채팅 중인 매물 목록 조회 - userId: {}, page: {}, size: {}",
-                  LogSanitizerUtil.sanitize(userId),
-                  LogSanitizerUtil.sanitize(pageRequest.getPage()),
-                  LogSanitizerUtil.sanitize(pageRequest.getSize()));
+                  LogSanitizerUtil.sanitizeValue(userId),
+                  LogSanitizerUtil.sanitizeValue(pageRequest.getPage()),
+                  LogSanitizerUtil.sanitizeValue(pageRequest.getSize()));
 
           // 정렬 기본값 설정
           if (pageRequest.getSort() == null || pageRequest.getSort().isEmpty()) {

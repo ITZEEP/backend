@@ -59,17 +59,19 @@ public class AiFraudAnalyzerService {
               log.info(
                       "AI 사기 위험도 분석 요청 - URL: {}, homeId: {}",
                       LogSanitizerUtil.sanitize(url),
-                      LogSanitizerUtil.sanitize(request.getHomeId()));
+                      LogSanitizerUtil.sanitizeValue(request.getHomeId()));
 
               @SuppressWarnings("rawtypes")
               ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
 
-              log.info("AI 위험도 분석 응답 상태: {}", LogSanitizerUtil.sanitize(response.getStatusCode()));
+              log.info(
+                      "AI 위험도 분석 응답 상태: {}",
+                      LogSanitizerUtil.sanitizeValue(response.getStatusCode()));
 
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("AI 위험도 분석 전체 응답: {}", LogSanitizerUtil.sanitize(responseBody));
+                  log.info("AI 위험도 분석 전체 응답: {}", LogSanitizerUtil.sanitizeValue(responseBody));
 
                   // 구조화된 응답인지 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -78,7 +80,7 @@ public class AiFraudAnalyzerService {
                       @SuppressWarnings("unchecked")
                       Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
                       if (data != null) {
-                          log.info("AI 위험도 분석 데이터: {}", LogSanitizerUtil.sanitize(data));
+                          log.info("AI 위험도 분석 데이터: {}", LogSanitizerUtil.sanitizeValue(data));
                           return convertToFraudRiskResponse(data);
                       }
                   } else {
@@ -96,9 +98,9 @@ public class AiFraudAnalyzerService {
                               mapper.convertValue(responseBody, FraudRiskCheckDto.Response.class);
                       log.info(
                               "AI 분석 완료 - analysisId: {}, riskLevel: {}, riskScore: {}",
-                              LogSanitizerUtil.sanitize(aiResponse.getAnalysisId()),
-                              LogSanitizerUtil.sanitize(aiResponse.getRiskLevel()),
-                              LogSanitizerUtil.sanitize(aiResponse.getRiskScore()));
+                              LogSanitizerUtil.sanitizeValue(aiResponse.getAnalysisId()),
+                              LogSanitizerUtil.sanitizeValue(aiResponse.getRiskLevel()),
+                              LogSanitizerUtil.sanitizeValue(aiResponse.getRiskScore()));
                       return aiResponse;
                   } catch (Exception e) {
                       log.warn("직접 FraudRiskCheckDto.Response 변환 실패", e);
@@ -179,17 +181,21 @@ public class AiFraudAnalyzerService {
                       "등기부등본 OCR 요청 - URL: {}, fileName: {}, fileSize: {} bytes",
                       LogSanitizerUtil.sanitize(url),
                       LogSanitizerUtil.sanitize(file.getOriginalFilename()),
-                      LogSanitizerUtil.sanitize(file.getSize()));
+                      LogSanitizerUtil.sanitizeValue(file.getSize()));
 
               @SuppressWarnings("rawtypes")
               ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
 
-              log.info("등기부등본 OCR 응답 상태: {}", LogSanitizerUtil.sanitize(response.getStatusCode()));
+              log.info(
+                      "등기부등본 OCR 응답 상태: {}",
+                      LogSanitizerUtil.sanitizeValue(response.getStatusCode()));
 
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("등기부등본 OCR 완료 - AI 서버 전체 응답: {}", LogSanitizerUtil.sanitize(responseBody));
+                  log.info(
+                          "등기부등본 OCR 완료 - AI 서버 전체 응답: {}",
+                          LogSanitizerUtil.sanitizeValue(responseBody));
 
                   // success 필드 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -202,7 +208,9 @@ public class AiFraudAnalyzerService {
                           Map<String, Object> parsedData =
                                   (Map<String, Object>) data.get("parsed_data");
                           if (parsedData != null) {
-                              log.info("등기부등본 OCR 파싱 데이터: {}", LogSanitizerUtil.sanitize(parsedData));
+                              log.info(
+                                      "등기부등본 OCR 파싱 데이터: {}",
+                                      LogSanitizerUtil.sanitizeValue(parsedData));
                               return convertToRegistryDocument(parsedData);
                           }
                       }
@@ -278,17 +286,21 @@ public class AiFraudAnalyzerService {
                       "건축물대장 OCR 요청 - URL: {}, fileName: {}, fileSize: {} bytes",
                       LogSanitizerUtil.sanitize(url),
                       LogSanitizerUtil.sanitize(file.getOriginalFilename()),
-                      LogSanitizerUtil.sanitize(file.getSize()));
+                      LogSanitizerUtil.sanitizeValue(file.getSize()));
 
               @SuppressWarnings("rawtypes")
               ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
 
-              log.info("건축물대장 OCR 응답 상태: {}", LogSanitizerUtil.sanitize(response.getStatusCode()));
+              log.info(
+                      "건축물대장 OCR 응답 상태: {}",
+                      LogSanitizerUtil.sanitizeValue(response.getStatusCode()));
 
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("건축물대장 OCR 완료 - AI 서버 전체 응답: {}", LogSanitizerUtil.sanitize(responseBody));
+                  log.info(
+                          "건축물대장 OCR 완료 - AI 서버 전체 응답: {}",
+                          LogSanitizerUtil.sanitizeValue(responseBody));
 
                   // success 필드 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -301,7 +313,9 @@ public class AiFraudAnalyzerService {
                           Map<String, Object> parsedData =
                                   (Map<String, Object>) data.get("parsed_data");
                           if (parsedData != null) {
-                              log.info("건축물대장 OCR 파싱 데이터: {}", LogSanitizerUtil.sanitize(parsedData));
+                              log.info(
+                                      "건축물대장 OCR 파싱 데이터: {}",
+                                      LogSanitizerUtil.sanitizeValue(parsedData));
                               return convertToBuildingDocument(parsedData);
                           }
                       }
@@ -602,7 +616,7 @@ public class AiFraudAnalyzerService {
               log.warn(
                       "Long 변환 실패 - key: {}, value: {}",
                       LogSanitizerUtil.sanitize(key),
-                      LogSanitizerUtil.sanitize(value));
+                      LogSanitizerUtil.sanitizeValue(value));
               return defaultValue;
           }
       }
@@ -620,7 +634,7 @@ public class AiFraudAnalyzerService {
               log.warn(
                       "Double 변환 실패 - key: {}, value: {}",
                       LogSanitizerUtil.sanitize(key),
-                      LogSanitizerUtil.sanitize(value));
+                      LogSanitizerUtil.sanitizeValue(value));
               return defaultValue;
           }
       }
@@ -638,7 +652,7 @@ public class AiFraudAnalyzerService {
               log.warn(
                       "Integer 변환 실패 - key: {}, value: {}",
                       LogSanitizerUtil.sanitize(key),
-                      LogSanitizerUtil.sanitize(value));
+                      LogSanitizerUtil.sanitizeValue(value));
               return defaultValue;
           }
       }

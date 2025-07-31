@@ -74,7 +74,9 @@ public class AiDocumentAnalyzerService {
                       restTemplate.exchange(
                               url, HttpMethod.POST, requestEntity, AiParseResponse.class);
 
-              log.info("AI 서버 응답 성공 - 상태: {}", LogSanitizerUtil.sanitize(response.getStatusCode()));
+              log.info(
+                      "AI 서버 응답 성공 - 상태: {}",
+                      LogSanitizerUtil.sanitizeValue(response.getStatusCode()));
 
               // AI 서버 응답 검증
               AiParseResponse aiResponse = response.getBody();
@@ -96,7 +98,7 @@ public class AiDocumentAnalyzerService {
               log.error(
                       "AI 서버 클라이언트 오류 - URL: {}, 상태: {}, 메시지: {}",
                       LogSanitizerUtil.sanitize(url),
-                      LogSanitizerUtil.sanitize(e.getStatusCode()),
+                      LogSanitizerUtil.sanitizeValue(e.getStatusCode()),
                       LogSanitizerUtil.sanitize(e.getMessage()));
               throw new FraudRiskException(
                       FraudErrorCode.INVALID_DOCUMENT_FORMAT, "AI 서버 요청 오류: " + e.getMessage(), e);
@@ -105,7 +107,7 @@ public class AiDocumentAnalyzerService {
               log.error(
                       "AI 서버 내부 오류 - URL: {}, 상태: {}, 메시지: {}",
                       LogSanitizerUtil.sanitize(url),
-                      LogSanitizerUtil.sanitize(e.getStatusCode()),
+                      LogSanitizerUtil.sanitizeValue(e.getStatusCode()),
                       LogSanitizerUtil.sanitize(e.getMessage()));
               throw new FraudRiskException(
                       FraudErrorCode.AI_SERVICE_UNAVAILABLE, "AI 서버 내부 오류가 발생했습니다", e);

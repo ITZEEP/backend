@@ -74,7 +74,7 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
 
           log.info(
                   "MongoTemplate 초기화 완료 - Database: {}",
-                  LogSanitizerUtil.sanitize(getDatabaseName()));
+                  LogSanitizerUtil.sanitizeValue(getDatabaseName()));
           return template;
       }
 

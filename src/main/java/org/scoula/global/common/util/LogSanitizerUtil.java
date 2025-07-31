@@ -38,19 +38,24 @@ public final class LogSanitizerUtil {
       }
 
       /**
-       * 객체를 로그에 안전하게 기록할 수 있도록 문자열로 변환합니다.
+       * 객체를 문자열로 변환한 후 sanitize합니다. null-safe하며, Number 타입은 직접 toString()을 사용합니다.
        *
-       * @param obj 입력 객체
-       * @return sanitize된 문자열
+       * @param value 입력 값
+       * @return sanitize된 문자열 (never null)
        */
-      public static String sanitize(Object obj) {
-          if (obj == null) {
+      public static String sanitizeValue(Object value) {
+          if (value == null) {
               return "null";
           }
-          // Number 타입은 특별 처리 (보안상 안전하므로 바로 toString)
-          if (obj instanceof Number) {
-              return obj.toString();
+          // Number 타입은 보안상 안전하므로 바로 toString
+          if (value instanceof Number) {
+              return value.toString();
           }
-          return sanitize(obj.toString());
+          // String인 경우 sanitize 메서드 호출
+          if (value instanceof String) {
+              return sanitize((String) value);
+          }
+          // 기타 객체는 toString 후 sanitize
+          return sanitize(value.toString());
       }
 }
