@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-@Getter
 @RequiredArgsConstructor
 public enum FraudErrorCode implements IErrorCode {
       // 기본 에러
@@ -40,4 +39,19 @@ public enum FraudErrorCode implements IErrorCode {
       private final String code;
       private final HttpStatus httpStatus;
       private final String message;
+
+      @Override
+      public String getCode() {
+          return code;
+      }
+
+      @Override
+      public HttpStatus getHttpStatus() {
+          return httpStatus;
+      }
+
+      @Override
+      public String getMessage() {
+          return message;
+      }
 }
