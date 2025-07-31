@@ -334,19 +334,22 @@ class MongoServiceTest {
       @DisplayName("서버 상태 조회가 성공적으로 수행되는지 확인")
       void getServerStatus_ShouldReturnServerStatus() {
           // given
-          Document serverStatus = new Document("version", "4.4.0").append("uptime", 12345);
+          Document pingResult = new Document("ok", 1.0);
           com.mongodb.client.MongoDatabase mockDatabase =
                   mock(com.mongodb.client.MongoDatabase.class);
           when(mongoTemplate.getDb()).thenReturn(mockDatabase);
-          when(mockDatabase.runCommand(any(Document.class))).thenReturn(serverStatus);
+          when(mockDatabase.runCommand(any(Document.class))).thenReturn(pingResult);
+          when(mockDatabase.getName()).thenReturn("test_db");
 
           // when
           Map<String, Object> result = mongoService.getServerStatus();
 
           // then
           assertThat(result).isNotNull();
-          assertThat(result.get("version")).isEqualTo("4.4.0");
-          assertThat(result.get("uptime")).isEqualTo(12345);
+          assertThat(result.get("ping")).isEqualTo(pingResult);
+          assertThat(result.get("database")).isEqualTo("test_db");
+          assertThat(result.get("status")).isEqualTo("connected");
+          assertThat(result.get("timestamp")).isNotNull();
           verify(mockDatabase).runCommand(any(Document.class));
       }
 

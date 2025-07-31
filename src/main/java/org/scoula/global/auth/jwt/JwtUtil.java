@@ -33,13 +33,13 @@ public class JwtUtil {
       @Value("${jwt.secret}")
       private String secret;
 
-      @Value("${jwt.expiration:86400000}") // 24시간 (밀리초)
+      @Value("${jwt.access-token-validity-in-seconds}") // 24시간 (밀리초)
       private Long expiration;
 
-      @Value("${jwt.refresh-expiration:604800000}") // 7일 (밀리초)
+      @Value("${jwt.refresh-token-validity-in-seconds}") // 7일 (밀리초)
       private Long refreshExpiration;
 
-      @Value("${jwt.issuer:itzeep}")
+      @Value("${jwt.issuer}")
       private String issuer;
 
       // 로그아웃 기능을 위한 토큰 블랙리스트

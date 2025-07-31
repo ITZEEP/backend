@@ -233,7 +233,7 @@ class FraudRiskControllerImplTest {
                       .andDo(print())
                       .andExpect(status().isInternalServerError())
                       .andExpect(jsonPath("$.success").value(false))
-                      .andExpect(jsonPath("$.message").value("문서 분석 중 오류가 발생했습니다: S3 업로드 실패"));
+                      .andExpect(jsonPath("$.message").value("문서 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
           }
       }
 
