@@ -29,7 +29,7 @@ public class OAuth2AuthorizationControllerImpl implements OAuth2AuthorizationCon
       private String kakaoClientId;
 
       // 프론트엔드 콜백 URL 사용
-      @Value("${oauth2.frontend.callback-url:http://localhost:3000/oauth/callback/kakao}")
+      @Value("${spring.security.oauth2.client.registration.kakao.redirect-uri}")
       private String kakaoRedirectUri;
 
       /** {@inheritDoc} */
