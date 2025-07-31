@@ -26,10 +26,8 @@ public class ChatRoomWithUserInfoDto {
       private String otherUserNickname;
       private String otherUserProfileUrl;
 
-      /** ChatRoom과 상대방 User 정보를 조합하여 DTO 생성 */
       public static ChatRoomWithUserInfoDto of(
               ChatRoom chatRoom, User otherUser, Long currentUserId) {
-          // 현재 사용자 기준으로 상대방 결정
           Long otherUserId =
                   currentUserId.equals(chatRoom.getOwnerId())
                           ? chatRoom.getBuyerId()
