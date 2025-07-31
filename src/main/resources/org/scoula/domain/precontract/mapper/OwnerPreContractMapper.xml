@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.precontract.mapper.OwnerPreContractMapper">
+  <resultMap id="selectContractSub2" type="org.scoula.domain.precontract.vo.OwnerPreContractCheckVO">
+    <id property="ownerPrecheckId" column="owner_precheck_id"/>
+    <result property="mortgaged" column="is_mortgaged"/>
+    <collection property="restoreCategories" resultMap="restoreCategoryIds"/>
+  </resultMap>
+
+  <resultMap id="restoreCategoryIds" type="org.scoula.domain.precontract.vo.RestoreCategoryVO">
+    <id property="restoreCategoryId" column="restore_category_id"/>
+    <result property="restoreCategoryName" column="restore_category_name"/>
+  </resultMap>
+
+<!-- userId 확인 -->
+  <select id="selectOwnerIdFromContractChat" resultType="Long">
+    SELECT owner_id
+    FROM contract_chat
+    WHERE contract_chat_id = #{contractChatId}
+  </select>
+
+  <select id="selectContractOwnerId" resultType="Long">
+    SELECT cc.owner_id
+    FROM owner_precontract_check opc
+           INNER JOIN contract_chat cc
+                      ON cc.contract_chat_id = opc.contract_chat_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+  </select>
+
+  <!-- 기본 세팅 -->
+  <!-- identity_verification 테이블에서 identity_id 가져오기 -->
+  <select id="selectIdentityId" resultType="Long">
+    SELECT identity_id
+    FROM contract_chat cc
+    INNER JOIN identity_verification iv
+    ON cc.owner_id = iv.user_id
+    WHERE cc.owner_id = #{userId}
+  </select>
+
+  <!-- rent_type (전/월세) 조회 -->
+  <select id="selectRentType" resultType="String">
+    SELECT h.lease_type
+    FROM contract_chat cc
+    INNER JOIN home h
+    ON cc.home_id = h.home_id
+    WHERE cc.contract_chat_id = #{contractChatId} AND cc.owner_id = #{userId}
+  </select>
+
+  <!-- 테이블 기본 세팅 -->
+  <insert id="insertOwnerPreContractSet">
+    INSERT INTO owner_precontract_check (contract_chat_id, identity_id, rent_type)
+    VALUES (#{contractChatId}, #{identityId}, #{rentType})
+  </insert>
+
+  <!-- 계약 정보 설정 Step 1 -->
+  <!-- 조회 -->
+  <select id="selectContractSub1" resultType="org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO">
+    SELECT
+      is_mortgaged,
+      contract_duration,
+      renewal_intent,
+      response_repairing_fixtures
+    FROM owner_precontract_check
+    WHERE contract_chat_id = #{contractChatId}
+  </select>
+
+  <!-- 저장 -->
+  <update id="updateContractSub1">
+    UPDATE owner_precontract_check
+    SET
+      is_mortgaged = #{dto.mortgaged},
+      contract_duration = #{dto.contractDuration},
+      renewal_intent = #{dto.renewalIntent},
+      response_repairing_fixtures = #{dto.responseRepairingFixtures}
+    WHERE contract_chat_id = #{contractChatId}
+  </update>
+
+  <!-- 계약 정보 설정 Step 2 -->
+  <select id="selectContractSub2" resultType="org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO">
+    SELECT
+      c.has_condition_log,
+      c.has_penalty,
+      c.has_priority_for_extension,
+      c.has_auto_price_adjustment,
+      c.contract_chat_id
+    FROM owner_precontract_check c
+    WHERE c.contract_chat_id = #{contractChatId}
+  </select>
+
+  <select id="selectRestoreScope" resultType="org.scoula.domain.precontract.vo.RestoreCategoryVO">
+    SELECT rc.restore_category_id, rc.restore_category_name
+    FROM owner_restore_scope ors
+           JOIN restore_category rc ON ors.restore_category_id = rc.restore_category_id
+           JOIN owner_precontract_check opc ON opc.contract_chat_id = ors.owner_precheck_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND opc.identity_id = #{userId}
+  </select>
+
+  <!-- 계약 조건 업데이트 -->
+  <update id="updateContractSub2" parameterType="org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO">
+    UPDATE owner_precontract_check
+    SET
+      has_condition_log = #{dto.hasLog},
+      has_penalty = #{dto.hasPenalty},
+      has_priority_for_extension = #{dto.hasPriorityForExtension},
+      has_auto_price_adjustment = #{dto.hasAutoPriceAdjustment}
+    WHERE contract_chat_id = #{dto.ownerPrecheckId}
+  </update>
+
+  <!-- 기존 원상복구 범위 삭제 -->
+  <delete id="deleteRestoreScopes">
+    DELETE FROM owner_restore_scope
+    WHERE owner_precheck_id = #{ownerPrecheckId}
+  </delete>
+
+  <!-- 원상복구 범위 삽입 -->
+  <insert id="insertRestoreScope">
+    INSERT INTO owner_restore_scope (owner_precheck_id, restore_category_id)
+    VALUES (#{ownerPrecheckId}, #{restoreCategoryId})
+  </insert>
+
+  <!-- 거주 정보 설정 Step 1 -->
+  <select id="selectLivingSub1" resultType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO">
+    SELECT
+      require_rent_guarantee_insurance AS requireRentGuaranteeInsurance,
+      insurance_burden AS insuranceBurden,
+      has_notice AS hasNotice,
+      checked_at AS checkedAt,
+      contract_file_url AS contractFileUrl,
+      owner_bank_name AS ownerBankName,
+      owner_account_number AS ownerAccountNumber
+    FROM owner_precontract_check
+    WHERE contract_chat_id = #{contractChatId}
+  </select>
+
+  <!-- 저장 -->
+  <update id="updateLivingSub1" parameterType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO">
+    UPDATE owner_precontract_check
+    SET
+      require_rent_guarantee_insurance = #{dto.requireRentGuaranteeInsurance},
+      insurance_burden = #{dto.insuranceBurden},
+      has_notice = #{dto.hasNotice},
+      checked_at = #{dto.checkedAt},
+      contract_file_url = #{dto.contractFileUrl},
+      owner_bank_name = #{dto.ownerBankName},
+      owner_account_number = #{dto.ownerAccountNumber}
+    WHERE contract_chat_id = #{contractChatId}
+  </update>
+
+  <!-- 거주 조건 설정 Step 2 - 전세 -->
+  <!-- 임대인 결제 전 전세 정보 등록 -->
+  <insert id="insertJeonseInfo">
+    INSERT INTO owner_jeonse_info (
+      owner_precheck_id,
+      is_deposit_adjustable,
+      deposit_adjustment_min,
+      allow_jeonse_right_registration
+    )
+    VALUES (
+             #{vo.ownerPrecheckId},
+             #{vo.depositAdjustable},
+             #{vo.depositAdjustmentMin},
+             #{vo.allowJeonseRightRegistration}
+           )
+  </insert>
+
+  <!-- 임대인 결제 전 월세 정보 등록 -->
+  <insert id="insertWolseInfo">
+    INSERT INTO owner_wolse_info (
+      owner_precheck_id,
+      is_adjustable,
+      is_monthly_adjustable,
+      deposit_adjustment_min,
+      rent_adjustment_min,
+      payment_due_day,
+      late_fee_interest_rate
+    )
+    VALUES (
+             #{vo.ownerPrecheckId},
+             #{vo.adjustable},
+             #{vo.monthlyAdjustable},
+             #{vo.depositAdjustmentMin},
+             #{vo.rentAdjustmentMin},
+             #{vo.paymentDueDate},
+             #{vo.lateFeeInterestRate}
+           )
+  </insert>
+
+  <!-- 조회 -->
+  <select id="selectLivingJeonse" resultType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep2JeonseDTO">
+    SELECT
+      owner_jeonse_rent_id,
+      owner_precheck_id AS ownerPrecheckId,
+      is_deposit_adjustable AS depositAdjustable,
+      deposit_adjustment_min AS depositAdjustmentMin,
+      allow_jeonse_right_registration AS allowJeonseRightRegistration
+    FROM owner_jeonse_info
+    WHERE owner_precheck_id = #{contractChatId}
+  </select>
+
+  <!-- 저장 -->
+  <update id="updateLivingJeonse" parameterType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep2JeonseDTO">
+    UPDATE owner_jeonse_info
+    SET
+      is_deposit_adjustable = #{dto.depositAdjustable},
+      deposit_adjustment_min = #{dto.depositAdjustmentMin},
+      allow_jeonse_right_registration = #{dto.allowJeonseRightRegistration}
+    WHERE owner_precheck_id = #{dto.ownerPrecheckId}
+  </update>
+
+  <!-- 거주 조건 설정 Step 2 - 월세 -->
+  <!-- 조회 -->
+  <select id="selectLivingWolse" resultType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep2WolseDTO">
+    SELECT
+      owner_wolse_rent_id,
+      owner_precheck_id AS ownerPrecheckId,
+      is_adjustable AS adjustable,
+      is_monthly_adjustable AS monthlyAdjustable,
+      deposit_adjustment_min AS depositAdjustmentMin,
+      rent_adjustment_min AS rentAdjustmentMin,
+      payment_due_day AS paymentDueDate,
+      late_fee_interest_rate AS lateFeeInterestRate
+    FROM owner_wolse_info
+    WHERE owner_precheck_id = #{contractChatId}
+  </select>
+
+  <!-- 저장 -->
+  <update id="updateLivingWolse" parameterType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep2WolseDTO">
+    UPDATE owner_wolse_info
+    SET
+      is_adjustable = #{dto.adjustable},
+      is_monthly_adjustable = #{dto.monthlyAdjustable},
+      deposit_adjustment_min = #{dto.depositAdjustmentMin},
+      rent_adjustment_min = #{dto.rentAdjustmentMin},
+      payment_due_day = #{dto.paymentDueDate},
+      late_fee_interest_rate = #{dto.lateFeeInterestRate}
+    WHERE owner_precheck_id = #{dto.ownerPrecheckId}
+  </update>
+
+  <!-- 최종 정보 조회 -->
+  <select id="selectSummary" resultType="org.scoula.domain.precontract.dto.owner.OwnerPreContractDTO">
+    SELECT
+      contract_chat_id,
+      contract_chat_id,
+      identity_id,
+      rent_type,
+      is_mortgaged,
+      contract_duration,
+      renewal_intent,
+      response_repairing_fixtures,
+      has_condition_log,
+      has_penalty,
+      has_priority_for_extension,
+      has_auto_price_adjustment,
+      require_rent_guarantee_insurance,
+      insurance_burden,
+      has_notice,
+      checked_at,
+      contract_file_url,
+      owner_bank_name,
+      owner_account_number
+    FROM owner_precontract_check
+    WHERE contract_chat_id = #{contractChatId}
+  </select>
+
+</mapper>
