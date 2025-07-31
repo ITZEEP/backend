@@ -27,6 +27,7 @@ import org.scoula.domain.fraud.vo.RiskCheckDetailVO;
 import org.scoula.domain.fraud.vo.RiskCheckVO;
 import org.scoula.global.common.dto.PageRequest;
 import org.scoula.global.common.dto.PageResponse;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.scoula.global.file.service.S3ServiceInterface;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,7 +58,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       @Transactional
       public DocumentAnalysisResponse analyzeDocuments(
               Long userId, MultipartFile registryFile, MultipartFile buildingFile, Long homeId) {
-          log.info("문서 분석 시작 - homeId: {}", homeId);
+          log.info("문서 분석 시작 - homeId: {}", LogSanitizerUtil.sanitize(homeId));
 
           // 1. 파일 유효성 검증
           validateFile(registryFile, "등기부등본");
@@ -134,7 +135,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       @Override
       @Transactional
       public RiskAnalysisResponse analyzeRisk(Long userId, RiskAnalysisRequest request) {
-          log.info("위험도 분석 시작 - homeId: {}", request.getHomeId());
+          log.info("위험도 분석 시작 - homeId: {}", LogSanitizerUtil.sanitize(request.getHomeId()));
 
           try {
               // 1. risk_check 레코드 생성
@@ -162,8 +163,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
                   log.info(
                           "AI 분석 결과 - riskType: {}, riskScore: {}",
-                          riskType,
-                          aiResponse.getRiskScore());
+                          LogSanitizerUtil.sanitize(riskType),
+                          LogSanitizerUtil.sanitize(aiResponse.getRiskScore()));
               } catch (Exception e) {
                   log.error("AI 분석 실패", e);
                   throw new FraudRiskException(
@@ -215,14 +216,14 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                                       fraudRiskMapper.insertRiskCheckDetail(detail);
                                       log.debug(
                                               "상세 분석 결과 저장 성공 - title1: {}, title2: {}",
-                                              title1,
-                                              title2);
+                                              LogSanitizerUtil.sanitize(title1),
+                                              LogSanitizerUtil.sanitize(title2));
                                   } catch (Exception e) {
                                       log.warn(
                                               "상세 분석 결과 저장 실패 - title1: {}, title2: {}, error: {}",
-                                              title1,
-                                              title2,
-                                              e.getMessage());
+                                              LogSanitizerUtil.sanitize(title1),
+                                              LogSanitizerUtil.sanitize(title2),
+                                              LogSanitizerUtil.sanitize(e.getMessage()));
                                   }
                               }
                           }
@@ -246,7 +247,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                   try {
                       fraudRiskMapper.insertRiskCheckDetail(recommendDetail);
                   } catch (Exception e) {
-                      log.warn("추천사항 저장 실패: {}", e.getMessage());
+                      log.warn("추천사항 저장 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()));
                   }
               }
 
@@ -425,13 +426,16 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       }
 
       private boolean hasValidExtension(String filename) {
+          if (filename == null || !filename.contains(".")) {
+              return false;
+          }
           String extension = filename.substring(filename.lastIndexOf(".") + 1);
           return ALLOWED_EXTENSIONS.contains(extension);
       }
 
       @Override
       public List<LikedHomeResponse> getLikedHomes(Long userId) {
-          log.info("찜한 매물 목록 조회 - userId: {}", userId);
+          log.info("찜한 매물 목록 조회 - userId: {}", LogSanitizerUtil.sanitize(userId));
           return homeLikeMapper.selectLikedHomesByUserId(userId);
       }
 
@@ -439,9 +443,9 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public PageResponse<LikedHomeResponse> getChattingHomes(Long userId, PageRequest pageRequest) {
           log.info(
                   "채팅 중인 매물 목록 조회 - userId: {}, page: {}, size: {}",
-                  userId,
-                  pageRequest.getPage(),
-                  pageRequest.getSize());
+                  LogSanitizerUtil.sanitize(userId),
+                  LogSanitizerUtil.sanitize(pageRequest.getPage()),
+                  LogSanitizerUtil.sanitize(pageRequest.getSize()));
 
           // 정렬 기본값 설정
           if (pageRequest.getSort() == null || pageRequest.getSort().isEmpty()) {

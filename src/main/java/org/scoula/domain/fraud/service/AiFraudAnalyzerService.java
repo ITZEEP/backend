@@ -28,6 +28,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.scoula.global.common.util.LogSanitizerUtil;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -55,17 +57,17 @@ public class AiFraudAnalyzerService {
               String url = aiServerUrl + "/api/analyze/risk";
               HttpEntity<FraudRiskCheckDto.Request> httpEntity = new HttpEntity<>(aiRequest, headers);
 
-              log.info("AI 사기 위험도 분석 요청 - URL: {}, homeId: {}", url, request.getHomeId());
+              log.info("AI 사기 위험도 분석 요청 - URL: {}, homeId: {}", LogSanitizerUtil.sanitize(url), LogSanitizerUtil.sanitize(request.getHomeId()));
 
               @SuppressWarnings("rawtypes")
               ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
 
-              log.info("AI 위험도 분석 응답 상태: {}", response.getStatusCode());
+              log.info("AI 위험도 분석 응답 상태: {}", LogSanitizerUtil.sanitize(response.getStatusCode()));
 
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("AI 위험도 분석 전체 응답: {}", responseBody);
+                  log.info("AI 위험도 분석 전체 응답: {}", LogSanitizerUtil.sanitize(responseBody));
 
                   // 구조화된 응답인지 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -74,7 +76,7 @@ public class AiFraudAnalyzerService {
                       @SuppressWarnings("unchecked")
                       Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
                       if (data != null) {
-                          log.info("AI 위험도 분석 데이터: {}", data);
+                          log.info("AI 위험도 분석 데이터: {}", LogSanitizerUtil.sanitize(data));
                           return convertToFraudRiskResponse(data);
                       }
                   } else {
@@ -92,9 +94,9 @@ public class AiFraudAnalyzerService {
                               mapper.convertValue(responseBody, FraudRiskCheckDto.Response.class);
                       log.info(
                               "AI 분석 완료 - analysisId: {}, riskLevel: {}, riskScore: {}",
-                              aiResponse.getAnalysisId(),
-                              aiResponse.getRiskLevel(),
-                              aiResponse.getRiskScore());
+                              LogSanitizerUtil.sanitize(aiResponse.getAnalysisId()),
+                              LogSanitizerUtil.sanitize(aiResponse.getRiskLevel()),
+                              LogSanitizerUtil.sanitize(aiResponse.getRiskScore()));
                       return aiResponse;
                   } catch (Exception e) {
                       log.warn("직접 FraudRiskCheckDto.Response 변환 실패", e);
@@ -110,7 +112,7 @@ public class AiFraudAnalyzerService {
               // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
               throw e;
           } catch (Exception e) {
-              log.error("AI 서버 통신 실패: {}", e.getMessage(), e);
+              log.error("AI 서버 통신 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()), e);
               throw new FraudRiskException(
                       FraudErrorCode.AI_SERVICE_UNAVAILABLE,
                       "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
@@ -173,19 +175,19 @@ public class AiFraudAnalyzerService {
 
               log.info(
                       "등기부등본 OCR 요청 - URL: {}, fileName: {}, fileSize: {} bytes",
-                      url,
-                      file.getOriginalFilename(),
-                      file.getSize());
+                      LogSanitizerUtil.sanitize(url),
+                      LogSanitizerUtil.sanitize(file.getOriginalFilename()),
+                      LogSanitizerUtil.sanitize(file.getSize()));
 
               @SuppressWarnings("rawtypes")
               ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
 
-              log.info("등기부등본 OCR 응답 상태: {}", response.getStatusCode());
+              log.info("등기부등본 OCR 응답 상태: {}", LogSanitizerUtil.sanitize(response.getStatusCode()));
 
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("등기부등본 OCR 완료 - AI 서버 전체 응답: {}", responseBody);
+                  log.info("등기부등본 OCR 완료 - AI 서버 전체 응답: {}", LogSanitizerUtil.sanitize(responseBody));
 
                   // success 필드 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -198,7 +200,7 @@ public class AiFraudAnalyzerService {
                           Map<String, Object> parsedData =
                                   (Map<String, Object>) data.get("parsed_data");
                           if (parsedData != null) {
-                              log.info("등기부등본 OCR 파싱 데이터: {}", parsedData);
+                              log.info("등기부등본 OCR 파싱 데이터: {}", LogSanitizerUtil.sanitize(parsedData));
                               return convertToRegistryDocument(parsedData);
                           }
                       }
@@ -246,7 +248,7 @@ public class AiFraudAnalyzerService {
               // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
               throw e;
           } catch (Exception e) {
-              log.error("AI 서버 통신 실패: {}", e.getMessage(), e);
+              log.error("AI 서버 통신 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()), e);
               throw new FraudRiskException(
                       FraudErrorCode.OCR_PROCESSING_FAILED,
                       "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
@@ -272,19 +274,19 @@ public class AiFraudAnalyzerService {
 
               log.info(
                       "건축물대장 OCR 요청 - URL: {}, fileName: {}, fileSize: {} bytes",
-                      url,
-                      file.getOriginalFilename(),
-                      file.getSize());
+                      LogSanitizerUtil.sanitize(url),
+                      LogSanitizerUtil.sanitize(file.getOriginalFilename()),
+                      LogSanitizerUtil.sanitize(file.getSize()));
 
               @SuppressWarnings("rawtypes")
               ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
 
-              log.info("건축물대장 OCR 응답 상태: {}", response.getStatusCode());
+              log.info("건축물대장 OCR 응답 상태: {}", LogSanitizerUtil.sanitize(response.getStatusCode()));
 
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("건축물대장 OCR 완료 - AI 서버 전체 응답: {}", responseBody);
+                  log.info("건축물대장 OCR 완료 - AI 서버 전체 응답: {}", LogSanitizerUtil.sanitize(responseBody));
 
                   // success 필드 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -297,7 +299,7 @@ public class AiFraudAnalyzerService {
                           Map<String, Object> parsedData =
                                   (Map<String, Object>) data.get("parsed_data");
                           if (parsedData != null) {
-                              log.info("건축물대장 OCR 파싱 데이터: {}", parsedData);
+                              log.info("건축물대장 OCR 파싱 데이터: {}", LogSanitizerUtil.sanitize(parsedData));
                               return convertToBuildingDocument(parsedData);
                           }
                       }
@@ -345,7 +347,7 @@ public class AiFraudAnalyzerService {
               // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
               throw e;
           } catch (Exception e) {
-              log.error("AI 서버 통신 실패: {}", e.getMessage(), e);
+              log.error("AI 서버 통신 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()), e);
               throw new FraudRiskException(
                       FraudErrorCode.OCR_PROCESSING_FAILED,
                       "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
@@ -471,7 +473,7 @@ public class AiFraudAnalyzerService {
                   LocalDate birthDate = LocalDate.parse(birthDateStr, DateTimeFormatter.ISO_DATE);
                   builder.ownerBirthDate(birthDate);
               } catch (Exception e) {
-                  log.warn("소유자 생년월일 파싱 실패: {}", birthDateStr);
+                  log.warn("소유자 생년월일 파싱 실패: {}", LogSanitizerUtil.sanitize(birthDateStr));
               }
           }
 
@@ -521,7 +523,7 @@ public class AiFraudAnalyzerService {
                           LocalDate.parse(approvalDateStr, DateTimeFormatter.ISO_DATE);
                   builder.approvalDate(approvalDate);
               } catch (Exception e) {
-                  log.warn("사용승인일 파싱 실패: {}", approvalDateStr);
+                  log.warn("사용승인일 파싱 실패: {}", LogSanitizerUtil.sanitize(approvalDateStr));
               }
           }
 
@@ -595,7 +597,7 @@ public class AiFraudAnalyzerService {
               }
               return Long.parseLong(value.toString());
           } catch (Exception e) {
-              log.warn("Long 변환 실패 - key: {}, value: {}", key, value);
+              log.warn("Long 변환 실패 - key: {}, value: {}", LogSanitizerUtil.sanitize(key), LogSanitizerUtil.sanitize(value));
               return defaultValue;
           }
       }
@@ -610,7 +612,7 @@ public class AiFraudAnalyzerService {
               }
               return Double.parseDouble(value.toString());
           } catch (Exception e) {
-              log.warn("Double 변환 실패 - key: {}, value: {}", key, value);
+              log.warn("Double 변환 실패 - key: {}, value: {}", LogSanitizerUtil.sanitize(key), LogSanitizerUtil.sanitize(value));
               return defaultValue;
           }
       }
@@ -625,7 +627,7 @@ public class AiFraudAnalyzerService {
               }
               return Integer.parseInt(value.toString());
           } catch (Exception e) {
-              log.warn("Integer 변환 실패 - key: {}, value: {}", key, value);
+              log.warn("Integer 변환 실패 - key: {}, value: {}", LogSanitizerUtil.sanitize(key), LogSanitizerUtil.sanitize(value));
               return defaultValue;
           }
       }
