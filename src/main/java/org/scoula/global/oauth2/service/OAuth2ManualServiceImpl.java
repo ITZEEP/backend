@@ -218,7 +218,9 @@ public class OAuth2ManualServiceImpl implements OAuth2ManualServiceInterface {
                       user.getProfileImgUrl() != null ? user.getProfileImgUrl() : "");
               result.put("gender", user.getGender() != null ? user.getGender().name() : "");
               result.put("role", user.getRole().name());
-              result.put("expires_in", "86400"); // 24시간
+              result.put(
+                      "expires_in",
+                      String.valueOf(jwtUtil.getAccessTokenExpiration())); // 실제 JWT 만료 시간 (초)
 
               return result;
 

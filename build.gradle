@@ -306,7 +306,7 @@ spotless {
 tasks.register('copyProperties') {
     description = 'Copy properties files from git submodule'
 
-    doLast {
+    doFirst {
         def submoduleDir = file("${project.rootDir}/config-submodule")
         def targetDir = file("${project.rootDir}/src/main/resources")
 
@@ -342,9 +342,15 @@ tasks.register('copyProperties') {
     }
 }
 
-// 빌드 전에 properties 복사
-compileJava.dependsOn copyProperties
-processResources.dependsOn copyProperties
+// WAR 빌드 시 properties 복사
+war {
+    dependsOn copyProperties
+}
+
+// processResources 시 properties 복사
+processResources {
+    dependsOn copyProperties
+}
 
 // 빌드 시 자동으로 spotless 적용
 gradle.projectsEvaluated {
