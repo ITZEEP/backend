@@ -164,7 +164,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                   log.info(
                           "AI 분석 결과 - riskType: {}, riskScore: {}",
                           LogSanitizerUtil.sanitize(riskType),
-                          LogSanitizerUtil.sanitize(aiResponse.getRiskScore()));
+                          LogSanitizerUtil.sanitize(
+                                  aiResponse != null ? aiResponse.getRiskScore() : null));
               } catch (Exception e) {
                   log.error("AI 분석 실패", e);
                   throw new FraudRiskException(
