@@ -8,6 +8,7 @@ import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
 import org.scoula.domain.fraud.dto.response.RiskAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckDetailResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckListResponse;
+import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.scoula.domain.fraud.service.FraudRiskService;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
@@ -68,7 +69,7 @@ public class FraudRiskControllerImpl implements FraudRiskController {
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestParam("registryFile") MultipartFile registryFile,
               @RequestParam("buildingFile") MultipartFile buildingFile,
-              @RequestParam Long homeId) {
+              @RequestParam(required = false) Long homeId) {
 
           if (userDetails == null) {
               log.error("인증되지 않은 사용자의 요청");
@@ -90,10 +91,15 @@ public class FraudRiskControllerImpl implements FraudRiskController {
                       fraudRiskService.analyzeDocuments(userId, registryFile, buildingFile, homeId);
 
               return ResponseEntity.ok(ApiResponse.success(response));
+          } catch (FraudRiskException e) {
+              log.error("문서 분석 실패 - errorCode: {}, message: {}", e.getErrorCode(), e.getMessage(), e);
+              // 문서 타입 검증 실패 등 사용자가 수정할 수 있는 오류
+              return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                      .body(ApiResponse.error(e.getErrorCode(), e.getMessage()));
           } catch (Exception e) {
-              log.error("문서 분석 실패", e);
+              log.error("문서 분석 중 예상치 못한 오류", e);
               return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                      .body(ApiResponse.error("문서 분석 중 오류가 발생했습니다: " + e.getMessage()));
+                      .body(ApiResponse.error("문서 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
           }
       }
 
