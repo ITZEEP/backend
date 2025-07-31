@@ -92,10 +92,14 @@ public class FraudRiskControllerImpl implements FraudRiskController {
 
               return ResponseEntity.ok(ApiResponse.success(response));
           } catch (FraudRiskException e) {
-              log.error("문서 분석 실패 - errorCode: {}, message: {}", e.getErrorCode(), e.getMessage(), e);
+              log.error(
+                      "문서 분석 실패 - errorCode: {}, message: {}",
+                      e.getErrorCode().getCode(),
+                      e.getMessage(),
+                      e);
               // 문서 타입 검증 실패 등 사용자가 수정할 수 있는 오류
-              return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                      .body(ApiResponse.error(e.getErrorCode(), e.getMessage()));
+              return ResponseEntity.status(e.getErrorCode().getHttpStatus())
+                      .body(ApiResponse.error(e.getErrorCode().getCode(), e.getMessage()));
           } catch (Exception e) {
               log.error("문서 분석 중 예상치 못한 오류", e);
               return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

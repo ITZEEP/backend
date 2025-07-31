@@ -1,6 +1,6 @@
 package org.scoula.domain.fraud.dto.ai;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -22,7 +22,7 @@ public class ParsedData {
       private String regionAddress;
       private String roadAddress;
       private String ownerName;
-      private Date ownerBirthDate;
+      private LocalDate ownerBirthDate;
       private String debtor;
       private List<MortgageeInfo> mortgageeList;
       private Boolean hasSeizure;

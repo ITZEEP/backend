@@ -19,6 +19,7 @@ import org.scoula.domain.fraud.dto.response.RiskCheckDetailResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckListResponse;
 import org.scoula.domain.fraud.enums.AnalysisStatus;
 import org.scoula.domain.fraud.enums.RiskType;
+import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.scoula.domain.fraud.mapper.FraudRiskMapper;
 import org.scoula.domain.fraud.mapper.HomeLikeMapper;
@@ -64,7 +65,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
           // 2. 매물 존재 여부 확인 (homeId가 있는 경우에만)
           if (homeId != null && !fraudRiskMapper.existsHome(homeId)) {
-              throw new FraudRiskException("존재하지 않는 매물입니다.", "RISK4001");
+              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_NOT_FOUND, "존재하지 않는 매물입니다.");
           }
 
           LocalDateTime startTime = LocalDateTime.now();
@@ -124,7 +125,9 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               throw e;
           } catch (Exception e) {
               log.error("문서 분석 중 예상치 못한 오류 발생", e);
-              throw new FraudRiskException("문서 분석 중 오류가 발생했습니다: " + e.getMessage(), "RISK5000");
+              throw new FraudRiskException(
+                      FraudErrorCode.DOCUMENT_PROCESSING_FAILED,
+                      "문서 분석 중 오류가 발생했습니다: " + e.getMessage());
           }
       }
 
@@ -163,7 +166,9 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                           aiResponse.getRiskScore());
               } catch (Exception e) {
                   log.error("AI 분석 실패", e);
-                  throw new FraudRiskException("AI 분석 중 오류가 발생했습니다: " + e.getMessage());
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                          "AI 분석 중 오류가 발생했습니다: " + e.getMessage());
               }
 
               // 3. risk_check 업데이트
@@ -295,7 +300,9 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               throw e;
           } catch (Exception e) {
               log.error("위험도 분석 실패", e);
-              throw new FraudRiskException("위험도 분석 중 오류가 발생했습니다: " + e.getMessage(), "RISK5003");
+              throw new FraudRiskException(
+                      FraudErrorCode.RISK_CALCULATION_ERROR,
+                      "위험도 분석 중 오류가 발생했습니다: " + e.getMessage());
           }
       }
 
@@ -319,13 +326,13 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public RiskCheckDetailResponse getRiskCheckDetail(Long userId, Long riskCheckId) {
           // 권한 확인
           if (!fraudRiskMapper.isOwnerOfRiskCheck(riskCheckId, userId)) {
-              throw new FraudRiskException("해당 위험도 체크 결과에 대한 권한이 없습니다.");
+              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_ACCESS_DENIED);
           }
 
           RiskCheckDetailResponse response =
                   fraudRiskMapper.selectRiskCheckDetailResponse(riskCheckId);
           if (response == null) {
-              throw new FraudRiskException("위험도 체크 결과를 찾을 수 없습니다.");
+              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_NOT_FOUND);
           }
 
           // 거래 타입 결정 (leaseType 기반)
@@ -382,7 +389,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public void deleteRiskCheck(Long userId, Long riskCheckId) {
           // 권한 확인
           if (!fraudRiskMapper.isOwnerOfRiskCheck(riskCheckId, userId)) {
-              throw new FraudRiskException("해당 위험도 체크 결과에 대한 삭제 권한이 없습니다.");
+              throw new FraudRiskException(
+                      FraudErrorCode.FRAUD_CHECK_ACCESS_DENIED, "해당 위험도 체크 결과에 대한 삭제 권한이 없습니다.");
           }
 
           // 상세 정보 먼저 삭제
@@ -391,7 +399,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           // 메인 정보 삭제
           int deleted = fraudRiskMapper.deleteRiskCheck(riskCheckId);
           if (deleted == 0) {
-              throw new FraudRiskException("위험도 체크 결과 삭제에 실패했습니다.");
+              throw new FraudRiskException(
+                      FraudErrorCode.FRAUD_ANALYSIS_FAILED, "위험도 체크 결과 삭제에 실패했습니다.");
           }
       }
 
@@ -399,16 +408,19 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
       private void validateFile(MultipartFile file, String fileType) {
           if (file == null || file.isEmpty()) {
-              throw new FraudRiskException(fileType + " 파일이 없습니다.", "RISK4002");
+              throw new FraudRiskException(
+                      FraudErrorCode.MISSING_REQUIRED_FIELDS, fileType + " 파일이 없습니다.");
           }
 
           if (file.getSize() > MAX_FILE_SIZE) {
-              throw new FraudRiskException(fileType + " 파일 크기가 10MB를 초과합니다.", "RISK4003");
+              throw new FraudRiskException(
+                      FraudErrorCode.INVALID_DOCUMENT_FORMAT, fileType + " 파일 크기가 10MB를 초과합니다.");
           }
 
           String filename = file.getOriginalFilename();
           if (filename == null || !hasValidExtension(filename)) {
-              throw new FraudRiskException(fileType + "은(는) PDF 파일만 업로드 가능합니다.", "RISK4004");
+              throw new FraudRiskException(
+                      FraudErrorCode.UNSUPPORTED_DOCUMENT_TYPE, fileType + "은(는) PDF 파일만 업로드 가능합니다.");
           }
       }
 

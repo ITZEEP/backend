@@ -13,6 +13,7 @@ import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.enums.RiskType;
+import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -80,6 +81,7 @@ public class AiFraudAnalyzerService {
                       // 오류 메시지 추출
                       String message = (String) responseBody.get("message");
                       throw new FraudRiskException(
+                              FraudErrorCode.FRAUD_ANALYSIS_FAILED,
                               "위험도 분석 실패: " + (message != null ? message : "알 수 없는 오류"));
                   }
 
@@ -96,18 +98,22 @@ public class AiFraudAnalyzerService {
                       return aiResponse;
                   } catch (Exception e) {
                       log.warn("직접 FraudRiskCheckDto.Response 변환 실패", e);
-                      throw new FraudRiskException("위험도 분석 결과 변환 오류");
+                      throw new FraudRiskException(FraudErrorCode.RISK_CALCULATION_ERROR);
                   }
               } else {
-                  throw new FraudRiskException("AI 서버 응답 오류: " + response.getStatusCode());
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                          "AI 서버 응답 오류: " + response.getStatusCode());
               }
 
           } catch (FraudRiskException e) {
               // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
               throw e;
           } catch (Exception e) {
-              log.error("AI 사기 위험도 분석 실패", e);
-              throw new FraudRiskException("AI 분석 중 오류가 발생했습니다: " + e.getMessage(), "RISK5004");
+              log.error("AI 서버 통신 실패: {}", e.getMessage(), e);
+              throw new FraudRiskException(
+                      FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                      "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
           }
       }
 
@@ -179,7 +185,7 @@ public class AiFraudAnalyzerService {
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("등기부등본 OCR 완룼 - AI 서버 전체 응답: {}", responseBody);
+                  log.info("등기부등본 OCR 완료 - AI 서버 전체 응답: {}", responseBody);
 
                   // success 필드 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -212,31 +218,38 @@ public class AiFraudAnalyzerService {
                       if ("INVALID_DOCUMENT_TYPE".equals(aiErrorCode)) {
                           // 400번대 - 사용자가 잘못된 파일을 업로드한 경우
                           if (message != null && message.contains("등기부등본")) {
-                              throw new FraudRiskException("등기부등본 PDF 파일이 아닙니다.", "RISK4005");
+                              throw new FraudRiskException(
+                                      FraudErrorCode.INVALID_DOCUMENT_FORMAT, "등기부등본 PDF 파일이 아닙니다.");
                           } else if (message != null && message.contains("건축물대장")) {
-                              throw new FraudRiskException("건축물대장 PDF 파일이 아닙니다.", "RISK4006");
+                              throw new FraudRiskException(
+                                      FraudErrorCode.INVALID_DOCUMENT_FORMAT, "건축물대장 PDF 파일이 아닙니다.");
                           } else {
-                              throw new FraudRiskException("올바른 PDF 파일이 아닙니다.", "RISK4007");
+                              throw new FraudRiskException(FraudErrorCode.UNSUPPORTED_DOCUMENT_TYPE);
                           }
                       } else {
                           // 500번대 - AI 서버 내부 오류
                           throw new FraudRiskException(
-                                  message != null ? message : "등기부등본 분석 중 오류가 발생했습니다.", "RISK5001");
+                                  FraudErrorCode.OCR_PROCESSING_FAILED,
+                                  message != null ? message : "등기부등본 분석 중 오류가 발생했습니다.");
                       }
                   }
 
                   // 파싱 데이터가 없는 경우 빈 객체 반환
                   return RegistryDocumentDto.builder().build();
               } else {
-                  throw new FraudRiskException("AI 서버 등기부등본 OCR 응답 오류: " + response.getStatusCode());
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                          "AI 서버 등기부등본 OCR 응답 오류: " + response.getStatusCode());
               }
 
           } catch (FraudRiskException e) {
               // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
               throw e;
           } catch (Exception e) {
-              log.error("등기부등본 OCR 실패", e);
-              throw new FraudRiskException("등기부등본 OCR 중 오류가 발생했습니다: " + e.getMessage(), "RISK5001");
+              log.error("AI 서버 통신 실패: {}", e.getMessage(), e);
+              throw new FraudRiskException(
+                      FraudErrorCode.OCR_PROCESSING_FAILED,
+                      "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
           }
       }
 
@@ -271,7 +284,7 @@ public class AiFraudAnalyzerService {
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("건축물대장 OCR 완룼 - AI 서버 전체 응답: {}", responseBody);
+                  log.info("건축물대장 OCR 완료 - AI 서버 전체 응답: {}", responseBody);
 
                   // success 필드 확인
                   Boolean success = (Boolean) responseBody.get("success");
@@ -304,31 +317,38 @@ public class AiFraudAnalyzerService {
                       if ("INVALID_DOCUMENT_TYPE".equals(aiErrorCode)) {
                           // 400번대 - 사용자가 잘못된 파일을 업로드한 경우
                           if (message != null && message.contains("등기부등본")) {
-                              throw new FraudRiskException("등기부등본 PDF 파일이 아닙니다.", "RISK4005");
+                              throw new FraudRiskException(
+                                      FraudErrorCode.INVALID_DOCUMENT_FORMAT, "등기부등본 PDF 파일이 아닙니다.");
                           } else if (message != null && message.contains("건축물대장")) {
-                              throw new FraudRiskException("건축물대장 PDF 파일이 아닙니다.", "RISK4006");
+                              throw new FraudRiskException(
+                                      FraudErrorCode.INVALID_DOCUMENT_FORMAT, "건축물대장 PDF 파일이 아닙니다.");
                           } else {
-                              throw new FraudRiskException("올바른 PDF 파일이 아닙니다.", "RISK4007");
+                              throw new FraudRiskException(FraudErrorCode.UNSUPPORTED_DOCUMENT_TYPE);
                           }
                       } else {
                           // 500번대 - AI 서버 내부 오류
                           throw new FraudRiskException(
-                                  message != null ? message : "건축물대장 분석 중 오류가 발생했습니다.", "RISK5002");
+                                  FraudErrorCode.OCR_PROCESSING_FAILED,
+                                  message != null ? message : "건축물대장 분석 중 오류가 발생했습니다.");
                       }
                   }
 
                   // 파싱 데이터가 없는 경우 빈 객체 반환
                   return BuildingDocumentDto.builder().build();
               } else {
-                  throw new FraudRiskException("AI 서버 건축물대장 OCR 응답 오류: " + response.getStatusCode());
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                          "AI 서버 건축물대장 OCR 응답 오류: " + response.getStatusCode());
               }
 
           } catch (FraudRiskException e) {
               // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
               throw e;
           } catch (Exception e) {
-              log.error("건축물대장 OCR 실패", e);
-              throw new FraudRiskException("건축물대장 OCR 중 오류가 발생했습니다: " + e.getMessage(), "RISK5002");
+              log.error("AI 서버 통신 실패: {}", e.getMessage(), e);
+              throw new FraudRiskException(
+                      FraudErrorCode.OCR_PROCESSING_FAILED,
+                      "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
           }
       }
 

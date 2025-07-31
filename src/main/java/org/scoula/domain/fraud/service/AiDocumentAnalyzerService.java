@@ -3,12 +3,17 @@ package org.scoula.domain.fraud.service;
 import java.io.IOException;
 
 import org.scoula.domain.fraud.dto.ai.AiParseResponse;
+import org.scoula.domain.fraud.exception.FraudErrorCode;
+import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -66,11 +71,55 @@ public class AiDocumentAnalyzerService {
                               url, HttpMethod.POST, requestEntity, AiParseResponse.class);
 
               log.info("AI 서버 응답 성공 - 상태: {}", response.getStatusCode());
-              return response.getBody();
 
+              // AI 서버 응답 검증
+              AiParseResponse aiResponse = response.getBody();
+              if (aiResponse == null) {
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE, "AI 서버로부터 빈 응답을 받았습니다");
+              }
+
+              if (!aiResponse.isSuccess()) {
+                  throw new FraudRiskException(
+                          FraudErrorCode.DOCUMENT_PROCESSING_FAILED,
+                          "AI 파싱 실패: " + aiResponse.getMessage());
+              }
+
+              return aiResponse;
+
+          } catch (HttpClientErrorException e) {
+              // 4xx 클라이언트 오류
+              log.error(
+                      "AI 서버 클라이언트 오류 - URL: {}, 상태: {}, 메시지: {}",
+                      url,
+                      e.getStatusCode(),
+                      e.getMessage());
+              throw new FraudRiskException(
+                      FraudErrorCode.INVALID_DOCUMENT_FORMAT, "AI 서버 요청 오류: " + e.getMessage(), e);
+          } catch (HttpServerErrorException e) {
+              // 5xx 서버 오류
+              log.error(
+                      "AI 서버 내부 오류 - URL: {}, 상태: {}, 메시지: {}",
+                      url,
+                      e.getStatusCode(),
+                      e.getMessage());
+              throw new FraudRiskException(
+                      FraudErrorCode.AI_SERVICE_UNAVAILABLE, "AI 서버 내부 오류가 발생했습니다", e);
+          } catch (ResourceAccessException e) {
+              // 네트워크 연결 오류
+              log.error("AI 서버 연결 실패 - URL: {}, 오류: {}", url, e.getMessage());
+              throw new FraudRiskException(
+                      FraudErrorCode.AI_SERVICE_UNAVAILABLE, "AI 서버에 연결할 수 없습니다", e);
+          } catch (FraudRiskException e) {
+              // FraudRiskException은 그대로 다시 던지기
+              throw e;
           } catch (Exception e) {
-              log.error("AI 서버 통신 실패 - URL: {}, 오류: {}", url, e.getMessage());
-              throw new RuntimeException("AI 서버 통신 중 오류가 발생했습니다.", e);
+              // 기타 예상치 못한 오류
+              log.error("AI 서버 통신 중 예상치 못한 오류 - URL: {}, 오류: {}", url, e.getMessage(), e);
+              throw new FraudRiskException(
+                      FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                      "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage(),
+                      e);
           }
       }
 }

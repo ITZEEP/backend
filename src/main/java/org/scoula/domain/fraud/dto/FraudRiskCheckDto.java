@@ -1,7 +1,7 @@
 package org.scoula.domain.fraud.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -59,7 +59,7 @@ public class FraudRiskCheckDto {
 
       @ApiModelProperty(value = "소유자 생년월일")
       @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-      private Date ownerBirthDate;
+      private LocalDate ownerBirthDate;
 
       @ApiModelProperty(value = "채무자")
       private String debtor;
@@ -98,7 +98,7 @@ public class FraudRiskCheckDto {
 
       @ApiModelProperty(value = "사용승인일")
       @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-      private Date approvalDate;
+      private LocalDate approvalDate;
 
       @ApiModelProperty(value = "위반건축물 여부")
       private Boolean isViolationBuilding;
