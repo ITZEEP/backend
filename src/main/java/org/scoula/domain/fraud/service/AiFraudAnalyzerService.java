@@ -98,9 +98,9 @@ public class AiFraudAnalyzerService {
                               mapper.convertValue(responseBody, FraudRiskCheckDto.Response.class);
                       log.info(
                               "AI 분석 완료 - analysisId: {}, riskLevel: {}, riskScore: {}",
-                              LogSanitizerUtil.sanitizeValue(aiResponse.getAnalysisId()),
-                              LogSanitizerUtil.sanitizeValue(aiResponse.getRiskLevel()),
-                              LogSanitizerUtil.sanitizeValue(aiResponse.getRiskScore()));
+                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getAnalysisId())),
+                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getRiskLevel())),
+                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getRiskScore())));
                       return aiResponse;
                   } catch (Exception e) {
                       log.warn("직접 FraudRiskCheckDto.Response 변환 실패", e);
