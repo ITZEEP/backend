@@ -1,5 +1,6 @@
 package org.scoula.global.mongodb.config;
 
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -11,8 +12,6 @@ import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-
-import org.scoula.global.common.util.LogSanitizerUtil;
 
 import lombok.extern.log4j.Log4j2;
 
@@ -73,7 +72,9 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
           MappingMongoConverter converter = (MappingMongoConverter) template.getConverter();
           converter.setTypeMapper(new DefaultMongoTypeMapper(null));
 
-          log.info("MongoTemplate 초기화 완료 - Database: {}", LogSanitizerUtil.sanitize(getDatabaseName()));
+          log.info(
+                  "MongoTemplate 초기화 완료 - Database: {}",
+                  LogSanitizerUtil.sanitize(getDatabaseName()));
           return template;
       }
 

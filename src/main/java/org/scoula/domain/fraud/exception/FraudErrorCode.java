@@ -3,7 +3,6 @@ package org.scoula.domain.fraud.exception;
 import org.scoula.global.common.exception.IErrorCode;
 import org.springframework.http.HttpStatus;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor

@@ -45,7 +45,10 @@ public class AiDocumentAnalyzerService {
 
       /** 파일을 AI 서버로 전송하는 공통 메소드 */
       private AiParseResponse sendFileToAiServer(MultipartFile file, String url) throws IOException {
-          log.info("AI 서버로 파일 전송 시작 - URL: {}, 파일명: {}", LogSanitizerUtil.sanitize(url), LogSanitizerUtil.sanitize(file.getOriginalFilename()));
+          log.info(
+                  "AI 서버로 파일 전송 시작 - URL: {}, 파일명: {}",
+                  LogSanitizerUtil.sanitize(url),
+                  LogSanitizerUtil.sanitize(file.getOriginalFilename()));
 
           // HTTP 헤더 설정
           HttpHeaders headers = new HttpHeaders();
@@ -108,7 +111,10 @@ public class AiDocumentAnalyzerService {
                       FraudErrorCode.AI_SERVICE_UNAVAILABLE, "AI 서버 내부 오류가 발생했습니다", e);
           } catch (ResourceAccessException e) {
               // 네트워크 연결 오류
-              log.error("AI 서버 연결 실패 - URL: {}, 오류: {}", LogSanitizerUtil.sanitize(url), LogSanitizerUtil.sanitize(e.getMessage()));
+              log.error(
+                      "AI 서버 연결 실패 - URL: {}, 오류: {}",
+                      LogSanitizerUtil.sanitize(url),
+                      LogSanitizerUtil.sanitize(e.getMessage()));
               throw new FraudRiskException(
                       FraudErrorCode.AI_SERVICE_UNAVAILABLE, "AI 서버에 연결할 수 없습니다", e);
           } catch (FraudRiskException e) {
@@ -116,7 +122,11 @@ public class AiDocumentAnalyzerService {
               throw e;
           } catch (Exception e) {
               // 기타 예상치 못한 오류
-              log.error("AI 서버 통신 중 예상치 못한 오류 - URL: {}, 오류: {}", LogSanitizerUtil.sanitize(url), LogSanitizerUtil.sanitize(e.getMessage()), e);
+              log.error(
+                      "AI 서버 통신 중 예상치 못한 오류 - URL: {}, 오류: {}",
+                      LogSanitizerUtil.sanitize(url),
+                      LogSanitizerUtil.sanitize(e.getMessage()),
+                      e);
               throw new FraudRiskException(
                       FraudErrorCode.AI_SERVICE_UNAVAILABLE,
                       "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage(),

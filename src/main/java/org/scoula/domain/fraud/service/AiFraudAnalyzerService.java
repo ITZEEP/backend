@@ -15,6 +15,7 @@ import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,8 +28,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.scoula.global.common.util.LogSanitizerUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -57,7 +56,10 @@ public class AiFraudAnalyzerService {
               String url = aiServerUrl + "/api/analyze/risk";
               HttpEntity<FraudRiskCheckDto.Request> httpEntity = new HttpEntity<>(aiRequest, headers);
 
-              log.info("AI 사기 위험도 분석 요청 - URL: {}, homeId: {}", LogSanitizerUtil.sanitize(url), LogSanitizerUtil.sanitize(request.getHomeId()));
+              log.info(
+                      "AI 사기 위험도 분석 요청 - URL: {}, homeId: {}",
+                      LogSanitizerUtil.sanitize(url),
+                      LogSanitizerUtil.sanitize(request.getHomeId()));
 
               @SuppressWarnings("rawtypes")
               ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
@@ -597,7 +599,10 @@ public class AiFraudAnalyzerService {
               }
               return Long.parseLong(value.toString());
           } catch (Exception e) {
-              log.warn("Long 변환 실패 - key: {}, value: {}", LogSanitizerUtil.sanitize(key), LogSanitizerUtil.sanitize(value));
+              log.warn(
+                      "Long 변환 실패 - key: {}, value: {}",
+                      LogSanitizerUtil.sanitize(key),
+                      LogSanitizerUtil.sanitize(value));
               return defaultValue;
           }
       }
@@ -612,7 +617,10 @@ public class AiFraudAnalyzerService {
               }
               return Double.parseDouble(value.toString());
           } catch (Exception e) {
-              log.warn("Double 변환 실패 - key: {}, value: {}", LogSanitizerUtil.sanitize(key), LogSanitizerUtil.sanitize(value));
+              log.warn(
+                      "Double 변환 실패 - key: {}, value: {}",
+                      LogSanitizerUtil.sanitize(key),
+                      LogSanitizerUtil.sanitize(value));
               return defaultValue;
           }
       }
@@ -627,7 +635,10 @@ public class AiFraudAnalyzerService {
               }
               return Integer.parseInt(value.toString());
           } catch (Exception e) {
-              log.warn("Integer 변환 실패 - key: {}, value: {}", LogSanitizerUtil.sanitize(key), LogSanitizerUtil.sanitize(value));
+              log.warn(
+                      "Integer 변환 실패 - key: {}, value: {}",
+                      LogSanitizerUtil.sanitize(key),
+                      LogSanitizerUtil.sanitize(value));
               return defaultValue;
           }
       }
