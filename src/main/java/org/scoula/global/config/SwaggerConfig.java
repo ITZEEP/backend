@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import springfox.documentation.builders.ApiInfoBuilder;
 import springfox.documentation.builders.PathSelectors;
@@ -47,6 +48,7 @@ public class SwaggerConfig {
                   .securitySchemes(Arrays.asList(apiKey()))
                   .ignoredParameterTypes(
                           org.springframework.security.core.Authentication.class,
+                          AuthenticationPrincipal.class,
                           java.security.Principal.class);
       }
 

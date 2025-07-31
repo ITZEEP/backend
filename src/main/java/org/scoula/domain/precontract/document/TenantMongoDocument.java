@@ -1,42 +1,50 @@
-package org.scoula.domain.precontract.vo;
+package org.scoula.domain.precontract.document;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.scoula.domain.precontract.dto.tenant.TenantStep1DTO;
-import org.scoula.domain.precontract.dto.tenant.TenantStep2DTO;
-import org.scoula.domain.precontract.dto.tenant.TenantStep3DTO;
-import org.scoula.domain.precontract.enums.*;
+import org.scoula.domain.precontract.dto.tenant.TenantMongoDTO;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@Document(collection = "PRE_CONTRACT_BUYER")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class TenantPreContractCheckVO {
+public class TenantMongoDocument {
 
-      private Long contractChatId; // PK & FK
-      private Long identityId; // FK
-      private Long riskckId; // FK
+      @Id private String id;
 
-      private RiskType riskType;
-      private RentType rentType;
+      @Field("contractChatId")
+      private Long contractChatId;
+
+      private String rentType;
+
+      // step 1
+      private Boolean loanPlan;
+      private Boolean insurancePlan;
       private LocalDate expectedMoveInDate;
-      private ContractDuration contractDuration;
-      private RenewalIntent renewalIntent;
+      private String contractDuration;
+      private String renewalIntent;
+
+      // step 2
       private Boolean facilityRepairNeeded;
       private Boolean interiorCleaningNeeded;
       private Boolean applianceInstallationPlan;
       private Boolean hasPet;
       private String petInfo;
       private Long petCount;
+
+      // step 3
       private Boolean indoorSmokingPlan;
       private Boolean earlyTerminationRisk;
-      private NonresidentialUsePlan nonresidentialUsePlan;
       private String requestToOwner;
       private LocalDateTime checkedAt;
       private Integer residentCount;
@@ -44,35 +52,25 @@ public class TenantPreContractCheckVO {
       private String emergencyContact;
       private String relation;
 
-      // 1. step1
-      public static TenantPreContractCheckVO toStep1VO(TenantStep1DTO dto) {
-          return TenantPreContractCheckVO.builder()
+      public static TenantMongoDocument toDocument(TenantMongoDTO dto) {
+          return TenantMongoDocument.builder()
+                  .contractChatId(dto.getContractChatId())
+                  .rentType(dto.getRentType())
+                  .loanPlan(dto.getLoanPlan())
+                  .insurancePlan(dto.getInsurancePlan())
                   .expectedMoveInDate(dto.getExpectedMoveInDate())
-                  .contractDuration(ContractDuration.valueOf(dto.getContractDuration()))
-                  .renewalIntent(RenewalIntent.valueOf(dto.getRenewalIntent()))
-                  .build();
-      }
-
-      // 2. step2
-      public static TenantPreContractCheckVO toStep2VO(TenantStep2DTO dto) {
-          return TenantPreContractCheckVO.builder()
+                  .contractDuration(dto.getContractDuration())
+                  .renewalIntent(dto.getRenewalIntent())
                   .facilityRepairNeeded(dto.getFacilityRepairNeeded())
                   .interiorCleaningNeeded(dto.getInteriorCleaningNeeded())
                   .applianceInstallationPlan(dto.getApplianceInstallationPlan())
                   .hasPet(dto.getHasPet())
                   .petInfo(dto.getPetInfo())
                   .petCount(dto.getPetCount())
-                  .build();
-      }
-
-      // 3. step3
-      public static TenantPreContractCheckVO toStep3VO(TenantStep3DTO dto) {
-          return TenantPreContractCheckVO.builder()
                   .indoorSmokingPlan(dto.getIndoorSmokingPlan())
                   .earlyTerminationRisk(dto.getEarlyTerminationRisk())
-                  .nonresidentialUsePlan(
-                          NonresidentialUsePlan.valueOf(dto.getNonresidentialUsePlan()))
                   .requestToOwner(dto.getRequestToOwner())
+                  .checkedAt(dto.getCheckedAt())
                   .residentCount(dto.getResidentCount())
                   .occupation(dto.getOccupation())
                   .emergencyContact(dto.getEmergencyContact())
