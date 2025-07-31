@@ -83,12 +83,13 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
       private String buildConnectionString() {
           StringBuilder connectionString = new StringBuilder("mongodb://");
 
-          // 인증 정보가 있는 경우 추가
-          if (mongoUsername != null && !mongoUsername.trim().isEmpty()) {
+          // 인증 정보가 있는 경우 추가 (사용자명과 비밀번호가 모두 있을 때만)
+          if (mongoUsername != null
+                  && !mongoUsername.trim().isEmpty()
+                  && mongoPassword != null
+                  && !mongoPassword.trim().isEmpty()) {
               connectionString.append(mongoUsername);
-              if (mongoPassword != null && !mongoPassword.trim().isEmpty()) {
-                  connectionString.append(":").append(mongoPassword);
-              }
+              connectionString.append(":").append(mongoPassword);
               connectionString.append("@");
           }
 
@@ -98,8 +99,11 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
           // 데이터베이스
           connectionString.append("/").append(mongoDatabase);
 
-          // 인증 데이터베이스 설정
-          if (mongoUsername != null && !mongoUsername.trim().isEmpty()) {
+          // 인증 데이터베이스 설정 (사용자명과 비밀번호가 모두 있을 때만)
+          if (mongoUsername != null
+                  && !mongoUsername.trim().isEmpty()
+                  && mongoPassword != null
+                  && !mongoPassword.trim().isEmpty()) {
               connectionString.append("?authSource=").append(mongoAuthDatabase);
           }
 
