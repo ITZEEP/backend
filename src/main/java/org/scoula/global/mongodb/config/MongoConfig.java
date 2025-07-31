@@ -23,7 +23,11 @@ import lombok.extern.log4j.Log4j2;
  * @since 1.0.0
  */
 @Configuration
-@ComponentScan(basePackages = "org.scoula.domain.chat.repository")
+@ComponentScan(
+          basePackages = {
+              "org.scoula.domain.chat.repository",
+              "org.scoula.domain.precontract.repository"
+          })
 @Log4j2
 public class MongoConfig extends AbstractMongoClientConfiguration {
 

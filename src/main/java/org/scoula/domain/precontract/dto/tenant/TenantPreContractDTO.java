@@ -1,9 +1,9 @@
-package org.scoula.domain.precontract.dto;
+package org.scoula.domain.precontract.dto.tenant;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
+import org.scoula.domain.home.enums.ResidenceType;
 import org.scoula.global.common.constant.Constants;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -22,10 +22,31 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TenantPreContractDTO {
 
-      @ApiModelProperty(value = "[PK] 임차인 계약전 사전 정보 ID", hidden = true)
-      private Long tenantPreCheckId;
+      // 매물
+      @ApiModelProperty(value = "매물 지역 주소", example = "서울시 강남구 신사동")
+      private String addr1; // 지역 주소
 
-      @ApiModelProperty(value = "[FK] 계약 채팅 ID", example = "1", required = true)
+      @ApiModelProperty(value = "매물 상세 주소", example = "123-45")
+      private String addr2; // 상세 주소
+
+      @ApiModelProperty(value = "매물 종류", example = "APARTMENT")
+      private ResidenceType residenceType;
+
+      @ApiModelProperty(value = "계약 보증금 or 전세금", example = "5")
+      private String depositPrice;
+
+      @ApiModelProperty(value = "월세비", example = "50")
+      private String monthlyRent; // 월세일때만
+
+      @ApiModelProperty(value = "매물 대표 사진", example = "url")
+      private String imageUrl;
+
+      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.DateTime.DEFAULT_DATE_FORMAT)
+      @ApiModelProperty(value = "사기 위험도 조회 날짜", example = "2025-07-22")
+      private LocalDateTime riskCheckedAt;
+
+      // tenant_precontract_check 테이블
+      @ApiModelProperty(value = "[PK/FK] 임차인 계약전 사전 정보 ID / 계약 채팅 ID", example = "1", required = true)
       private Long contractChatId;
 
       @ApiModelProperty(value = "[FK] 본인 인증 ID", example = "1", required = true)
@@ -122,37 +143,4 @@ public class TenantPreContractDTO {
 
       @ApiModelProperty(value = "관계", example = "남편")
       private String relation;
-
-      // VO -> DTO
-      public static TenantPreContractDTO toDTO(
-              TenantPreContractCheckVO vo, Boolean loanPlan, Boolean insurancePlan) {
-          return TenantPreContractDTO.builder()
-                  .tenantPreCheckId(vo.getTenantPrecheckId())
-                  .contractChatId(vo.getContractChatId())
-                  .identityId(vo.getIdentityId())
-                  .riskckId(vo.getRiskckId())
-                  .riskType(vo.getRiskType().name())
-                  .rentType(vo.getRentType().name())
-                  .loanPlan(loanPlan)
-                  .insurancePlan(insurancePlan)
-                  .expectedMoveInDate(vo.getExpectedMoveInDate())
-                  .contractDuration(vo.getContractDuration().name())
-                  .renewalIntent(vo.getRenewalIntent().name())
-                  .facilityRepairNeeded(vo.getFacilityRepairNeeded())
-                  .interiorCleaningNeeded(vo.getInteriorCleaningNeeded())
-                  .applianceInstallationPlan(vo.getApplianceInstallationPlan())
-                  .hasPet(vo.getHasPet())
-                  .petInfo(vo.getPetInfo())
-                  .petCount(vo.getPetCount())
-                  .indoorSmokingPlan(vo.getIndoorSmokingPlan())
-                  .earlyTerminationRisk(vo.getEarlyTerminationRisk())
-                  .nonresidentialUsePlan(vo.getNonresidentialUsePlan().name())
-                  .requestToOwner(vo.getRequestToOwner())
-                  .checkedAt(vo.getCheckedAt())
-                  .residentCount(vo.getResidentCount())
-                  .occupation(vo.getOccupation())
-                  .emergencyContact(vo.getEmergencyContact())
-                  .relation(vo.getRelation())
-                  .build();
-      }
 }
