@@ -1,6 +1,5 @@
 package org.scoula.domain.fraud.service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
 import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
@@ -19,6 +19,7 @@ import org.scoula.domain.fraud.dto.response.RiskCheckDetailResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckListResponse;
 import org.scoula.domain.fraud.enums.AnalysisStatus;
 import org.scoula.domain.fraud.enums.RiskType;
+import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.scoula.domain.fraud.mapper.FraudRiskMapper;
 import org.scoula.domain.fraud.mapper.HomeLikeMapper;
@@ -26,6 +27,7 @@ import org.scoula.domain.fraud.vo.RiskCheckDetailVO;
 import org.scoula.domain.fraud.vo.RiskCheckVO;
 import org.scoula.global.common.dto.PageRequest;
 import org.scoula.global.common.dto.PageResponse;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.scoula.global.file.service.S3ServiceInterface;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +48,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       private final HomeLikeMapper homeLikeMapper;
       private final S3ServiceInterface s3Service;
       private final ObjectMapper objectMapper;
+      private final AiFraudAnalyzerService aiFraudAnalyzerService;
 
       // 허용된 파일 확장자
       private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("pdf", "PDF");
@@ -55,15 +58,15 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       @Transactional
       public DocumentAnalysisResponse analyzeDocuments(
               Long userId, MultipartFile registryFile, MultipartFile buildingFile, Long homeId) {
-          log.info("문서 분석 시작 - homeId: {}", homeId);
+          log.info("문서 분석 시작 - homeId: {}", LogSanitizerUtil.sanitizeValue(homeId));
 
           // 1. 파일 유효성 검증
           validateFile(registryFile, "등기부등본");
           validateFile(buildingFile, "건축물대장");
 
-          // 2. 매물 존재 여부 확인
-          if (!fraudRiskMapper.existsHome(homeId)) {
-              throw new FraudRiskException("존재하지 않는 매물입니다. homeId: " + homeId);
+          // 2. 매물 존재 여부 확인 (homeId가 있는 경우에만)
+          if (homeId != null && !fraudRiskMapper.existsHome(homeId)) {
+              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_NOT_FOUND, "존재하지 않는 매물입니다.");
           }
 
           LocalDateTime startTime = LocalDateTime.now();
@@ -94,33 +97,11 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               String registryFileUrl = s3Service.getFileUrl(registryFileKey);
               String buildingFileUrl = s3Service.getFileUrl(buildingFileKey);
 
-              // TODO: 실제 OCR 서비스 연동 구현 필요
-              // 임시 OCR 데이터 생성
+              // AI OCR 서비스 호출 (실제 파일로)
               RegistryDocumentDto registryDoc =
-                      RegistryDocumentDto.builder()
-                              .regionAddress("서울특별시 강남구 역삼동 123-45번지")
-                              .roadAddress("서울특별시 강남구 테헤란로 123")
-                              .ownerName("홍길동")
-                              .ownerBirthDate(LocalDate.of(1980, 1, 15))
-                              .maxClaimAmount(500000000L)
-                              .debtor("홍길동")
-                              .mortgagee("XX은행")
-                              .hasSeizure(false)
-                              .hasAuction(false)
-                              .hasLitigation(false)
-                              .hasAttachment(false)
-                              .build();
-
+                      aiFraudAnalyzerService.parseRegistryDocument(registryFile);
               BuildingDocumentDto buildingDoc =
-                      BuildingDocumentDto.builder()
-                              .siteLocation("서울특별시 강남구 역삼동 123-45번지")
-                              .roadAddress("서울특별시 강남구 테헤란로 123")
-                              .totalFloorArea(84.5)
-                              .purpose("아파트")
-                              .floorNumber(15)
-                              .approvalDate(LocalDate.of(2020, 3, 20))
-                              .isViolationBuilding(false)
-                              .build();
+                      aiFraudAnalyzerService.parseBuildingDocument(buildingFile);
 
               // 5. 응답 생성
               LocalDateTime endTime = LocalDateTime.now();
@@ -140,25 +121,21 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                       .processingTime(processingTime)
                       .build();
 
+          } catch (FraudRiskException e) {
+              // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
+              throw e;
           } catch (Exception e) {
-              log.error("문서 분석 중 오류 발생", e);
-
-              return DocumentAnalysisResponse.builder()
-                      .homeId(homeId)
-                      .registryAnalysisStatus(AnalysisStatus.FAILED.name())
-                      .buildingAnalysisStatus(AnalysisStatus.FAILED.name())
-                      .registryAnalyzedAt(startTime)
-                      .buildingAnalyzedAt(LocalDateTime.now())
-                      .processingTime(0.0)
-                      .errorMessage(e.getMessage())
-                      .build();
+              log.error("문서 분석 중 예상치 못한 오류 발생", e);
+              throw new FraudRiskException(
+                      FraudErrorCode.DOCUMENT_PROCESSING_FAILED,
+                      "문서 분석 중 오류가 발생했습니다: " + e.getMessage());
           }
       }
 
       @Override
       @Transactional
       public RiskAnalysisResponse analyzeRisk(Long userId, RiskAnalysisRequest request) {
-          log.info("위험도 분석 시작 - homeId: {}", request.getHomeId());
+          log.info("위험도 분석 시작 - homeId: {}", LogSanitizerUtil.sanitizeValue(request.getHomeId()));
 
           try {
               // 1. risk_check 레코드 생성
@@ -175,9 +152,26 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
               fraudRiskMapper.insertRiskCheck(riskCheck);
 
-              // 2. AI 분석 (실제 구현 시 외부 AI 서비스 호출)
-              // TODO: 실제 AI 분석 서비스 연동 구현 필요
-              RiskType riskType = RiskType.SAFE; // 임시로 SAFE 설정
+              // 2. AI 분석 서비스 호출
+              FraudRiskCheckDto.Response aiResponse = null;
+              RiskType riskType = RiskType.WARN; // 기본값을 WARN으로 설정
+
+              try {
+                  // AI 서버에 분석 요청
+                  aiResponse = aiFraudAnalyzerService.analyzeFraudRisk(userId, request);
+                  riskType = aiFraudAnalyzerService.determineRiskType(aiResponse);
+
+                  log.info(
+                          "AI 분석 결과 - riskType: {}, riskScore: {}",
+                          LogSanitizerUtil.sanitizeValue(riskType),
+                          LogSanitizerUtil.sanitizeValue(
+                                  aiResponse != null ? aiResponse.getRiskScore() : null));
+              } catch (Exception e) {
+                  log.error("AI 분석 실패", e);
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                          "AI 분석 중 오류가 발생했습니다: " + e.getMessage());
+              }
 
               // 3. risk_check 업데이트
               riskCheck.setRiskType(riskType);
@@ -186,62 +180,77 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               // 4. 기존 상세 분석 결과 삭제 (중복 방지)
               fraudRiskMapper.deleteRiskCheckDetail(riskCheck.getRiskckId());
 
-              // 5. 상세 분석 결과 저장 (여러 개의 detail 저장)
-              // title1별로 하나의 레코드만 저장하도록 수정
-              // 5-1. 기본 정보 분석 결과 (하나의 레코드로 통합)
-              RiskCheckDetailVO basicDetail =
-                      RiskCheckDetailVO.builder()
-                              .riskckId(riskCheck.getRiskckId())
-                              .title1("갑기본정보")
-                              .title2("소유 및 주소")
-                              .content("등기부등본의 소유자가 임대인 정보와 일치하며, 주소가 정확히 일치합니다.")
-                              .build();
-              fraudRiskMapper.insertRiskCheckDetail(basicDetail);
+              // 5. AI 분석 결과를 risk_check_detail에 저장
+              if (aiResponse != null && aiResponse.getAnalysisResults() != null) {
+                  Map<String, Object> analysisResults = aiResponse.getAnalysisResults();
 
-              // 5-2. 권리 관계 분석 결과
-              RiskCheckDetailVO rightsDetail =
-                      RiskCheckDetailVO.builder()
-                              .riskckId(riskCheck.getRiskckId())
-                              .title1("을기사항")
-                              .title2("근저당권")
-                              .content(
-                                      riskType == RiskType.SAFE
-                                              ? "설정된 근저당권이 없거나 적정 수준입니다."
-                                              : "근저당 설정액이 매매가 대비 과도합니다. 확인이 필요합니다.")
-                              .build();
-              fraudRiskMapper.insertRiskCheckDetail(rightsDetail);
+                  // AI 분석 결과의 각 항목을 risk_check_detail로 저장
+                  // 변환된 구조: {"그룹명": {"항목명": {"title": "...", "content": "..."}}}
+                  for (Map.Entry<String, Object> groupEntry : analysisResults.entrySet()) {
+                      String title1 = groupEntry.getKey(); // 그룹명 (예: "권리관계 정보")
+                      Object groupValue = groupEntry.getValue();
 
-              // 5-3. 건물 정보 분석 결과 (하나의 레코드로 통합)
-              RiskCheckDetailVO buildingDetail =
-                      RiskCheckDetailVO.builder()
-                              .riskckId(riskCheck.getRiskckId())
-                              .title1("건축물대장")
-                              .title2("건물 상태")
-                              .content(
-                                      riskType != RiskType.DANGER
-                                              ? "위반건축물이 아닌 적법한 건축물이며, 주거용으로 적합하게 등록되어 있습니다."
-                                              : "위반건축물로 확인되며 주의가 필요합니다.")
-                              .build();
-              fraudRiskMapper.insertRiskCheckDetail(buildingDetail);
+                      if (groupValue instanceof Map) {
+                          @SuppressWarnings("unchecked")
+                          Map<String, Object> groupItems = (Map<String, Object>) groupValue;
 
-              // 5-4. 종합 평가 (하나의 레코드로 통합)
-              String recommendationContent =
-                      riskType == RiskType.SAFE
-                              ? "안전한 거래가 가능합니다. 계약 진행 시 표준 계약서를 사용하세요."
-                              : riskType == RiskType.WARN
-                                      ? "추가 확인이 필요합니다. 전문가 상담을 권장합니다."
-                                      : "거래를 재검토하세요. 법률 전문가의 도움을 받으시기 바랍니다.";
+                          // 각 그룹 내의 항목들 처리
+                          for (Map.Entry<String, Object> itemEntry : groupItems.entrySet()) {
+                              Object itemValue = itemEntry.getValue();
 
-              RiskCheckDetailVO summaryDetail =
-                      RiskCheckDetailVO.builder()
-                              .riskckId(riskCheck.getRiskckId())
-                              .title1("종합평가")
-                              .title2(getTitleByRiskType(riskType))
-                              .content(generateSummary(riskType) + " " + recommendationContent)
-                              .build();
-              fraudRiskMapper.insertRiskCheckDetail(summaryDetail);
+                              if (itemValue instanceof Map) {
+                                  @SuppressWarnings("unchecked")
+                                  Map<String, Object> itemDetails = (Map<String, Object>) itemValue;
 
-              // 5-5. 추가 분석 항목 제거 (title1당 하나의 레코드만 유지)
+                                  String title2 = itemDetails.getOrDefault("title", "").toString();
+                                  String content = itemDetails.getOrDefault("content", "").toString();
+
+                                  RiskCheckDetailVO detail =
+                                          RiskCheckDetailVO.builder()
+                                                  .riskckId(riskCheck.getRiskckId())
+                                                  .title1(title1)
+                                                  .title2(title2)
+                                                  .content(content)
+                                                  .build();
+
+                                  try {
+                                      fraudRiskMapper.insertRiskCheckDetail(detail);
+                                      log.debug(
+                                              "상세 분석 결과 저장 성공 - title1: {}, title2: {}",
+                                              LogSanitizerUtil.sanitize(title1),
+                                              LogSanitizerUtil.sanitize(title2));
+                                  } catch (Exception e) {
+                                      log.warn(
+                                              "상세 분석 결과 저장 실패 - title1: {}, title2: {}, error: {}",
+                                              LogSanitizerUtil.sanitize(title1),
+                                              LogSanitizerUtil.sanitize(title2),
+                                              LogSanitizerUtil.sanitize(e.getMessage()));
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+
+              // 추천사항이 있으면 추가로 저장
+              if (aiResponse != null
+                      && aiResponse.getRecommendations() != null
+                      && !aiResponse.getRecommendations().isEmpty()) {
+                  String recommendations = String.join("\n", aiResponse.getRecommendations());
+                  RiskCheckDetailVO recommendDetail =
+                          RiskCheckDetailVO.builder()
+                                  .riskckId(riskCheck.getRiskckId())
+                                  .title1("추천사항")
+                                  .title2("AI 분석 기반 추천")
+                                  .content(recommendations)
+                                  .build();
+
+                  try {
+                      fraudRiskMapper.insertRiskCheckDetail(recommendDetail);
+                  } catch (Exception e) {
+                      log.warn("추천사항 저장 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()));
+                  }
+              }
 
               // 6. 저장된 상세 분석 결과 조회 및 그룹화
               List<RiskCheckDetailVO> savedDetails =
@@ -288,9 +297,14 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                       .detailGroups(detailGroups)
                       .build();
 
+          } catch (FraudRiskException e) {
+              // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
+              throw e;
           } catch (Exception e) {
               log.error("위험도 분석 실패", e);
-              throw new FraudRiskException("위험도 분석 중 오류가 발생했습니다: " + e.getMessage());
+              throw new FraudRiskException(
+                      FraudErrorCode.RISK_CALCULATION_ERROR,
+                      "위험도 분석 중 오류가 발생했습니다: " + e.getMessage());
           }
       }
 
@@ -314,13 +328,13 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public RiskCheckDetailResponse getRiskCheckDetail(Long userId, Long riskCheckId) {
           // 권한 확인
           if (!fraudRiskMapper.isOwnerOfRiskCheck(riskCheckId, userId)) {
-              throw new FraudRiskException("해당 위험도 체크 결과에 대한 권한이 없습니다.");
+              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_ACCESS_DENIED);
           }
 
           RiskCheckDetailResponse response =
                   fraudRiskMapper.selectRiskCheckDetailResponse(riskCheckId);
           if (response == null) {
-              throw new FraudRiskException("위험도 체크 결과를 찾을 수 없습니다.");
+              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_NOT_FOUND);
           }
 
           // 거래 타입 결정 (leaseType 기반)
@@ -377,7 +391,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public void deleteRiskCheck(Long userId, Long riskCheckId) {
           // 권한 확인
           if (!fraudRiskMapper.isOwnerOfRiskCheck(riskCheckId, userId)) {
-              throw new FraudRiskException("해당 위험도 체크 결과에 대한 삭제 권한이 없습니다.");
+              throw new FraudRiskException(
+                      FraudErrorCode.FRAUD_CHECK_ACCESS_DENIED, "해당 위험도 체크 결과에 대한 삭제 권한이 없습니다.");
           }
 
           // 상세 정보 먼저 삭제
@@ -386,7 +401,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           // 메인 정보 삭제
           int deleted = fraudRiskMapper.deleteRiskCheck(riskCheckId);
           if (deleted == 0) {
-              throw new FraudRiskException("위험도 체크 결과 삭제에 실패했습니다.");
+              throw new FraudRiskException(
+                      FraudErrorCode.FRAUD_ANALYSIS_FAILED, "위험도 체크 결과 삭제에 실패했습니다.");
           }
       }
 
@@ -394,27 +410,33 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
       private void validateFile(MultipartFile file, String fileType) {
           if (file == null || file.isEmpty()) {
-              throw new FraudRiskException(fileType + " 파일이 없습니다.");
+              throw new FraudRiskException(
+                      FraudErrorCode.MISSING_REQUIRED_FIELDS, fileType + " 파일이 없습니다.");
           }
 
           if (file.getSize() > MAX_FILE_SIZE) {
-              throw new FraudRiskException(fileType + " 파일 크기가 10MB를 초과합니다.");
+              throw new FraudRiskException(
+                      FraudErrorCode.INVALID_DOCUMENT_FORMAT, fileType + " 파일 크기가 10MB를 초과합니다.");
           }
 
           String filename = file.getOriginalFilename();
           if (filename == null || !hasValidExtension(filename)) {
-              throw new FraudRiskException(fileType + "은(는) PDF 파일만 업로드 가능합니다.");
+              throw new FraudRiskException(
+                      FraudErrorCode.UNSUPPORTED_DOCUMENT_TYPE, fileType + "은(는) PDF 파일만 업로드 가능합니다.");
           }
       }
 
       private boolean hasValidExtension(String filename) {
+          if (filename == null || !filename.contains(".")) {
+              return false;
+          }
           String extension = filename.substring(filename.lastIndexOf(".") + 1);
           return ALLOWED_EXTENSIONS.contains(extension);
       }
 
       @Override
       public List<LikedHomeResponse> getLikedHomes(Long userId) {
-          log.info("찜한 매물 목록 조회 - userId: {}", userId);
+          log.info("찜한 매물 목록 조회 - userId: {}", LogSanitizerUtil.sanitizeValue(userId));
           return homeLikeMapper.selectLikedHomesByUserId(userId);
       }
 
@@ -422,9 +444,9 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public PageResponse<LikedHomeResponse> getChattingHomes(Long userId, PageRequest pageRequest) {
           log.info(
                   "채팅 중인 매물 목록 조회 - userId: {}, page: {}, size: {}",
-                  userId,
-                  pageRequest.getPage(),
-                  pageRequest.getSize());
+                  LogSanitizerUtil.sanitizeValue(userId),
+                  LogSanitizerUtil.sanitizeValue(pageRequest.getPage()),
+                  LogSanitizerUtil.sanitizeValue(pageRequest.getSize()));
 
           // 정렬 기본값 설정
           if (pageRequest.getSort() == null || pageRequest.getSort().isEmpty()) {
@@ -437,19 +459,6 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           long totalElements = homeLikeMapper.countChattingHomesByUserId(userId);
 
           return PageResponse.of(list, pageRequest, totalElements);
-      }
-
-      private String generateSummary(RiskType riskType) {
-          switch (riskType) {
-              case SAFE:
-                  return "분석 결과 안전한 매물로 판단됩니다. 등기부등본과 건축물대장의 정보가 일치하며, 권리관계가 깨끗합니다.";
-              case WARN:
-                  return "주의가 필요한 사항이 발견되었습니다. 일부 확인이 필요한 부분이 있으니 전문가와 상담을 권장합니다.";
-              case DANGER:
-                  return "위험 요소가 발견되었습니다. 근저당 설정이 과도하거나 권리관계에 문제가 있을 수 있습니다.";
-              default:
-                  return "분석이 완료되었습니다.";
-          }
       }
 
       private String getTitleByRiskType(RiskType riskType) {

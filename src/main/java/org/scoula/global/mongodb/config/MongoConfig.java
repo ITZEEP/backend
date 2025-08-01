@@ -1,5 +1,6 @@
 package org.scoula.global.mongodb.config;
 
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -23,7 +24,11 @@ import lombok.extern.log4j.Log4j2;
  * @since 1.0.0
  */
 @Configuration
-@ComponentScan(basePackages = "org.scoula.domain.chat.repository")
+@ComponentScan(
+          basePackages = {
+              "org.scoula.domain.chat.repository",
+              "org.scoula.domain.precontract.repository"
+          })
 @Log4j2
 public class MongoConfig extends AbstractMongoClientConfiguration {
 
@@ -67,7 +72,9 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
           MappingMongoConverter converter = (MappingMongoConverter) template.getConverter();
           converter.setTypeMapper(new DefaultMongoTypeMapper(null));
 
-          log.info("MongoTemplate 초기화 완료 - Database: {}", getDatabaseName());
+          log.info(
+                  "MongoTemplate 초기화 완료 - Database: {}",
+                  LogSanitizerUtil.sanitizeValue(getDatabaseName()));
           return template;
       }
 
@@ -79,12 +86,13 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
       private String buildConnectionString() {
           StringBuilder connectionString = new StringBuilder("mongodb://");
 
-          // 인증 정보가 있는 경우 추가
-          if (mongoUsername != null && !mongoUsername.trim().isEmpty()) {
+          // 인증 정보가 있는 경우 추가 (사용자명과 비밀번호가 모두 있을 때만)
+          if (mongoUsername != null
+                  && !mongoUsername.trim().isEmpty()
+                  && mongoPassword != null
+                  && !mongoPassword.trim().isEmpty()) {
               connectionString.append(mongoUsername);
-              if (mongoPassword != null && !mongoPassword.trim().isEmpty()) {
-                  connectionString.append(":").append(mongoPassword);
-              }
+              connectionString.append(":").append(mongoPassword);
               connectionString.append("@");
           }
 
@@ -94,8 +102,11 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
           // 데이터베이스
           connectionString.append("/").append(mongoDatabase);
 
-          // 인증 데이터베이스 설정
-          if (mongoUsername != null && !mongoUsername.trim().isEmpty()) {
+          // 인증 데이터베이스 설정 (사용자명과 비밀번호가 모두 있을 때만)
+          if (mongoUsername != null
+                  && !mongoUsername.trim().isEmpty()
+                  && mongoPassword != null
+                  && !mongoPassword.trim().isEmpty()) {
               connectionString.append("?authSource=").append(mongoAuthDatabase);
           }
 

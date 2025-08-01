@@ -24,6 +24,11 @@ public class S3Config {
 
       @Bean
       public S3Client s3Client() {
+          // 빈 문자열 또는 null인 경우 기본 자격 증명 공급자 사용
+          if (accessKey == null || accessKey.isEmpty() || secretKey == null || secretKey.isEmpty()) {
+              return S3Client.builder().region(Region.of(region)).build();
+          }
+
           AwsBasicCredentials awsCredentials = AwsBasicCredentials.create(accessKey, secretKey);
 
           return S3Client.builder()

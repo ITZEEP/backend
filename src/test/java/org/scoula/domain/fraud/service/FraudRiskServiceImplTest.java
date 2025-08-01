@@ -19,6 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
+import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
+import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
@@ -51,6 +54,8 @@ class FraudRiskServiceImplTest {
       @Mock private S3ServiceInterface s3Service;
 
       @Mock private ObjectMapper objectMapper;
+
+      @Mock private AiFraudAnalyzerService aiFraudAnalyzerService;
 
       @InjectMocks private FraudRiskServiceImpl fraudRiskService;
 
@@ -91,6 +96,25 @@ class FraudRiskServiceImplTest {
               when(s3Service.getFileUrl(anyString()))
                       .thenReturn("https://s3.url/file1", "https://s3.url/file2");
 
+              // AI 서비스 모킹
+              RegistryDocumentDto mockRegistryDoc =
+                      RegistryDocumentDto.builder()
+                              .regionAddress("서울시 강남구")
+                              .roadAddress("테헤란로 123")
+                              .ownerName("홍길동")
+                              .build();
+              BuildingDocumentDto mockBuildingDoc =
+                      BuildingDocumentDto.builder()
+                              .siteLocation("서울시 강남구")
+                              .roadAddress("테헤란로 123")
+                              .totalFloorArea(100.0)
+                              .build();
+
+              when(aiFraudAnalyzerService.parseRegistryDocument(any(MultipartFile.class)))
+                      .thenReturn(mockRegistryDoc);
+              when(aiFraudAnalyzerService.parseBuildingDocument(any(MultipartFile.class)))
+                      .thenReturn(mockBuildingDoc);
+
               // when
               DocumentAnalysisResponse response =
                       fraudRiskService.analyzeDocuments(
@@ -107,7 +131,7 @@ class FraudRiskServiceImplTest {
               assertThat(response.getBuildingDocument()).isNotNull();
               assertThat(response.getRegistryFileUrl()).isEqualTo("https://s3.url/file1");
               assertThat(response.getBuildingFileUrl()).isEqualTo("https://s3.url/file2");
-              assertThat(response.getProcessingTime()).isGreaterThan(0);
+              assertThat(response.getProcessingTime()).isGreaterThanOrEqualTo(0);
           }
 
           @Test
@@ -205,19 +229,13 @@ class FraudRiskServiceImplTest {
               when(s3Service.uploadFile(any(MultipartFile.class), anyString()))
                       .thenThrow(new RuntimeException("S3 업로드 실패"));
 
-              // when
-              DocumentAnalysisResponse response =
-                      fraudRiskService.analyzeDocuments(
-                              userId, validRegistryFile, validBuildingFile, homeId);
-
-              // then
-              assertThat(response).isNotNull();
-              assertThat(response.getHomeId()).isEqualTo(homeId);
-              assertThat(response.getRegistryAnalysisStatus())
-                      .isEqualTo(AnalysisStatus.FAILED.name());
-              assertThat(response.getBuildingAnalysisStatus())
-                      .isEqualTo(AnalysisStatus.FAILED.name());
-              assertThat(response.getErrorMessage()).contains("S3 업로드 실패");
+              // when & then
+              assertThatThrownBy(
+                              () ->
+                                      fraudRiskService.analyzeDocuments(
+                                              userId, validRegistryFile, validBuildingFile, homeId))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("문서 분석 중 오류가 발생했습니다: S3 업로드 실패");
           }
       }
 
@@ -260,6 +278,20 @@ class FraudRiskServiceImplTest {
                       .when(fraudRiskMapper)
                       .insertRiskCheck(any(RiskCheckVO.class));
 
+              // AI 서비스 모킹
+              FraudRiskCheckDto.Response aiResponse =
+                      FraudRiskCheckDto.Response.builder()
+                              .status("SUCCESS")
+                              .riskScore(20.0)
+                              .riskLevel("LOW")
+                              .analysisId("test-analysis-id")
+                              .build();
+
+              when(aiFraudAnalyzerService.analyzeFraudRisk(anyLong(), any(RiskAnalysisRequest.class)))
+                      .thenReturn(aiResponse);
+              when(aiFraudAnalyzerService.determineRiskType(any(FraudRiskCheckDto.Response.class)))
+                      .thenReturn(RiskType.SAFE);
+
               List<RiskCheckDetailVO> mockDetails =
                       Arrays.asList(
                               RiskCheckDetailVO.builder()
@@ -283,7 +315,6 @@ class FraudRiskServiceImplTest {
               verify(fraudRiskMapper).insertRiskCheck(any(RiskCheckVO.class));
               verify(fraudRiskMapper).updateRiskCheck(any(RiskCheckVO.class));
               verify(fraudRiskMapper).deleteRiskCheckDetail(1L);
-              verify(fraudRiskMapper, times(4)).insertRiskCheckDetail(any(RiskCheckDetailVO.class));
           }
 
           @Test

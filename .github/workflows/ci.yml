@@ -10,15 +10,13 @@ permissions:
   pull-requests: write
 
 jobs:
-  spotless:
+  code-style:
     name: Code Style Check
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,9 +31,37 @@ jobs:
       - name: Check code style with Spotless
         run: ./gradlew spotlessCheck
 
-  build-and-test:
-    name: Build and Test
-    needs: spotless
+  build:
+    name: Build
+    needs: code-style
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.GIT_ACTION_TOKEN }}
+
+      - name: Init and update submodules
+        run: git submodule update --remote
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build -x test
+
+  test:
+    name: Test and Coverage
+    needs: build
     runs-on: ubuntu-latest
 
     services:
@@ -53,13 +79,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           submodules: true
           token: ${{ secrets.GIT_ACTION_TOKEN }}
 
       - name: Init and update submodules
-        run: |
-          git submodule update --remote
+        run: git submodule update --remote
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -71,12 +95,25 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew build -x test
-
       - name: Run tests
         run: ./gradlew test || true
         continue-on-error: true
+
+      - name: Generate JaCoCo test coverage report
+        run: ./gradlew jacocoTestReport
+        if: always()
+
+      - name: Check test coverage (80%)
+        run: ./gradlew jacocoTestCoverageVerification || true
+        continue-on-error: true
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: ./build/reports/jacoco/test/jacocoTestReport.xml
+          fail_ci_if_error: false
+          verbose: true
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
