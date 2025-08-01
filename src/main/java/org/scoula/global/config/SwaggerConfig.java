@@ -1,10 +1,12 @@
 package org.scoula.global.config;
 
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import springfox.documentation.builders.ApiInfoBuilder;
@@ -47,9 +49,7 @@ public class SwaggerConfig {
                   .securityContexts(Arrays.asList(securityContext()))
                   .securitySchemes(Arrays.asList(apiKey()))
                   .ignoredParameterTypes(
-                          org.springframework.security.core.Authentication.class,
-                          AuthenticationPrincipal.class,
-                          java.security.Principal.class);
+                          AuthenticationPrincipal.class, Authentication.class, Principal.class);
       }
 
       private ApiInfo apiInfo() {
