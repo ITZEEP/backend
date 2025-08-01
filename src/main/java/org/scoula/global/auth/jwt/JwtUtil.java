@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 
 import org.scoula.global.common.constant.Constants;
@@ -52,6 +53,29 @@ public class JwtUtil {
           private Date issuedAt;
           private Date expiresAt;
           private boolean expired;
+      }
+
+      @PostConstruct
+      public void init() {
+          // 필드 초기화 검증
+          if (!StringUtils.hasText(secret)) {
+              throw new IllegalStateException("JWT secret이 설정되지 않았습니다");
+          }
+          if (expiration == null || expiration <= 0) {
+              throw new IllegalStateException("JWT 액세스 토큰 만료 시간이 유효하지 않습니다");
+          }
+          if (refreshExpiration == null || refreshExpiration <= 0) {
+              throw new IllegalStateException("JWT 리프레시 토큰 만료 시간이 유효하지 않습니다");
+          }
+          if (!StringUtils.hasText(issuer)) {
+              throw new IllegalStateException("JWT 발급자가 설정되지 않았습니다");
+          }
+
+          log.info(
+                  "JWT 설정 초기화 완료 - 발급자: {}, 액세스 토큰 만료: {}초, 리프레시 토큰 만료: {}초",
+                  issuer,
+                  expiration,
+                  refreshExpiration);
       }
 
       private SecretKey getSigningKey() {
