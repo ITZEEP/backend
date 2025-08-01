@@ -134,7 +134,7 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
 
           List<ContractChatDocument> messages =
-                  contractChatService.getContractMessages(contractChatId, userId);
+                  contractChatService.getContractMessages(contractChatId);
 
           return ResponseEntity.ok(ApiResponse.success(messages, "계약 채팅 메시지 목록을 성공적으로 조회했습니다."));
       }
@@ -162,6 +162,7 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
+      @Override
       @PostMapping("/{contractChatId}/request-end")
       public ResponseEntity<ApiResponse<String>> requestEndPointExport(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -185,6 +186,7 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
+      @Override
       @PostMapping("/{contractChatId}/end-point-reject")
       public ResponseEntity<ApiResponse<String>> rejectEndPointExport(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -286,7 +288,7 @@ public class ContractChatControllerImpl implements ContractChatController {
 
       @Override
       @MessageMapping("/contract/chat/leave")
-      public void leaveContractChatRoom(@Payload Map<String, Long> payload, Principal principal) {
+      public void leaveContractChatRoom(@Payload Map<String, Long> payload) {
           try {
               Long userId = payload.get("userId");
               Long contractChatId = payload.get("contractChatId");
@@ -301,7 +303,7 @@ public class ContractChatControllerImpl implements ContractChatController {
 
       @Override
       @MessageMapping("/contract/user/offline")
-      public void setContractUserOffline(@Payload Map<String, Long> payload, Principal principal) {
+      public void setContractUserOffline(@Payload Map<String, Long> payload) {
           try {
               Long userId = payload.get("userId");
               Long contractChatId = payload.get("contractChatId");
