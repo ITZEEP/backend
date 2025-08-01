@@ -53,7 +53,6 @@ public interface ContractChatServiceInterface {
        * 메시지 선택에도 사용됩니다.
        *
        * @param contractChatId 계약 채팅방 ID (null 불가, 존재하는 계약 채팅방이어야 함)
-       * @param userId 요청하는 사용자 ID (null 불가, 계약 채팅방 참여자여야 함)
        * @return 계약 채팅 메시지 목록 (시간순 정렬, 빈 리스트 가능)
        * @throws IllegalArgumentException 파라미터가 유효하지 않거나 사용자가 채팅방에 참여하지 않은 경우
        * @throws RuntimeException MongoDB 조회 실패
