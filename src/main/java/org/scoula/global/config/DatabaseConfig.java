@@ -21,12 +21,13 @@ import lombok.RequiredArgsConstructor;
 /** 데이터베이스 설정 클래스 */
 @Configuration
 @EnableTransactionManagement
-@MapperScan(basePackages = {
-      "org.scoula.domain.user.mapper",
-      "org.scoula.domain.fraud.mapper",
-      "org.scoula.domain.precontract.mapper",
-      "org.scoula.domain.chat.mapper"
-})
+@MapperScan(
+          basePackages = {
+              "org.scoula.domain.user.mapper",
+              "org.scoula.domain.fraud.mapper",
+              "org.scoula.domain.precontract.mapper",
+              "org.scoula.domain.chat.mapper"
+          })
 @RequiredArgsConstructor
 public class DatabaseConfig {
 
@@ -42,15 +43,24 @@ public class DatabaseConfig {
       @Value("${spring.datasource.password}")
       private String password;
 
+      @Value("${spring.datasource.hikari.maximum-pool-size:3}")
+      private int maximumPoolSize;
+
+      @Value("${spring.datasource.hikari.minimum-idle:1}")
+      private int minimumIdle;
+
       private final ApplicationContext applicationContext;
 
       @Bean
       public DataSource dataSource() {
           HikariConfig config = new HikariConfig();
+
           config.setDriverClassName(driver);
           config.setJdbcUrl(url);
           config.setUsername(username);
           config.setPassword(password);
+          config.setMaximumPoolSize(maximumPoolSize);
+          config.setMinimumIdle(minimumIdle);
 
           return new HikariDataSource(config);
       }

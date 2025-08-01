@@ -196,7 +196,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
       }
 
       // 사용자가 채팅방에 입장했을 때 호출
-      @Override
       public void setUserCurrentChatRoom(Long userId, Long chatRoomId) {
           userCurrentChatRoom.put(userId, chatRoomId);
           addOnlineUser(userId); // 채팅방 입장시 온라인으로 설정
@@ -204,7 +203,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
       }
 
       // 사용자가 채팅방을 떠났을 때 호출
-      @Override
       public void removeUserFromCurrentChatRoom(Long userId) {
           Long previousRoom = userCurrentChatRoom.remove(userId);
 
@@ -212,7 +210,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
       }
 
       // 사용자 완전 오프라인 (앱 종료 등)
-      @Override
       public void setUserOffline(Long userId) {
           removeOnlineUser(userId);
           removeUserFromCurrentChatRoom(userId);

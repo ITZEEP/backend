@@ -307,24 +307,24 @@ public class MongoTestControllerImpl implements MongoTestController {
           try {
               Map<String, Object> status = mongoService.getServerStatus();
 
-              @SuppressWarnings("unchecked")
-              Map<String, Object> connections = (Map<String, Object>) status.get("connections");
-              @SuppressWarnings("unchecked")
-              Map<String, Object> memory = (Map<String, Object>) status.get("mem");
-
               MongoDto.ServerStatusResponse response =
                       MongoDto.ServerStatusResponse.builder()
-                              .host(getStringValue(status, "host"))
-                              .version(getStringValue(status, "version"))
-                              .uptime(getLongValue(status, "uptime"))
-                              .connections(connections)
-                              .memory(memory)
+                              .host("Connected to " + status.get("database"))
+                              .version("MongoDB Connection")
+                              .uptime(0L) // ping 결과에는 uptime 정보가 없음
+                              .connections(Map.of("ping", status.get("ping")))
+                              .memory(
+                                      Map.of(
+                                              "status",
+                                              status.get("status"),
+                                              "timestamp",
+                                              status.get("timestamp")))
                               .queriedAt(LocalDateTime.now())
                               .build();
 
-              return ResponseEntity.ok(ApiResponse.success(response, "MongoDB 서버 상태 조회 성공"));
+              return ResponseEntity.ok(ApiResponse.success(response, "MongoDB 연결 상태 확인 성공"));
           } catch (Exception e) {
-              log.error("MongoDB 서버 상태 조회 실패", e);
+              log.error("MongoDB 연결 상태 확인 실패", e);
               return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                       .body(ApiResponse.error("MONGO_ERROR", e.getMessage()));
           }

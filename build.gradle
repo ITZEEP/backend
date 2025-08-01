@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'war'
     id 'com.diffplug.spotless' version '6.25.0'
+    id 'jacoco'
 }
 
 group 'org.scoula'
@@ -24,10 +25,7 @@ ext {
     nettyVersion = '4.1.115.Final'
 }
 
-sourceCompatibility = '11'
-targetCompatibility = '11'
-
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
@@ -58,18 +56,18 @@ dependencies {
     compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
     compileOnly 'javax.servlet.jsp:javax.servlet.jsp-api:2.3.3'
     implementation 'javax.servlet:jstl:1.2'
-    
+
     // Validation
     implementation 'javax.validation:validation-api:2.0.1.Final'
     implementation 'org.hibernate.validator:hibernate-validator:6.2.5.Final'
-    
+
     // Spring Data (for pagination utilities)
     implementation "org.springframework.data:spring-data-commons:2.7.18"
-    
+
     // Redis
     implementation "org.springframework.data:spring-data-redis:2.7.18"
     implementation "redis.clients:jedis:3.9.0"
-    
+
     // MongoDB
     implementation "org.springframework.data:spring-data-mongodb:3.4.18"
     implementation "org.mongodb:mongodb-driver-sync:4.6.1"
@@ -132,7 +130,7 @@ dependencies {
     // AWS SDK v2
     implementation 'software.amazon.awssdk:s3:2.28.25'
     implementation 'software.amazon.awssdk:auth:2.28.25'
-    
+
     // 테스트
     testImplementation "org.springframework:spring-test:${springVersion}"
     testImplementation "org.springframework.batch:spring-batch-test:${springBatchVersion}"
@@ -144,18 +142,18 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
-    
+
     // Mockito for testing
     testImplementation 'org.mockito:mockito-core:5.12.0'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.12.0'
-    
+
     // AssertJ for fluent assertions
     testImplementation 'org.assertj:assertj-core:3.25.3'
-    
+
     // JsonPath for MockMvc tests
     testImplementation 'com.jayway.jsonpath:json-path:2.9.0'
     testImplementation 'com.jayway.jsonpath:json-path-assert:2.9.0'
-    
+
     // Servlet API for testing
     testImplementation 'javax.servlet:javax.servlet-api:4.0.1'
 
@@ -165,12 +163,13 @@ dependencies {
 
 test {
     useJUnitPlatform()
-    
+    finalizedBy jacocoTestReport // 테스트 후 리포트 생성
+
     // 테스트 실행 정보 출력
     testLogging {
         events "passed", "skipped", "failed"
         showStandardStreams = false
-        
+
         // 테스트 완료 후 요약 정보 출력
         afterSuite { desc, result ->
             if (!desc.parent) { // 최상위 스위트(전체 테스트)일 때만 출력
@@ -183,6 +182,100 @@ test {
             }
         }
     }
+}
+
+// JaCoCo 테스트 리포트 설정
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+    
+    // 커버리지 제외 패턴
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/config/**',
+                '**/dto/**',
+                '**/domain/**',
+                '**/entity/**',
+                '**/vo/**',
+                '**/exception/**',
+                '**/*Application.class',
+                '**/*Config.class',
+                '**/*Configuration.class',
+                '**/*Exception.class',
+                '**/*Dto.class',
+                '**/*DTO.class',
+                '**/*Vo.class',
+                '**/*VO.class',
+                '**/*Entity.class',
+                '**/*Mapper.class',
+                '**/*Request.class',
+                '**/*Response.class',
+                '**/*ErrorCode.class',
+                '**/*Constant*.class',
+                '**/*Enum.class',
+                '**/enums/**'
+            ])
+        }))
+    }
+}
+
+// JaCoCo 커버리지 검증
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.80 // 80% 라인 커버리지
+            }
+            
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.70 // 70% 브랜치 커버리지
+            }
+        }
+    }
+    
+    // 커버리지 검증 제외 패턴
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/config/**',
+                '**/dto/**',
+                '**/domain/**',
+                '**/entity/**',
+                '**/vo/**',
+                '**/exception/**',
+                '**/*Application.class',
+                '**/*Config.class',
+                '**/*Configuration.class',
+                '**/*Exception.class',
+                '**/*Dto.class',
+                '**/*DTO.class',
+                '**/*Vo.class',
+                '**/*VO.class',
+                '**/*Entity.class',
+                '**/*Mapper.class',
+                '**/*Request.class',
+                '**/*Response.class',
+                '**/*ErrorCode.class',
+                '**/*Constant*.class',
+                '**/*Enum.class',
+                '**/enums/**'
+            ])
+        }))
+    }
+}
+
+// check 태스크가 jacocoTestCoverageVerification을 실행하도록 설정
+check {
+    dependsOn jacocoTestCoverageVerification
 }
 
 tasks.named('compileJava') {
@@ -210,33 +303,32 @@ spotless {
 
 
 // Git submodule에서 properties 파일 복사
-task copyProperties {
+tasks.register('copyProperties') {
     description = 'Copy properties files from git submodule'
-    
-    doLast {
+
+    doFirst {
         def submoduleDir = file("${project.rootDir}/config-submodule")
         def targetDir = file("${project.rootDir}/src/main/resources")
-        
+
         if (!submoduleDir.exists()) {
             println "WARNING: Config submodule directory not found at ${submoduleDir.absolutePath}"
             println "Please run: git submodule update --init --recursive"
             return
         }
-        
+
         // 복사할 properties 파일 목록
         def propertyFiles = [
-            'application.properties',
-            'application-default.properties',
-            'application-dev.properties',
-            'application-prod.properties',
-            'application-secret.properties',
-            'log4jdbc.log4j2.properties'
+                'application.properties',
+                'application-default.properties',
+                'application-dev.properties',
+                'application-prod.properties',
+                'application-secret.properties',
+                'log4jdbc.log4j2.properties'
         ]
-        
+
         propertyFiles.each { fileName ->
             def sourceFile = file("${submoduleDir}/${fileName}")
-            def targetFile = file("${targetDir}/${fileName}")
-            
+
             if (sourceFile.exists()) {
                 copy {
                     from sourceFile
@@ -250,9 +342,15 @@ task copyProperties {
     }
 }
 
-// 빌드 전에 properties 복사
-compileJava.dependsOn copyProperties
-processResources.dependsOn copyProperties
+// WAR 빌드 시 properties 복사
+war {
+    dependsOn copyProperties
+}
+
+// processResources 시 properties 복사
+processResources {
+    dependsOn copyProperties
+}
 
 // 빌드 시 자동으로 spotless 적용
 gradle.projectsEvaluated {
