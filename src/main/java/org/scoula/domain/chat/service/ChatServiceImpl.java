@@ -44,7 +44,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
 
       // 사용자가 현재 어느 채팅방에 있는지 추적
       private final Map<Long, Long> userCurrentChatRoom = new ConcurrentHashMap<>();
-      private final Map<Long, Long> userCurrentContractRoom = new ConcurrentHashMap<>(); // 계약 채팅방
 
       private final ContractChatMapper contractChatMapper;
       private final RedisTemplate<String, String> stringRedisTemplate;
@@ -179,20 +178,7 @@ public class ChatServiceImpl implements ChatServiceInterface {
       /** {@inheritDoc} */
       private boolean isUserInCurrentChatRoom(Long userId, Long chatRoomId) {
           Long currentRoom = userCurrentChatRoom.get(userId);
-          boolean isInGeneralRoom = chatRoomId.equals(currentRoom);
-
-          Long currentContractRoom = userCurrentContractRoom.get(userId);
-          boolean isInContractRoom = chatRoomId.equals(currentContractRoom);
-
-          log.debug(
-                  "사용자 현재 채팅방 확인: userId={}, 확인할채팅방={}, 일반채팅방={}, 계약채팅방={}, 결과={}",
-                  userId,
-                  chatRoomId,
-                  currentRoom,
-                  currentContractRoom,
-                  (isInGeneralRoom || isInContractRoom));
-
-          return isInGeneralRoom || isInContractRoom;
+          return chatRoomId.equals(currentRoom);
       }
 
       // 사용자가 채팅방에 입장했을 때 호출
