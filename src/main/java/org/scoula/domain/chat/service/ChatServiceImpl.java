@@ -10,12 +10,15 @@ import org.scoula.domain.chat.BadWordFilter;
 import org.scoula.domain.chat.dto.*;
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.domain.chat.mapper.ChatRoomMapper;
+import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.repository.ChatMessageMongoRepository;
 import org.scoula.domain.chat.vo.ChatRoom;
+import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.domain.user.service.UserServiceInterface;
 import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.file.service.S3ServiceInterface;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +29,7 @@ import lombok.extern.log4j.Log4j2;
 @Service
 @RequiredArgsConstructor
 @Log4j2
-@Transactional(readOnly = true)
+@Transactional
 public class ChatServiceImpl implements ChatServiceInterface {
 
       private final ChatRoomMapper chatRoomMapper;
@@ -42,12 +45,13 @@ public class ChatServiceImpl implements ChatServiceInterface {
       // 사용자가 현재 어느 채팅방에 있는지 추적
       private final Map<Long, Long> userCurrentChatRoom = new ConcurrentHashMap<>();
 
+      private final ContractChatMapper contractChatMapper;
+      private final RedisTemplate<String, String> stringRedisTemplate;
+
       /** {@inheritDoc} */
       @Override
       @Transactional
       public void handleChatMessage(ChatMessageRequestDto dto) {
-          log.info("메시지 처리 시작: {}", dto);
-
           if ("TEXT".equals(dto.getType()) && badWordFilter.containsBadWord(dto.getContent())) {
               log.warn("비속어 포함 메시지 차단 - 사용자: {}, 메시지: {}", dto.getSenderId(), dto.getContent());
               throw new BusinessException(ChatErrorCode.BAD_WORD_DETECTED, "비속어가 포함되어 있습니다.");
@@ -67,16 +71,15 @@ public class ChatServiceImpl implements ChatServiceInterface {
                       dto.getChatRoomId());
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
-          log.info("✅ 사용자 권한 확인 완료");
 
           try {
               boolean receiverInThisChatRoom =
                       isUserInCurrentChatRoom(dto.getReceiverId(), dto.getChatRoomId());
 
               log.info(
-                      "📍 상대방 상태 확인: userId={}, 온라인={}, 현재채팅방접속={}",
+                      "메시지 읽음 상태 계산: receiverId={}, chatRoomId={}, 현재접속={}",
                       dto.getReceiverId(),
-                      onlineUsers.contains(dto.getReceiverId()),
+                      dto.getChatRoomId(),
                       receiverInThisChatRoom);
 
               ChatMessageDocument message =
@@ -91,29 +94,51 @@ public class ChatServiceImpl implements ChatServiceInterface {
                               .sendTime(Instant.now().toString())
                               .build();
 
-              log.info(
-                      "📝 MongoDB 저장: 메시지={}, 즉시읽음={}", message.getContent(), receiverInThisChatRoom);
-
               mongoRepository.saveMessage(dto.getChatRoomId(), message);
 
-              // 채팅방 최근 메시지 업데이트
               String preview = dto.getType().equals("TEXT") ? dto.getContent() : "[파일]";
               LocalDateTime now = LocalDateTime.now();
 
-              log.info("채팅방 최근 메시지 업데이트: 내용={}, 시간={}", preview, now);
               chatRoomMapper.updateLastMessage(dto.getChatRoomId(), preview, now);
 
-              // 실시간 메시지 전송 (채팅방 구독자들에게)
               String topicPath = "/topic/chatroom/" + dto.getChatRoomId();
               messagingTemplate.convertAndSend(topicPath, message);
-              log.info("채팅방 메시지 전송 완료");
 
-              // 각 사용자별로 개별 읽지 않은 메시지 수 계산 및 전송
-              // 이미 조회된 chatRoom 객체 재사용 (중복 조회 방지)
+              boolean ownerInThisChatRoom =
+                      isUserInCurrentChatRoom(chatRoom.getOwnerId(), dto.getChatRoomId());
+              int ownerUnreadCount;
 
-              // 소유자(owner)의 읽지 않은 메시지 수
-              int ownerUnreadCount =
-                      mongoRepository.countUnreadMessages(dto.getChatRoomId(), chatRoom.getOwnerId());
+              if (ownerInThisChatRoom) {
+                  ownerUnreadCount = 0;
+                  log.info("소유자 현재 접속 중 - 읽지 않은 메시지 수: 0, ownerId={}", chatRoom.getOwnerId());
+              } else {
+                  ownerUnreadCount =
+                          mongoRepository.countUnreadMessages(
+                                  dto.getChatRoomId(), chatRoom.getOwnerId());
+                  log.info(
+                          "소유자 접속하지 않음 - 읽지 않은 메시지 수: {}, ownerId={}",
+                          ownerUnreadCount,
+                          chatRoom.getOwnerId());
+              }
+
+              boolean buyerInThisChatRoom =
+                      isUserInCurrentChatRoom(chatRoom.getBuyerId(), dto.getChatRoomId());
+              int buyerUnreadCount;
+
+              if (buyerInThisChatRoom) {
+                  buyerUnreadCount = 0;
+                  log.info("구매자 현재 접속 중 - 읽지 않은 메시지 수: 0, buyerId={}", chatRoom.getBuyerId());
+              } else {
+                  buyerUnreadCount =
+                          mongoRepository.countUnreadMessages(
+                                  dto.getChatRoomId(), chatRoom.getBuyerId());
+                  log.info(
+                          "구매자 접속하지 않음 - 읽지 않은 메시지 수: {}, buyerId={}",
+                          buyerUnreadCount,
+                          chatRoom.getBuyerId());
+              }
+
+              // 소유자용 업데이트 DTO 생성
               ChatRoomUpdateDto ownerUpdateDto = new ChatRoomUpdateDto();
               ownerUpdateDto.setRoomId(dto.getChatRoomId());
               ownerUpdateDto.setLastMessage(preview);
@@ -121,9 +146,7 @@ public class ChatServiceImpl implements ChatServiceInterface {
               ownerUpdateDto.setUnreadCount(ownerUnreadCount);
               ownerUpdateDto.setSenderId(dto.getSenderId());
 
-              // 구매자(buyer)의 읽지 않은 메시지 수
-              int buyerUnreadCount =
-                      mongoRepository.countUnreadMessages(dto.getChatRoomId(), chatRoom.getBuyerId());
+              // 구매자용 업데이트 DTO 생성
               ChatRoomUpdateDto buyerUpdateDto = new ChatRoomUpdateDto();
               buyerUpdateDto.setRoomId(dto.getChatRoomId());
               buyerUpdateDto.setLastMessage(preview);
@@ -138,7 +161,12 @@ public class ChatServiceImpl implements ChatServiceInterface {
               messagingTemplate.convertAndSend(ownerTopic, ownerUpdateDto);
               messagingTemplate.convertAndSend(buyerTopic, buyerUpdateDto);
 
-              log.info("메시지 처리 완료: 소유자읽지않은수={}, 구매자읽지않은수={}", ownerUnreadCount, buyerUnreadCount);
+              // 🔧 디버깅 로그 추가
+              log.info(
+                      "📨 메시지 전송 완료 - 채팅방: {}, 소유자 읽지않음: {}, 구매자 읽지않음: {}",
+                      dto.getChatRoomId(),
+                      ownerUnreadCount,
+                      buyerUnreadCount);
 
           } catch (Exception e) {
               log.error("메시지 전송 실패", e);
@@ -150,25 +178,13 @@ public class ChatServiceImpl implements ChatServiceInterface {
       /** {@inheritDoc} */
       private boolean isUserInCurrentChatRoom(Long userId, Long chatRoomId) {
           Long currentRoom = userCurrentChatRoom.get(userId);
-          boolean isInRoom = chatRoomId.equals(currentRoom);
-
-          log.info(
-                  "사용자 현재 위치: userId={}, 현재채팅방={}, 확인채팅방={}, 결과={}",
-                  userId,
-                  currentRoom,
-                  chatRoomId,
-                  isInRoom);
-
-          return isInRoom;
+          return chatRoomId.equals(currentRoom);
       }
 
       // 사용자가 채팅방에 입장했을 때 호출
       public void setUserCurrentChatRoom(Long userId, Long chatRoomId) {
           userCurrentChatRoom.put(userId, chatRoomId);
           addOnlineUser(userId); // 채팅방 입장시 온라인으로 설정
-
-          log.info("사용자 채팅방 입장: userId={}, chatRoomId={}", userId, chatRoomId);
-
           markChatRoomAsRead(chatRoomId, userId);
       }
 
@@ -183,8 +199,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
       public void setUserOffline(Long userId) {
           removeOnlineUser(userId);
           removeUserFromCurrentChatRoom(userId);
-
-          log.info("사용자 완전 오프라인: userId={}", userId);
       }
 
       /** {@inheritDoc} */
@@ -197,7 +211,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
 
           ChatRoom existing = chatRoomMapper.findByUserAndHome(ownerId, buyerId, propertyId);
           if (existing != null) {
-              log.info("기존 채팅방 반환 - ID: {}", existing.getChatRoomId());
               return existing.getChatRoomId();
           }
 
@@ -211,13 +224,16 @@ public class ChatServiceImpl implements ChatServiceInterface {
 
               chatRoomMapper.insertChatRoom(room);
 
-              log.info(
-                      "새 채팅방 생성 완료 - ID: {}, 소유자: {}, 구매자: {}, 매물: {}",
-                      room.getChatRoomId(),
-                      ownerId,
-                      buyerId,
-                      propertyId);
-
+              Long chatRoomId = room.getChatRoomId();
+              ChatMessageRequestDto startMessage =
+                      ChatMessageRequestDto.builder()
+                              .chatRoomId(chatRoomId)
+                              .senderId(buyerId)
+                              .receiverId(ownerId)
+                              .content("채팅을 시작합니다! 상대방을 위해 채팅 에티켓을 지켜서 진행해주세요!")
+                              .type("START")
+                              .build();
+              handleChatMessage(startMessage);
               return room.getChatRoomId();
           } catch (Exception e) {
               log.error("채팅방 생성 실패 - 소유자: {}, 구매자: {}, 매물: {}", ownerId, buyerId, propertyId, e);
@@ -285,12 +301,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
               chatRoomMapper.updateUnreadCount(chatRoomId, unreadCount);
 
               List<ChatMessageDocument> messages = mongoRepository.getMessages(chatRoomId);
-              log.info(
-                      "채팅 메시지 조회 완료 - 채팅방: {}, 메시지 수: {}, 읽음처리후 남은 읽지않은수: {}",
-                      chatRoomId,
-                      messages.size(),
-                      unreadCount);
-
               return messages;
           } catch (Exception e) {
               log.error("메시지 조회 실패 - 채팅방: {}, 사용자: {}", chatRoomId, userId, e);
@@ -460,30 +470,27 @@ public class ChatServiceImpl implements ChatServiceInterface {
       }
 
       /** 사용자 온라인 상태 관리 */
+      @Override
       public void addOnlineUser(Long userId) {
           onlineUsers.add(userId);
-          log.info("👤 사용자 온라인: {}, 총 온라인: {}", userId, onlineUsers.size());
       }
 
       public void removeOnlineUser(Long userId) {
           onlineUsers.remove(userId);
-          log.info("👤 사용자 오프라인: {}, 총 온라인: {}", userId, onlineUsers.size());
       }
 
+      @Override
       public boolean isUserOnline(Long userId) {
           return onlineUsers.contains(userId);
       }
 
       @Transactional
       public void markChatRoomAsRead(Long chatRoomId, Long userId) {
-          log.info("채팅방 읽음 처리: chatRoomId={}, userId={}", chatRoomId, userId);
 
           mongoRepository.markAsRead(chatRoomId, userId);
 
           int unreadCount = mongoRepository.countUnreadMessages(chatRoomId, userId);
           chatRoomMapper.updateUnreadCount(chatRoomId, unreadCount);
-
-          log.info("읽음 처리 완료: 남은 읽지 않은 메시지={}", unreadCount);
 
           ChatRoom chatRoom = chatRoomMapper.findById(chatRoomId);
           if (chatRoom != null) {
@@ -500,12 +507,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
 
               String userTopic = "/topic/user/" + userId + "/chatrooms";
               messagingTemplate.convertAndSend(userTopic, updateDto);
-
-              log.info(
-                      "📖 읽음 처리 웹소켓 알림 전송 완료: userId={}, unreadCount={}, lastMessage={}",
-                      userId,
-                      unreadCount,
-                      updateDto.getLastMessage());
           }
       }
 
@@ -517,6 +518,25 @@ public class ChatServiceImpl implements ChatServiceInterface {
           return new HashSet<>(onlineUsers);
       }
 
+      // 🔧 추가: 사용자가 특정 계약 채팅방에 있는지 확인
+      @Override
+      public boolean isUserInContractChatRoom(Long userId, Long contractChatId) {
+          Long currentRoom = userCurrentChatRoom.get(userId);
+          boolean isInRoom = contractChatId.equals(currentRoom);
+          boolean isOnline = onlineUsers.contains(userId);
+
+          log.debug(
+                  "사용자 계약 채팅방 상태 확인: userId={}, contractChatId={}, currentRoom={}, isInRoom={},"
+                          + " isOnline={}",
+                  userId,
+                  contractChatId,
+                  currentRoom,
+                  isInRoom,
+                  isOnline);
+
+          return isInRoom && isOnline;
+      }
+
       @Override
       public ChatRoomInfoDto getChatRoomInfo(Long chatRoomId, Long userId) {
           ChatRoomInfoDto chatRoomInfo =
@@ -525,5 +545,191 @@ public class ChatServiceImpl implements ChatServiceInterface {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
           }
           return chatRoomInfo;
+      }
+
+      /** {@inheritDoc} */
+      @Override
+      @Transactional
+      public void sendContractRequest(Long chatRoomId, Long userId) {
+          if (!isUserInChatRoom(chatRoomId, userId)) {
+              log.warn("사용자가 채팅방에 속하지 않음: chatRoomId={}, userId={}", chatRoomId, userId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          ChatRoom chatRoom = getChatRoomById(chatRoomId);
+          if (chatRoom == null) {
+              log.error("채팅방을 찾을 수 없음: chatRoomId={}", chatRoomId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+          }
+
+          if (!userId.equals(chatRoom.getBuyerId())) {
+              log.warn("구매자가 아닌 사용자의 계약 요청: userId={}, buyerId={}", userId, chatRoom.getBuyerId());
+              throw new BusinessException(ChatErrorCode.ONLY_BUYER_CAN_REQUEST_CONTRACT);
+          }
+
+          ContractChat existingContract =
+                  contractChatMapper.findByUserAndHome(
+                          chatRoom.getOwnerId(), chatRoom.getBuyerId(), chatRoom.getHomeId());
+
+          if (existingContract != null) {
+              log.warn("이미 계약 채팅방이 존재함: contractChatId={}", existingContract.getContractChatId());
+              throw new BusinessException(ChatErrorCode.CONTRACT_ALREADY_EXISTS, "이미 계약 채팅방이 존재합니다.");
+          }
+          String key = "chat:request-contract:" + chatRoomId;
+          String existingValue = stringRedisTemplate.opsForValue().get(key);
+          if (existingValue != null) {
+              log.warn("이미 계약 요청이 존재함: key={}, value={}", key, existingValue);
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_ALREADY_EXISTS, "이미 계약 요청이 진행 중입니다.");
+          }
+
+          ChatMessageRequestDto contractRequestMessage =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(chatRoomId)
+                          .senderId(userId)
+                          .receiverId(chatRoom.getOwnerId())
+                          .content("계약을 요청했습니다.")
+                          .type("CONTRACT_REQUEST")
+                          .build();
+
+          String value = userId.toString();
+          stringRedisTemplate.opsForValue().set(key, value);
+
+          handleChatMessage(contractRequestMessage);
+      }
+
+      /** {@inheritDoc} */
+      @Override
+      @Transactional
+      public void rejectContractRequest(Long chatRoomId, Long userId) {
+          log.info("=== 계약 요청 거절 처리 시작 ===");
+          log.info("chatRoomId: {}, userId: {}", chatRoomId, userId);
+
+          // 1. 사용자가 채팅방에 속해있는지 확인
+          if (!isUserInChatRoom(chatRoomId, userId)) {
+              log.warn("사용자가 채팅방에 속하지 않음: chatRoomId={}, userId={}", chatRoomId, userId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          // 2. 채팅방 정보 조회
+          ChatRoom chatRoom = getChatRoomById(chatRoomId);
+          if (chatRoom == null) {
+              log.error("채팅방을 찾을 수 없음: chatRoomId={}", chatRoomId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+          }
+
+          // 3. 거절자가 소유자(판매자)인지 확인
+          if (!userId.equals(chatRoom.getOwnerId())) {
+              log.warn("소유자가 아닌 사용자의 계약 거절: userId={}, ownerId={}", userId, chatRoom.getOwnerId());
+              throw new BusinessException(ChatErrorCode.ONLY_OWNER_CAN_REJECT_CONTRACT);
+          }
+
+          log.info("계약 거절 권한 확인 완료: 소유자={}, 구매자={}", chatRoom.getOwnerId(), chatRoom.getBuyerId());
+
+          ChatMessageRequestDto contractRejectMessage =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(chatRoomId)
+                          .senderId(userId)
+                          .receiverId(chatRoom.getBuyerId())
+                          .content("계약 요청을 거절했습니다.")
+                          .type("CONTRACT_REJECT")
+                          .build();
+
+          String key = "chat:request-contract:" + chatRoomId;
+          stringRedisTemplate.delete(key);
+          handleChatMessage(contractRejectMessage);
+      }
+
+      /** {@inheritDoc} */
+      @Override
+      @Transactional(rollbackFor = Exception.class)
+      public Long acceptContractRequest(Long chatRoomId, Long userId) {
+          ChatRoom originalChatRoom = chatRoomMapper.findById(chatRoomId);
+          if (originalChatRoom == null) {
+              log.error("채팅방을 찾을 수 없음: {}", chatRoomId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+          }
+
+          if (!userId.equals(originalChatRoom.getOwnerId())) {
+              log.error("계약 수락 권한 없음: userId={}, ownerId={}", userId, originalChatRoom.getOwnerId());
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "매물 소유자만 계약을 수락할 수 있습니다.");
+          }
+
+          String key = "chat:request-contract:" + chatRoomId;
+          String storedBuyerId = stringRedisTemplate.opsForValue().get(key);
+
+          if (storedBuyerId == null) {
+              log.warn("계약 요청이 존재하지 않음: chatRoomId={}", chatRoomId);
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_REQUEST_NOT_FOUND, "계약 요청이 존재하지 않습니다.");
+          }
+
+          if (!storedBuyerId.equals(originalChatRoom.getBuyerId().toString())) {
+              log.warn(
+                      "Redis 구매자 ID 불일치: stored={}, expected={}",
+                      storedBuyerId,
+                      originalChatRoom.getBuyerId());
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_REQUEST_NOT_FOUND, "계약 요청 정보가 유효하지 않습니다.");
+          }
+
+          ContractChat existingContract =
+                  contractChatMapper.findByUserAndHome(
+                          originalChatRoom.getOwnerId(),
+                          originalChatRoom.getBuyerId(),
+                          originalChatRoom.getHomeId());
+
+          if (existingContract != null) {
+              stringRedisTemplate.delete(key);
+              return existingContract.getContractChatId();
+          }
+
+          stringRedisTemplate.delete(key);
+          ContractChat contractChat = new ContractChat();
+          contractChat.setHomeId(originalChatRoom.getHomeId());
+          contractChat.setOwnerId(originalChatRoom.getOwnerId());
+          contractChat.setBuyerId(originalChatRoom.getBuyerId());
+          contractChat.setContractStartAt(LocalDateTime.now());
+          contractChat.setLastMessage("계약 채팅방이 생성되었습니다.");
+
+          contractChatMapper.createContractChat(contractChat);
+          Long contractChatRoomId = contractChat.getContractChatId();
+          ChatMessageRequestDto acceptMessage =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(chatRoomId)
+                          .senderId(userId)
+                          .receiverId(originalChatRoom.getBuyerId())
+                          .content("계약 요청을 수락했습니다. 계약 채팅방이 생성되었습니다.")
+                          .type("TEXT")
+                          .build();
+
+          handleChatMessage(acceptMessage);
+          String contractChatUrl = "/contract-chat/" + contractChatRoomId.toString();
+
+          ChatMessageRequestDto linkMessage =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(chatRoomId)
+                          .senderId(userId)
+                          .receiverId(originalChatRoom.getBuyerId())
+                          .content(contractChatUrl)
+                          .type("TEXT")
+                          .build();
+          handleChatMessage(linkMessage);
+
+          return contractChatRoomId;
+      }
+
+      /** {@inheritDoc} */
+      @Override
+      public ChatRoom getChatRoomById(Long chatRoomId) {
+
+          ChatRoom chatRoom = chatRoomMapper.findById(chatRoomId);
+          if (chatRoom == null) {
+              log.error("채팅방을 찾을 수 없음: {}", chatRoomId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+          }
+
+          return chatRoom;
       }
 }

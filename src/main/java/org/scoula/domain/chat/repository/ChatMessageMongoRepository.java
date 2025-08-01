@@ -15,6 +15,12 @@ import org.springframework.stereotype.Repository;
 public class ChatMessageMongoRepository {
       @Autowired private MongoTemplate mongoTemplate;
 
+      /** 컬렉션 이름 결정 - chatRoomId를 5로 나눈 나머지 사용 */
+      private String getCollectionName(Long chatRoomId) {
+          int shardIndex = (int) (chatRoomId % 5);
+          return "MESSAGE_" + shardIndex;
+      }
+
       public void saveMessage(Long chatRoomId, ChatMessageDocument message) {
           String collectionName = getCollectionName(chatRoomId);
           mongoTemplate.save(message, collectionName);
@@ -24,16 +30,15 @@ public class ChatMessageMongoRepository {
           String collectionName = getCollectionName(chatRoomId);
 
           Query query = new Query();
-          query.addCriteria(Criteria.where("chatRoomId").is(chatRoomId.intValue()));
-
+          query.addCriteria(Criteria.where("chatRoomId").is(chatRoomId));
           query.with(Sort.by(Sort.Direction.ASC, "sendTime"));
 
-          List<ChatMessageDocument> result =
-                  mongoTemplate.find(query, ChatMessageDocument.class, collectionName);
-          return result;
+          return mongoTemplate.find(query, ChatMessageDocument.class, collectionName);
       }
 
       public int countUnreadMessages(Long chatRoomId, Long receiverId) {
+          String collectionName = getCollectionName(chatRoomId);
+
           Query query = new Query();
           query.addCriteria(
                   Criteria.where("chatRoomId")
@@ -43,25 +48,23 @@ public class ChatMessageMongoRepository {
                           .and("isRead")
                           .is(false));
 
-          return (int) mongoTemplate.count(query, ChatMessageDocument.class);
+          return (int) mongoTemplate.count(query, ChatMessageDocument.class, collectionName);
       }
 
-      public void markAsRead(Long chatroomId, Long userId) {
+      public void markAsRead(Long chatRoomId, Long userId) {
+          String collectionName = getCollectionName(chatRoomId);
+
           mongoTemplate.updateMulti(
                   new Query()
                           .addCriteria(
                                   Criteria.where("chatRoomId")
-                                          .is(chatroomId)
+                                          .is(chatRoomId)
                                           .and("receiverId")
                                           .is(userId)
                                           .and("isRead")
                                           .is(false)),
                   new Update().set("isRead", true),
                   ChatMessageDocument.class,
-                  getCollectionName(chatroomId));
-      }
-
-      private String getCollectionName(Long chatroomId) {
-          return "MESSAGE";
+                  collectionName);
       }
 }

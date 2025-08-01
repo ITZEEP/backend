@@ -25,7 +25,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import lombok.extern.log4j.Log4j2;
+
 @RestController
+@Log4j2
 @RequestMapping("/api/chat")
 public class ChatControllerImpl implements ChatController {
 
@@ -61,19 +64,19 @@ public class ChatControllerImpl implements ChatController {
       public void enterChatRoom(@Payload Map<String, Long> payload) {
           Long userId = payload.get("userId");
           Long chatRoomId = payload.get("chatRoomId");
-          ((ChatServiceImpl) chatService).setUserCurrentChatRoom(userId, chatRoomId);
+          chatService.setUserCurrentChatRoom(userId, chatRoomId);
       }
 
       @MessageMapping("/chat/leave")
       public void leaveChatRoom(@Payload Map<String, Long> payload) {
           Long userId = payload.get("userId");
-          ((ChatServiceImpl) chatService).removeUserFromCurrentChatRoom(userId);
+          (chatService).removeUserFromCurrentChatRoom(userId);
       }
 
       @MessageMapping("/user/offline")
       public void setUserOffline(@Payload Map<String, Long> payload) {
           Long userId = payload.get("userId");
-          ((ChatServiceImpl) chatService).setUserOffline(userId);
+          (chatService).setUserOffline(userId);
       }
 
       @MessageMapping("/user/online")
@@ -81,9 +84,9 @@ public class ChatControllerImpl implements ChatController {
           Long userId = Long.parseLong(payload.get("userId").toString());
           Boolean isOnline = (Boolean) payload.get("isOnline");
           if (isOnline) {
-              ((ChatServiceImpl) chatService).addOnlineUser(userId);
+              (chatService).addOnlineUser(userId);
           } else {
-              ((ChatServiceImpl) chatService).setUserOffline(userId);
+              (chatService).setUserOffline(userId);
           }
       }
 
@@ -377,5 +380,86 @@ public class ChatControllerImpl implements ChatController {
           }
 
           return "FILE";
+      }
+
+      @Override
+      @PostMapping("/rooms/{chatRoomId}/contract-request")
+      public ResponseEntity<ApiResponse<String>> sendContractRequest(
+              @PathVariable Long chatRoomId, Authentication authentication) {
+          try {
+              String currentUserEmail = authentication.getName();
+              Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+              if (currentUserOpt.isEmpty()) {
+                  throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+              }
+
+              Long userId = currentUserOpt.get().getUserId();
+
+              chatService.sendContractRequest(chatRoomId, userId);
+
+              return ResponseEntity.ok(
+                      ApiResponse.success("계약 요청이 성공적으로 전송되었습니다.", "계약 요청이 전송되었습니다."));
+
+          } catch (BusinessException e) {
+              log.error("계약 요청 전송 실패 - 비즈니스 예외: {}", e.getMessage());
+              throw e;
+          } catch (Exception e) {
+              log.error("계약 요청 전송 실패 - 시스템 예외", e);
+              throw new BusinessException(
+                      ChatErrorCode.MESSAGE_SEND_FAILED, "계약 요청 전송에 실패했습니다: " + e.getMessage());
+          }
+      }
+
+      @Override
+      @PostMapping("/rooms/{chatRoomId}/contract-reject")
+      public ResponseEntity<ApiResponse<String>> rejectContractRequest(
+              @PathVariable Long chatRoomId, Authentication authentication) {
+          try {
+              String currentUserEmail = authentication.getName();
+              Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+              if (currentUserOpt.isEmpty()) {
+                  throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+              }
+
+              Long userId = currentUserOpt.get().getUserId();
+
+              chatService.rejectContractRequest(chatRoomId, userId);
+
+              return ResponseEntity.ok(ApiResponse.success("계약 요청을 거절했습니다.", "계약 요청이 거절되었습니다."));
+
+          } catch (BusinessException e) {
+              log.error("계약 거절 실패 - 비즈니스 예외: {}", e.getMessage());
+              throw e;
+          } catch (Exception e) {
+              log.error("계약 거절 실패 - 시스템 예외", e);
+              throw new BusinessException(
+                      ChatErrorCode.MESSAGE_SEND_FAILED, "계약 거절에 실패했습니다: " + e.getMessage());
+          }
+      }
+
+      @Override
+      @PostMapping("/rooms/{chatRoomId}/contract-accept")
+      public ResponseEntity<ApiResponse<Long>> acceptContractRequest(
+              @PathVariable Long chatRoomId, Authentication authentication) {
+          try {
+              String currentUserEmail = authentication.getName();
+              Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+              if (currentUserOpt.isEmpty()) {
+                  throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+              }
+
+              Long userId = currentUserOpt.get().getUserId();
+              Long contractChatId = chatService.acceptContractRequest(chatRoomId, userId);
+
+              return ResponseEntity.ok(
+                      ApiResponse.success(contractChatId, "계약 요청을 수락했습니다. 계약 채팅방이 생성되었습니다."));
+          } catch (Exception e) {
+              log.error("계약 수락 실패", e);
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("계약 수락에 실패했습니다: " + e.getMessage()));
+          }
       }
 }

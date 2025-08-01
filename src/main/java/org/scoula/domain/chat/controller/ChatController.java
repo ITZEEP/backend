@@ -12,10 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.annotations.Api;
@@ -97,5 +94,20 @@ public interface ChatController {
       @ApiOperation(value = "채팅방 상세 정보 조회", notes = "채팅방 ID로 채팅방의 상세 정보와 연결된 매물 정보를 조회합니다.")
       @GetMapping("/rooms/{chatRoomId}/info")
       ResponseEntity<ApiResponse<ChatRoomInfoDto>> getChatRoomInfo(
+              @PathVariable Long chatRoomId, Authentication authentication);
+
+      @ApiOperation(value = "계약 요청하기", notes = "구매자가 계약을 요청합니다.")
+      @PostMapping("/rooms/{chatRoomId}/contract-request")
+      ResponseEntity<ApiResponse<String>> sendContractRequest(
+              @PathVariable Long chatRoomId, Authentication authentication);
+
+      @ApiOperation(value = "계약 수락하기", notes = "매물 소유자가 계약 요청을 수락하고 계약 채팅방을 생성합니다.")
+      @PostMapping("/rooms/{chatRoomId}/contract-accept")
+      ResponseEntity<ApiResponse<Long>> acceptContractRequest(
+              @PathVariable Long chatRoomId, Authentication authentication);
+
+      @ApiOperation(value = "계약 요청 거절하기", notes = "매물 소유자가 계약 요청을 거절합니다.")
+      @PostMapping("/rooms/{chatRoomId}/contract-reject")
+      ResponseEntity<ApiResponse<String>> rejectContractRequest(
               @PathVariable Long chatRoomId, Authentication authentication);
 }
