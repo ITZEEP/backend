@@ -62,11 +62,11 @@ public interface ContractChatController {
 
       @ApiOperation(value = "계약 채팅방 퇴장 (WebSocket)", notes = "계약 채팅방에서 퇴장할 때 오프라인 상태를 설정합니다.")
       @MessageMapping("/contract/chat/leave")
-      void leaveContractChatRoom(@Payload Map<String, Long> payload, Principal principal);
+      void leaveContractChatRoom(@Payload Map<String, Long> payload);
 
       @ApiOperation(value = "계약 채팅 사용자 오프라인 (WebSocket)", notes = "계약 채팅에서 완전 오프라인 상태로 전환합니다.")
       @MessageMapping("/contract/user/offline")
-      void setContractUserOffline(@Payload Map<String, Long> payload, Principal principal);
+      void setContractUserOffline(@Payload Map<String, Long> payload);
 
       @ApiOperation(value = "계약 채팅방 온라인 상태 조회", notes = "계약 채팅방 참여자들의 온라인 상태를 조회합니다.")
       @GetMapping("/{contractChatId}/online-status")
