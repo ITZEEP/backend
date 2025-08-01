@@ -58,7 +58,7 @@ public interface ContractChatServiceInterface {
        * @throws IllegalArgumentException 파라미터가 유효하지 않거나 사용자가 채팅방에 참여하지 않은 경우
        * @throws RuntimeException MongoDB 조회 실패
        */
-      List<ContractChatDocument> getContractMessages(Long contractChatId, Long userId);
+      List<ContractChatDocument> getContractMessages(Long contractChatId);
 
       /**
        * 특약 대화의 시작점을 설정합니다.
