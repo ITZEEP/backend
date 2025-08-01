@@ -114,7 +114,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       /** {@inheritDoc} */
       @Override
-      public List<ContractChatDocument> getContractMessages(Long contractChatId, Long userId) {
+      public List<ContractChatDocument> getContractMessages(Long contractChatId) {
           return contractChatMessageRepository.getMessages(contractChatId);
       }
 
