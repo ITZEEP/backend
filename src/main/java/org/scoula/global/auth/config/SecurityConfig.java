@@ -89,12 +89,33 @@ public class SecurityConfig {
                   // 접근 경로 제어 설정
                   .authorizeHttpRequests(
                           auth ->
-                                  auth.requestMatchers(
+                                  auth
+                                          // OPTIONS 요청은 모두 허용
+                                          .requestMatchers(
                                                   new AntPathRequestMatcher(
                                                           "/**", HttpMethod.OPTIONS.name()))
                                           .permitAll()
+                                          // 공개 API
+                                          .requestMatchers(
+                                                  new AntPathRequestMatcher(
+                                                          "/api", HttpMethod.GET.name()),
+                                                  new AntPathRequestMatcher("/api/health"),
+                                                  new AntPathRequestMatcher("/api/auth/login"),
+                                                  new AntPathRequestMatcher("/api/auth/signup"),
+                                                  new AntPathRequestMatcher("/api/auth/refresh"),
+                                                  new AntPathRequestMatcher("/api/auth/oauth/**"),
+                                                  new AntPathRequestMatcher("/swagger-ui/**"),
+                                                  new AntPathRequestMatcher("/v2/api-docs"),
+                                                  new AntPathRequestMatcher("/swagger-resources/**"),
+                                                  new AntPathRequestMatcher("/webjars/**"))
+                                          .permitAll()
+                                          // 사기 위험도 분석 API는 인증 필요
+                                          .requestMatchers(
+                                                  new AntPathRequestMatcher("/api/fraud-risk/**"))
+                                          .authenticated()
+                                          // 나머지 모든 요청은 인증 필요
                                           .anyRequest()
-                                          .permitAll())
+                                          .authenticated())
                   // 필터 설정
                   .addFilter(corsFilter())
                   .addFilterBefore(encodingFilter(), CsrfFilter.class)
