@@ -25,6 +25,7 @@ public class TenantPreContractCheckVO {
 
       private RiskType riskType;
       private RentType rentType;
+      private Boolean depositAdjustment;
       private LocalDate expectedMoveInDate;
       private ContractDuration contractDuration;
       private RenewalIntent renewalIntent;
@@ -47,6 +48,7 @@ public class TenantPreContractCheckVO {
       // 1. step1
       public static TenantPreContractCheckVO toStep1VO(TenantStep1DTO dto) {
           return TenantPreContractCheckVO.builder()
+                  .depositAdjustment(dto.getDepositAdjustment())
                   .expectedMoveInDate(dto.getExpectedMoveInDate())
                   .contractDuration(ContractDuration.valueOf(dto.getContractDuration()))
                   .renewalIntent(RenewalIntent.valueOf(dto.getRenewalIntent()))

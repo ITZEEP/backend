@@ -81,7 +81,7 @@
 
     <update id="updateStep1">
         UPDATE tenant_precontract_check
-        SET rent_type = #{rentType}, expected_move_in_date = #{vo.expectedMoveInDate}, contract_duration = #{vo.contractDuration}, renewal_intent = #{vo.renewalIntent}
+        SET rent_type = #{rentType}, deposit_adjustment = #{vo.depositAdjustment}, expected_move_in_date = #{vo.expectedMoveInDate}, contract_duration = #{vo.contractDuration}, renewal_intent = #{vo.renewalIntent}
         WHERE contract_chat_id = #{contractChatId}
     </update>
 
@@ -102,7 +102,7 @@
             CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_insurance_plan
                  WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
                 END AS insurance_plan,
-            tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent
+           tpc.deposit_adjustment, tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent
         FROM tenant_precontract_check tpc
                  LEFT JOIN tenant_jeonse_info tji ON tpc.contract_chat_id = tji.tenant_precheck_id
                  LEFT JOIN tenant_wolse_info twi ON tpc.contract_chat_id = twi.tenant_precheck_id
