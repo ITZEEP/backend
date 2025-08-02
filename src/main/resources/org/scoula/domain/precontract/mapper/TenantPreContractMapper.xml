@@ -135,13 +135,13 @@
     <!--=============== step 3 ==================-->
     <update id="updateStep3">
         UPDATE tenant_precontract_check
-        SET indoor_smoking_plan = #{vo.indoorSmokingPlan}, early_termination_risk = #{vo.earlyTerminationRisk}, nonresidential_use_plan = #{vo.nonresidentialUsePlan}, request_to_owner = #{vo.requestToOwner},
-            checked_at = now(), resident_count = #{vo.residentCount}, occupation = #{vo.occupation}, emergency_contact = #{vo.emergencyContact}, relation = #{vo.relation}
+        SET indoor_smoking_plan = #{vo.indoorSmokingPlan}, early_termination_risk = #{vo.earlyTerminationRisk}, nonresidential_use_plan = #{vo.nonresidentialUsePlan},
+             resident_count = #{vo.residentCount}, occupation = #{vo.occupation}, emergency_contact = #{vo.emergencyContact}, relation = #{vo.relation}, request_to_owner = #{vo.requestToOwner}, checked_at = now()
         WHERE contract_chat_id = #{contractChatId}
     </update>
 
     <select id="selectStep3" resultType="org.scoula.domain.precontract.dto.tenant.TenantStep3DTO">
-        SELECT tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
+        SELECT tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan,  tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation, tpc.request_to_owner
         FROM tenant_precontract_check tpc
         WHERE tpc.contract_chat_id = #{contractChatId}
     </select>
@@ -174,8 +174,8 @@
                CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_insurance_plan
                     WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
                    END AS insurance_plan,
-               tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
-               tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
+               tpc.deposit_adjustment, tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
+               tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation, tpc.request_to_owner
 
         FROM tenant_precontract_check tpc
         INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id
@@ -198,8 +198,8 @@
             CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_insurance_plan
                  WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
                 END AS insurance_plan,
-            tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
-            tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.request_to_owner, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation
+            tpc.deposit_adjustment, tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
+            tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation,tpc.request_to_owner, tpc.checked_at
 
         FROM tenant_precontract_check tpc
                  INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id

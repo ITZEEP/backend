@@ -38,12 +38,12 @@ public class TenantPreContractCheckVO {
       private Boolean indoorSmokingPlan;
       private Boolean earlyTerminationRisk;
       private NonresidentialUsePlan nonresidentialUsePlan;
-      private String requestToOwner;
       private LocalDateTime checkedAt;
       private Integer residentCount;
       private String occupation;
       private String emergencyContact;
       private String relation;
+      private String requestToOwner;
 
       // 1. step1
       public static TenantPreContractCheckVO toStep1VO(TenantStep1DTO dto) {
@@ -74,11 +74,11 @@ public class TenantPreContractCheckVO {
                   .earlyTerminationRisk(dto.getEarlyTerminationRisk())
                   .nonresidentialUsePlan(
                           NonresidentialUsePlan.valueOf(dto.getNonresidentialUsePlan()))
-                  .requestToOwner(dto.getRequestToOwner())
                   .residentCount(dto.getResidentCount())
                   .occupation(dto.getOccupation())
                   .emergencyContact(dto.getEmergencyContact())
                   .relation(dto.getRelation())
+                  .requestToOwner(dto.getRequestToOwner())
                   .build();
       }
 }

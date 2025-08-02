@@ -29,9 +29,6 @@ public class TenantStep3DTO {
               allowableValues = "BUSINESS,LODGING,NONE")
       private String nonresidentialUsePlan;
 
-      @ApiModelProperty(value = "임대인에게 남길 요청 사항", example = "엘리베이터 점검일 피해서 입주 조율 가능할까요?")
-      private String requestToOwner;
-
       @ApiModelProperty(value = "거주 인원", example = "5")
       private Integer residentCount;
 
@@ -44,4 +41,7 @@ public class TenantStep3DTO {
 
       @ApiModelProperty(value = "비상 연락처와의 관계", example = "남편")
       private String relation;
+
+      @ApiModelProperty(value = "임대인에게 남길 요청 사항", example = "엘리베이터 점검일 피해서 입주 조율 가능할까요?")
+      private String requestToOwner;
 }
