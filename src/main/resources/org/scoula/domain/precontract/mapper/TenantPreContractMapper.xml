@@ -93,6 +93,14 @@
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
     </select>
 
+    <select id="selectIsParking" resultType="boolean">
+        select hd.is_parking_available
+        FROM contract_chat cc
+                 INNER JOIN home_detail hd
+                            ON cc.home_id = hd.home_id
+        WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
+    </select>
+
     <select id="selectStep1" resultType="org.scoula.domain.precontract.dto.tenant.TenantStep1DTO">
         select
             CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_loan_plan
@@ -114,7 +122,13 @@
     <update id="updateStep2">
         UPDATE tenant_precontract_check
         SET facility_repair_needed = #{vo.facilityRepairNeeded}, interior_cleaning_needed = #{vo.interiorCleaningNeeded}, appliance_installation_plan = #{vo.applianceInstallationPlan}
-        <if test ="vo.hasPet != null">
+        <if test ="vo.hasParking != null">
+            , has_parking = #{vo.hasParking}
+        </if>
+        <if test ="vo.parkingCount != null">
+            , parking_count = #{vo.parkingCount}
+        </if>
+          <if test ="vo.hasPet != null">
             , has_pet = #{vo.hasPet}
         </if>
         <if test="vo.petInfo != null">
@@ -127,7 +141,7 @@
     </update>
 
     <select id="selectStep2" resultType="org.scoula.domain.precontract.dto.tenant.TenantStep2DTO">
-        select tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan, tpc.has_pet, tpc.pet_info, tpc.pet_count
+        select tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan, tpc.has_parking, tpc.parking_count, tpc.has_pet, tpc.pet_info, tpc.pet_count
         FROM tenant_precontract_check tpc
         WHERE tpc.contract_chat_id = #{contractChatId}
     </select>
@@ -175,7 +189,7 @@
                     WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
                    END AS insurance_plan,
                tpc.deposit_adjustment, tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
-               tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation, tpc.request_to_owner
+               tpc.has_parking, tpc.parking_count, tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.checked_at, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation, tpc.request_to_owner
 
         FROM tenant_precontract_check tpc
         INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id
@@ -199,7 +213,7 @@
                  WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
                 END AS insurance_plan,
             tpc.deposit_adjustment, tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
-            tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation,tpc.request_to_owner, tpc.checked_at
+            tpc,has_parking, tpc.parking_count, tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation,tpc.request_to_owner, tpc.checked_at
 
         FROM tenant_precontract_check tpc
                  INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id

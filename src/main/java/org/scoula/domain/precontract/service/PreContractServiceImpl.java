@@ -98,10 +98,11 @@ public class PreContractServiceImpl implements PreContractService {
                           contractChatId, identityId, riskId, rentType, riskType);
           if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
 
-          // 3. 다음 페이지를 위해서 전세/월세 여부, pet 여부 보내기
+          // 3. 다음 페이지를 위해서 전세/월세 여부, pet, parking 여부 보내기
           boolean isPet = tenantMapper.selectIsPet(userId, contractChatId);
+          boolean istParkingAvailable = tenantMapper.selectIsParking(userId, contractChatId);
 
-          TenantInitRespDTO dto = TenantInitRespDTO.toResp(rentType, isPet);
+          TenantInitRespDTO dto = TenantInitRespDTO.toResp(rentType, isPet, istParkingAvailable);
 
           return dto;
       }

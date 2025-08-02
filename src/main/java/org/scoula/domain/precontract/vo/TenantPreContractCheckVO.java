@@ -32,6 +32,8 @@ public class TenantPreContractCheckVO {
       private Boolean facilityRepairNeeded;
       private Boolean interiorCleaningNeeded;
       private Boolean applianceInstallationPlan;
+      private Boolean hasParking;
+      private Integer parkingCount;
       private Boolean hasPet;
       private String petInfo;
       private Long petCount;
@@ -61,6 +63,8 @@ public class TenantPreContractCheckVO {
                   .facilityRepairNeeded(dto.getFacilityRepairNeeded())
                   .interiorCleaningNeeded(dto.getInteriorCleaningNeeded())
                   .applianceInstallationPlan(dto.getApplianceInstallationPlan())
+                  .hasParking(dto.getHasParking())
+                  .parkingCount(dto.getParkingCount())
                   .hasPet(dto.getHasPet())
                   .petInfo(dto.getPetInfo())
                   .petCount(dto.getPetCount())

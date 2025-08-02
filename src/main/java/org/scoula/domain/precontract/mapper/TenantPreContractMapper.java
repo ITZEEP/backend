@@ -62,6 +62,10 @@ public interface TenantPreContractMapper {
       // 애완동물 가능 여부 조회하기 -> 반환값에 넣어서 다음 페이지 준비하기
       boolean selectIsPet(@Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
 
+      // 주차 가능 여부 조회
+      boolean selectIsParking(
+              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
+
       // step1 조회하기
       TenantStep1DTO selectStep1(
               @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
