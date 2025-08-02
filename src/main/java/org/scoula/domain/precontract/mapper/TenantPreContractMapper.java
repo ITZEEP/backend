@@ -47,10 +47,12 @@ public interface TenantPreContractMapper {
       // =============== step 1 ==================
 
       // 전세 정보 테이블 입력
-      int insertJeonseInfo(@Param("vo") TenantJeonseInfoVO jeonseInfo);
+      int updateJeonseInfo(
+              @Param("vo") TenantJeonseInfoVO vo, @Param("contractChatId") Long contractChatId);
 
       // 월세 정보 테이블 입력
-      int insertWolseInfo(@Param("vo") TenantWolseInfoVO wolseInfo);
+      int updateWolseInfo(
+              @Param("vo") TenantWolseInfoVO vo, @Param("contractChatId") Long contractChatId);
 
       // step1 저장(update) 하기
       int updateStep1(

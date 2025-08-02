@@ -134,15 +134,15 @@ public class PreContractServiceImpl implements PreContractService {
           // 2. 해당 테이블에 값을 넣는다. (전세 or 월세)
           if (rentType == RentType.JEONSE) {
               // dto -> vo
-              TenantJeonseInfoVO vo = TenantJeonseInfoVO.toVO(contractChatId, step1DTO);
+              TenantJeonseInfoVO vo = TenantJeonseInfoVO.toVO(step1DTO);
               // mappser
-              int result = tenantMapper.insertJeonseInfo(vo);
+              int result = tenantMapper.updateJeonseInfo(vo, contractChatId);
               if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
           } else if (rentType == RentType.WOLSE) {
               // dto -> vo
-              TenantWolseInfoVO vo = TenantWolseInfoVO.toVO(contractChatId, step1DTO);
+              TenantWolseInfoVO vo = TenantWolseInfoVO.toVO(step1DTO);
               // mapper
-              int result = tenantMapper.insertWolseInfo(vo);
+              int result = tenantMapper.updateWolseInfo(vo, contractChatId);
               if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
           }
 

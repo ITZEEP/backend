@@ -61,22 +61,36 @@
 
     <insert id="insertPreContractSet">
         INSERT INTO tenant_precontract_check (contract_chat_id, identity_id, riskck_id, rent_type, risk_type)
-        VALUES (#{contractChatId}, #{identityId}, #{riskId}, #{rentType}, #{riskType})
+        VALUES (#{contractChatId}, #{identityId}, #{riskId}, #{rentType}, #{riskType});
+
+        <!-- 전세일 경우: JEONSE -->
+        <if test="rentType == 'JEONSE'">
+            INSERT INTO tenant_jeonse_info (tenant_precontract_check_id)
+            VALUES (#{contractChatId});
+        </if>
+
+        <!-- 월세일 경우: WOLSE -->
+        <if test="rentType == 'WOLSE'">
+            INSERT INTO tenant_wolse_info (tenant_precontract_check_id)
+            VALUES (#{contractChatId});
+        </if>
     </insert>
 
 
     <!--=============== step 1 ==================-->
 
     <!-- 임차인 계약 전 전세 정보 등록 -->
-    <insert id="insertJeonseInfo" parameterType="org.scoula.domain.precontract.vo.TenantJeonseInfoVO" useGeneratedKeys="true" keyProperty="tenantJeonseRentId">
-        INSERT INTO tenant_jeonse_info (tenant_precheck_id, jeonse_loan_plan, jeonse_insurance_plan)
-        VALUES (#{vo.tenantPrecheckId}, #{vo.jeonseLoanPlan}, #{vo.jeonseInsurancePlan})
-    </insert>
+    <update id="updateJeonseInfo">
+        UPDATE tenant_jeonse_info
+            SET jeonse_loan_plan = #{vo.jeonseLoanPlan}, jeonse_insurance_plan = #{vo.jeonseInsurancePlan})
+        WHERE tenant_precheck_id = #{contractChaId})
+    </update>
 
     <!-- 임차인 계약 전 월세 정보 등록 -->
-    <insert id="insertWolseInfo" parameterType="org.scoula.domain.precontract.vo.TenantWolseInfoVO" useGeneratedKeys="true" keyProperty="tenantWolseRentId">
-        INSERT INTO tenant_wolse_info (tenant_precheck_id, wolse_loan_plan, wolse_insurance_plan)
-        VALUES (#{vo.tenantPrecheckId}, #{vo.wolseLoanPlan}, #{vo.wolseInsurancePlan})
+    <insert id="updateWolseInfo" >
+        update tenant_wolse_info
+        set wolse_loan_plan = #{vo.wolseLoanPlan}, wolse_insurance_plan = #{vo.wolseInsurancePlan}
+        WHERE tenant_precheck_id = #{contractChatId}
     </insert>
 
     <update id="updateStep1">
