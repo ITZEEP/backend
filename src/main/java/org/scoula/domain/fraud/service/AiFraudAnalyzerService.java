@@ -10,7 +10,9 @@ import java.util.Map;
 
 import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
 import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
+import org.scoula.domain.fraud.dto.common.MortgageeDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
+import org.scoula.domain.fraud.dto.request.QuickRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudErrorCode;
@@ -44,83 +46,11 @@ public class AiFraudAnalyzerService {
 
       /** FastAPI 서버에 사기 위험도 분석 요청 */
       public FraudRiskCheckDto.Response analyzeFraudRisk(Long userId, RiskAnalysisRequest request) {
-          try {
-              // 1. 요청 데이터 구성
-              FraudRiskCheckDto.Request aiRequest = buildAiRequest(userId, request);
+          // 요청 데이터 구성
+          FraudRiskCheckDto.Request aiRequest = buildAiRequest(userId, request);
 
-              // 2. HTTP 헤더 설정
-              HttpHeaders headers = new HttpHeaders();
-              headers.setContentType(MediaType.APPLICATION_JSON);
-
-              // 3. FastAPI 서버 호출
-              String url = aiServerUrl + "/api/analyze/risk";
-              HttpEntity<FraudRiskCheckDto.Request> httpEntity = new HttpEntity<>(aiRequest, headers);
-
-              log.info(
-                      "AI 사기 위험도 분석 요청 - URL: {}, homeId: {}",
-                      LogSanitizerUtil.sanitize(url),
-                      LogSanitizerUtil.sanitizeValue(request.getHomeId()));
-
-              @SuppressWarnings("rawtypes")
-              ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
-
-              log.info(
-                      "AI 위험도 분석 응답 상태: {}",
-                      LogSanitizerUtil.sanitizeValue(response.getStatusCode()));
-
-              if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                  @SuppressWarnings("unchecked")
-                  Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
-                  log.info("AI 위험도 분석 전체 응답: {}", LogSanitizerUtil.sanitizeValue(responseBody));
-
-                  // 구조화된 응답인지 확인
-                  Boolean success = (Boolean) responseBody.get("success");
-                  if (success != null && success) {
-                      // data 추출
-                      @SuppressWarnings("unchecked")
-                      Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
-                      if (data != null) {
-                          log.info("AI 위험도 분석 데이터: {}", LogSanitizerUtil.sanitizeValue(data));
-                          return convertToFraudRiskResponse(data);
-                      }
-                  } else {
-                      // 오류 메시지 추출
-                      String message = (String) responseBody.get("message");
-                      throw new FraudRiskException(
-                              FraudErrorCode.FRAUD_ANALYSIS_FAILED,
-                              "위험도 분석 실패: " + (message != null ? message : "알 수 없는 오류"));
-                  }
-
-                  // 직접 FraudRiskCheckDto.Response 형태로 오는 경우 (대비용)
-                  try {
-                      ObjectMapper mapper = new ObjectMapper();
-                      FraudRiskCheckDto.Response aiResponse =
-                              mapper.convertValue(responseBody, FraudRiskCheckDto.Response.class);
-                      log.info(
-                              "AI 분석 완료 - analysisId: {}, riskLevel: {}, riskScore: {}",
-                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getAnalysisId())),
-                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getRiskLevel())),
-                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getRiskScore())));
-                      return aiResponse;
-                  } catch (Exception e) {
-                      log.warn("직접 FraudRiskCheckDto.Response 변환 실패", e);
-                      throw new FraudRiskException(FraudErrorCode.RISK_CALCULATION_ERROR);
-                  }
-              } else {
-                  throw new FraudRiskException(
-                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
-                          "AI 서버 응답 오류: " + response.getStatusCode());
-              }
-
-          } catch (FraudRiskException e) {
-              // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
-              throw e;
-          } catch (Exception e) {
-              log.error("AI 서버 통신 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()), e);
-              throw new FraudRiskException(
-                      FraudErrorCode.AI_SERVICE_UNAVAILABLE,
-                      "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
-          }
+          // AI 서버 호출
+          return callAiServer(aiRequest);
       }
 
       /** AI 응답을 기반으로 위험도 타입 결정 */
@@ -378,7 +308,7 @@ public class AiFraudAnalyzerService {
                           .userType("BUYER") // 기본값 설정
                           .homeId(request.getHomeId());
 
-          // 주소 정보 추출 (등기부등본 우선, 없으면 직접 입력값 사용)
+          // 주소 정보 추출 (등기부등본에서 추출)
           String address = null;
           String registeredUserName = null;
 
@@ -390,41 +320,49 @@ public class AiFraudAnalyzerService {
               registeredUserName = request.getRegistryDocument().getOwnerName();
           }
 
-          // homeId가 없는 경우 직접 입력된 매물 정보 사용
-          if (request.getHomeId() == null) {
-              if (address == null && request.getAddress() != null) {
-                  address = request.getAddress();
-              }
-              if (registeredUserName == null && request.getRegisteredUserName() != null) {
-                  registeredUserName = request.getRegisteredUserName();
-              }
-          }
-
           // AI 서버가 요구하는 추가 필드들 설정
-          builder.address(address)
-                  .propertyPrice(
-                          request.getHomeId() == null && request.getPropertyPrice() != null
-                                  ? request.getPropertyPrice()
-                                  : 0L)
-                  .leaseType(
-                          request.getHomeId() == null && request.getLeaseType() != null
-                                  ? request.getLeaseType()
-                                  : "UNKNOWN")
-                  .registeredUserName(registeredUserName)
+          // 요청에서 직접 받은 매물 정보 사용
+          String finalAddress =
+                  request.getAddress() != null
+                          ? request.getAddress()
+                          : (address != null ? address : "");
+          log.error(
+                  "[디버깅] 주소 결정 로직 - request.address: {}, registry.roadAddress: {}, final.address: {}",
+                  request.getAddress(),
+                  address,
+                  finalAddress);
+
+          builder.address(finalAddress)
+                  .propertyPrice(request.getPropertyPrice() != null ? request.getPropertyPrice() : 0L)
+                  .monthlyRent(request.getMonthlyRent() != null ? request.getMonthlyRent() : 0L)
+                  .leaseType(request.getLeaseType() != null ? request.getLeaseType() : "")
+                  .registeredUserName(
+                          request.getRegisteredUserName() != null
+                                  ? request.getRegisteredUserName()
+                                  : (registeredUserName != null ? registeredUserName : ""))
                   .residenceType(
-                          request.getHomeId() == null && request.getResidenceType() != null
-                                  ? request.getResidenceType()
-                                  : "UNKNOWN");
+                          request.getResidenceType() != null ? request.getResidenceType() : "");
 
           // 등기부등본 정보 변환
           if (request.getRegistryDocument() != null) {
               RegistryDocumentDto registry = request.getRegistryDocument();
 
-              // 근저당권 정보 처리 - 단일 정보를 리스트로 변환
+              // 근저당권 정보 처리
               List<FraudRiskCheckDto.MortgageeInfo> mortgageeList = new ArrayList<>();
 
-              // 단일 근저당권 정보가 있으면 리스트에 추가
-              if (registry.getMaxClaimAmount() != null || registry.getMortgagee() != null) {
+              // 새로운 구조: mortgageeList 사용
+              if (registry.getMortgageeList() != null && !registry.getMortgageeList().isEmpty()) {
+                  for (MortgageeDto mortgageeDto : registry.getMortgageeList()) {
+                      mortgageeList.add(
+                              FraudRiskCheckDto.MortgageeInfo.builder()
+                                      .priorityNumber(mortgageeDto.getPriorityNumber())
+                                      .maxClaimAmount(mortgageeDto.getMaxClaimAmount())
+                                      .debtor(mortgageeDto.getDebtor())
+                                      .mortgagee(mortgageeDto.getMortgagee())
+                                      .build());
+                  }
+              } else if (registry.getMaxClaimAmount() != null || registry.getMortgagee() != null) {
+                  // 이전 버전 호환성: 단일 근저당권 정보가 있으면 리스트에 추가
                   mortgageeList.add(
                           FraudRiskCheckDto.MortgageeInfo.builder()
                                   .priorityNumber(1)
@@ -473,6 +411,236 @@ public class AiFraudAnalyzerService {
           return builder.build();
       }
 
+      /** QuickRiskAnalysisRequest를 처리하는 오버로드 메소드 */
+      public FraudRiskCheckDto.Response analyzeFraudRisk(
+              Long userId, QuickRiskAnalysisRequest request) {
+          // QuickRiskAnalysisRequest를 RiskAnalysisRequest로 변환
+          RiskAnalysisRequest analysisRequest =
+                  RiskAnalysisRequest.builder()
+                          .homeId(null) // 매물 ID 없음
+                          .registryDocument(request.getRegistryDocument())
+                          .buildingDocument(request.getBuildingDocument())
+                          .registryFileUrl(request.getRegistryFileUrl())
+                          .buildingFileUrl(request.getBuildingFileUrl())
+                          .build();
+
+          // 기존 analyzeFraudRisk 호출하되, QuickRiskAnalysisRequest의 정보로 보정
+          FraudRiskCheckDto.Request aiRequest = buildAiRequestForQuick(userId, request);
+
+          // AI 서버 호출
+          return callAiServer(aiRequest);
+      }
+
+      /** QuickRiskAnalysisRequest를 AI 서버 요청 형식으로 변환 */
+      private FraudRiskCheckDto.Request buildAiRequestForQuick(
+              Long userId, QuickRiskAnalysisRequest request) {
+          FraudRiskCheckDto.Request.RequestBuilder builder =
+                  FraudRiskCheckDto.Request.builder()
+                          .userId(userId)
+                          .userType("BUYER") // 기본값 설정
+                          .homeId(0L); // 매물 ID 없음 - AI 서버가 null을 허용하지 않으므로 0으로 설정
+
+          // 주소 정보 추출 (등기부등본 우선, 없으면 직접 입력값 사용)
+          String address = null;
+          String registeredUserName = null;
+
+          if (request.getRegistryDocument() != null) {
+              address =
+                      request.getRegistryDocument().getRoadAddress() != null
+                              ? request.getRegistryDocument().getRoadAddress()
+                              : request.getRegistryDocument().getRegionAddress();
+              registeredUserName = request.getRegistryDocument().getOwnerName();
+          }
+
+          // 직접 입력된 매물 정보 우선 사용
+          if (request.getAddress() != null) {
+              address = request.getAddress();
+          }
+          // null이면 빈 문자열로
+          if (address == null) {
+              address = "";
+          }
+
+          if (registeredUserName == null && request.getRegisteredUserName() != null) {
+              registeredUserName = request.getRegisteredUserName();
+          }
+          // null이면 빈 문자열로
+          if (registeredUserName == null) {
+              registeredUserName = "";
+          }
+
+          // AI 서버가 요구하는 추가 필드들 설정
+          log.error(
+                  "[디버깅] 서비스 외 매물 주소 결정 - request.address: {}, registry.address: {}, final.address:"
+                          + " {}",
+                  request.getAddress(),
+                  address,
+                  address != null ? address : "");
+
+          builder.address(address) // 이미 위에서 null 처리됨
+                  .propertyPrice(request.getPropertyPrice() != null ? request.getPropertyPrice() : 0L)
+                  .monthlyRent(request.getMonthlyRent() != null ? request.getMonthlyRent() : 0L)
+                  .leaseType(request.getLeaseType() != null ? request.getLeaseType() : "")
+                  .registeredUserName(registeredUserName) // 이미 위에서 null 처리됨
+                  .residenceType(
+                          request.getResidenceType() != null ? request.getResidenceType() : "");
+
+          // 등기부등본 정보 변환
+          if (request.getRegistryDocument() != null) {
+              RegistryDocumentDto registry = request.getRegistryDocument();
+
+              // 근저당권 정보 처리
+              List<FraudRiskCheckDto.MortgageeInfo> mortgageeList = new ArrayList<>();
+
+              // 새로운 구조: mortgageeList 사용
+              if (registry.getMortgageeList() != null && !registry.getMortgageeList().isEmpty()) {
+                  for (MortgageeDto mortgageeDto : registry.getMortgageeList()) {
+                      mortgageeList.add(
+                              FraudRiskCheckDto.MortgageeInfo.builder()
+                                      .priorityNumber(mortgageeDto.getPriorityNumber())
+                                      .maxClaimAmount(mortgageeDto.getMaxClaimAmount())
+                                      .debtor(mortgageeDto.getDebtor())
+                                      .mortgagee(mortgageeDto.getMortgagee())
+                                      .build());
+                  }
+              } else if (registry.getMaxClaimAmount() != null || registry.getMortgagee() != null) {
+                  // 이전 버전 호환성: 단일 근저당권 정보가 있으면 리스트에 추가
+                  mortgageeList.add(
+                          FraudRiskCheckDto.MortgageeInfo.builder()
+                                  .priorityNumber(1)
+                                  .maxClaimAmount(registry.getMaxClaimAmount())
+                                  .debtor(registry.getDebtor())
+                                  .mortgagee(registry.getMortgagee())
+                                  .build());
+              }
+
+              builder.registryDocument(
+                      FraudRiskCheckDto.RegistryDocument.builder()
+                              .regionAddress(registry.getRegionAddress())
+                              .roadAddress(registry.getRoadAddress())
+                              .ownerName(registry.getOwnerName())
+                              .ownerBirthDate(
+                                      registry.getOwnerBirthDate() != null
+                                              ? registry.getOwnerBirthDate().toString()
+                                              : null)
+                              .debtor(registry.getDebtor())
+                              .mortgageeList(mortgageeList.isEmpty() ? null : mortgageeList)
+                              .hasSeizure(registry.getHasSeizure())
+                              .hasAuction(registry.getHasAuction())
+                              .hasLitigation(registry.getHasLitigation())
+                              .hasAttachment(registry.getHasAttachment())
+                              .build());
+          }
+
+          // 건축물대장 정보 변환
+          if (request.getBuildingDocument() != null) {
+              BuildingDocumentDto building = request.getBuildingDocument();
+              builder.buildingDocument(
+                      FraudRiskCheckDto.BuildingDocument.builder()
+                              .siteLocation(building.getSiteLocation())
+                              .roadAddress(building.getRoadAddress())
+                              .totalFloorArea(building.getTotalFloorArea())
+                              .purpose(building.getPurpose())
+                              .floorNumber(building.getFloorNumber())
+                              .approvalDate(
+                                      building.getApprovalDate() != null
+                                              ? building.getApprovalDate().toString()
+                                              : null)
+                              .isViolationBuilding(building.getIsViolationBuilding())
+                              .build());
+          }
+
+          return builder.build();
+      }
+
+      /** AI 서버 호출 로직 추출 */
+      private FraudRiskCheckDto.Response callAiServer(FraudRiskCheckDto.Request aiRequest) {
+          try {
+              // HTTP 헤더 설정
+              HttpHeaders headers = new HttpHeaders();
+              headers.setContentType(MediaType.APPLICATION_JSON);
+
+              // FastAPI 서버 호출
+              String url = aiServerUrl + "/api/analyze/risk";
+              HttpEntity<FraudRiskCheckDto.Request> httpEntity = new HttpEntity<>(aiRequest, headers);
+
+              log.error(
+                      "[디버깅] AI 사기 위험도 분석 요청 - URL: {}, homeId: {}, address: {}",
+                      LogSanitizerUtil.sanitize(url),
+                      LogSanitizerUtil.sanitizeValue(aiRequest.getHomeId()),
+                      aiRequest.getAddress());
+
+              // 전체 요청 데이터 로깅
+              try {
+                  ObjectMapper mapper = new ObjectMapper();
+                  String requestJson = mapper.writeValueAsString(aiRequest);
+                  log.error("[디버깅] AI 서버 전송 데이터: {}", requestJson);
+              } catch (Exception e) {
+                  log.error("[디버깅] AI 요청 데이터 JSON 변환 실패", e);
+              }
+
+              @SuppressWarnings("rawtypes")
+              ResponseEntity<Map> response = restTemplate.postForEntity(url, httpEntity, Map.class);
+
+              log.info(
+                      "AI 위험도 분석 응답 상태: {}",
+                      LogSanitizerUtil.sanitizeValue(response.getStatusCode()));
+
+              if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                  @SuppressWarnings("unchecked")
+                  Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+                  log.info("AI 위험도 분석 전체 응답: {}", LogSanitizerUtil.sanitizeValue(responseBody));
+
+                  // 구조화된 응답인지 확인
+                  Boolean success = (Boolean) responseBody.get("success");
+                  if (success != null && success) {
+                      // data 추출
+                      @SuppressWarnings("unchecked")
+                      Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+                      if (data != null) {
+                          log.info("AI 위험도 분석 데이터: {}", LogSanitizerUtil.sanitizeValue(data));
+                          return convertToFraudRiskResponse(data);
+                      }
+                  } else {
+                      // 오류 메시지 추출
+                      String message = (String) responseBody.get("message");
+                      throw new FraudRiskException(
+                              FraudErrorCode.FRAUD_ANALYSIS_FAILED,
+                              "위험도 분석 실패: " + (message != null ? message : "알 수 없는 오류"));
+                  }
+
+                  // 직접 FraudRiskCheckDto.Response 형태로 오는 경우 (대비용)
+                  try {
+                      ObjectMapper mapper = new ObjectMapper();
+                      FraudRiskCheckDto.Response aiResponse =
+                              mapper.convertValue(responseBody, FraudRiskCheckDto.Response.class);
+                      log.info(
+                              "AI 분석 완료 - analysisId: {}, riskLevel: {}, riskScore: {}",
+                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getAnalysisId())),
+                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getRiskLevel())),
+                              LogSanitizerUtil.sanitize(String.valueOf(aiResponse.getRiskScore())));
+                      return aiResponse;
+                  } catch (Exception e) {
+                      log.warn("직접 FraudRiskCheckDto.Response 변환 실패", e);
+                      throw new FraudRiskException(FraudErrorCode.RISK_CALCULATION_ERROR);
+                  }
+              } else {
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                          "AI 서버 응답 오류: " + response.getStatusCode());
+              }
+
+          } catch (FraudRiskException e) {
+              // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
+              throw e;
+          } catch (Exception e) {
+              log.error("AI 서버 통신 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()), e);
+              throw new FraudRiskException(
+                      FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                      "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage());
+          }
+      }
+
       /** OCR 결과를 RegistryDocumentDto로 변환 */
       private RegistryDocumentDto convertToRegistryDocument(Map<String, Object> ocrResult) {
           RegistryDocumentDto.RegistryDocumentDtoBuilder builder = RegistryDocumentDto.builder();
@@ -493,21 +661,40 @@ public class AiFraudAnalyzerService {
               }
           }
 
-          // 근저당권 정보 (AI 서버는 mortgageeList로 반환하므로 첫 번째 항목 사용)
+          // 채무자 정보
           builder.debtor(getStringValue(ocrResult, "debtor", ""));
 
-          // mortgageeList에서 첫 번째 근저당권 정보 추출
+          // 근저당권자 리스트 변환
           @SuppressWarnings("unchecked")
-          List<Map<String, Object>> mortgageeList =
+          List<Map<String, Object>> mortgageeListData =
                   (List<Map<String, Object>>) ocrResult.get("mortgageeList");
-          if (mortgageeList != null && !mortgageeList.isEmpty()) {
-              Map<String, Object> firstMortgagee = mortgageeList.get(0);
-              builder.maxClaimAmount(getLongValue(firstMortgagee, "maxClaimAmount", 0L));
-              builder.mortgagee(getStringValue(firstMortgagee, "mortgagee", ""));
+          List<MortgageeDto> mortgagees = new ArrayList<>();
+
+          if (mortgageeListData != null && !mortgageeListData.isEmpty()) {
+              for (Map<String, Object> mortgageeData : mortgageeListData) {
+                  MortgageeDto mortgageeDto =
+                          MortgageeDto.builder()
+                                  .priorityNumber(getIntValue(mortgageeData, "priorityNumber", null))
+                                  .maxClaimAmount(getLongValue(mortgageeData, "maxClaimAmount", 0L))
+                                  .debtor(getStringValue(mortgageeData, "debtor", ""))
+                                  .mortgagee(getStringValue(mortgageeData, "mortgagee", ""))
+                                  .build();
+                  mortgagees.add(mortgageeDto);
+              }
+
+              // 이전 버전 호환성을 위해 첫 번째 근저당권 정보를 단일 필드에도 설정
+              if (!mortgagees.isEmpty()) {
+                  MortgageeDto firstMortgagee = mortgagees.get(0);
+                  builder.maxClaimAmount(firstMortgagee.getMaxClaimAmount());
+                  builder.mortgagee(firstMortgagee.getMortgagee());
+              }
           } else {
+              // 근저당권 정보가 없는 경우 기본값 설정
               builder.maxClaimAmount(0L);
               builder.mortgagee("");
           }
+
+          builder.mortgageeList(mortgagees);
 
           // 법적 제한사항 (AI 서버는 직접 boolean 값으로 반환)
           builder.hasSeizure(getBooleanValue(ocrResult, "hasSeizure", false));
