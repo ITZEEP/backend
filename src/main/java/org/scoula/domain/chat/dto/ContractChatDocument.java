@@ -8,19 +8,16 @@ import lombok.*;
 @Getter
 @Setter
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-public class ChatMessageDocument {
+@NoArgsConstructor
+public class ContractChatDocument {
       @Id private String id;
 
-      @Field("chatRoomId")
-      private Long chatRoomId;
+      @Field("contractChatId")
+      private String contractChatId;
 
       private Long senderId;
       private Long receiverId;
-      private Boolean isRead;
-      private String type;
       private String content;
-      private String fileUrl;
       private String sendTime;
 }

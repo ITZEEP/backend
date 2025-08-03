@@ -267,6 +267,7 @@ class OAuth2ManualServiceTest {
 
               when(jwtUtil.generateToken("test@example.com")).thenReturn(jwtAccessToken);
               when(jwtUtil.generateRefreshToken("test@example.com")).thenReturn(jwtRefreshToken);
+              when(jwtUtil.getAccessTokenExpiration()).thenReturn(86400L);
 
               // when
               Map<String, String> result = oauth2ManualService.processOAuth2Login(authorizationCode);
