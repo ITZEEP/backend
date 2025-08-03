@@ -86,23 +86,6 @@ public interface OwnerPreContractService {
       void saveContractDocument(
               Long contractChatId, Long userId, ContractDocumentDTO contractDocumentDTO);
 
-      /**
-       * 거주 정보 설정 step2에서 전/월세 조건을 분기하여 저장합니다. 내부에서 전세 or 월세 여부에 따라 분기하여 처리합니다.
-       *
-       * @param contractChatId 계약 채팅 ID
-       * @param userId 사용자 ID
-       */
-      Void updateOwnerLivingStep2(Long contractChatId, Long userId);
-
-      /**
-       * 거주 정보 설정 step2 데이터를 조회합니다. 내부에서 전세 or 월세 여부에 따라 분기하여 처리합니다.
-       *
-       * @param contractChatId 계약 채팅 ID
-       * @param userId 사용자 ID
-       * @return 전세 또는 월세 DTO (Object 타입으로 반환 후 캐스팅 필요)
-       */
-      Object selectOwnerLivingStep2(Long contractChatId, Long userId);
-
       // ===== 최종 정보 통합 =====
 
       /**
