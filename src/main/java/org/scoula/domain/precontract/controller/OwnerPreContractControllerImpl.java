@@ -27,6 +27,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       private final OwnerPreContractService ownerPreContractService;
       private final UserServiceImpl userService;
 
+      // =============== 데이터베이스 세팅 ==================
       @PostMapping("/save")
       public ResponseEntity<ApiResponse<String>> saveOwnerInfo(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -43,6 +44,8 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success("저장 완료"));
       }
 
+      // =============== 계약 정보 설정 Step1 ==================
+      // 저장
       @PatchMapping("/contract-step1")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerContractStep1(
               @PathVariable Long contractChatId,
@@ -61,6 +64,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(true));
       }
 
+      // 조회
       @GetMapping("/contract-step1")
       public ResponseEntity<ApiResponse<OwnerContractStep1DTO>> selectOwnerContractStep1(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -78,6 +82,8 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
 
+      // =============== 계약 정보 설정 Step 2 ==================
+      // 저장
       @PatchMapping("/contract-step2")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerContractStep2(
               @PathVariable Long contractChatId,
@@ -96,6 +102,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(true));
       }
 
+      // 조회
       @GetMapping("/contract-step2")
       public ResponseEntity<ApiResponse<OwnerContractStep2DTO>> selectOwnerContractStep2(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -113,6 +120,8 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
 
+      // =============== 거주 정보 설정 ==================
+      // 저장
       @PatchMapping("/living-step1")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep1(
               @PathVariable Long contractChatId,
@@ -131,6 +140,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(true));
       }
 
+      // 조회
       @GetMapping("/living-step1")
       public ResponseEntity<ApiResponse<OwnerLivingStep1DTO>> selectOwnerLivingStep1(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -148,7 +158,8 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
 
-      @ApiOperation(value = "임대인 : 계약서 특약 내용 조회", notes = "MongoDB에 저장된 계약서 특약 내용을 조회합니다.")
+      // =============== 계약서 특약 내용 ==================
+      // 조회
       @GetMapping("/contract-document")
       public ResponseEntity<ApiResponse<ContractDocumentMongoDocument>> getContractDocument(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -168,6 +179,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(document));
       }
 
+      // 저장
       @PostMapping("/save-contract")
       public ResponseEntity<ApiResponse<Boolean>> saveContractDocument(
               @PathVariable Long contractChatId,
@@ -186,6 +198,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(true));
       }
 
+      // =============== 최종 정보 확인 ==================
       @GetMapping("/summary")
       public ResponseEntity<ApiResponse<OwnerPreContractDTO>> selectOwnerContract(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -203,6 +216,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
 
+      // =============== 최종 정보 MongoDB로 저장 ==================
       @Override
       @PostMapping("/save-mongo")
       public ResponseEntity<ApiResponse<Void>> saveMongoDB(
