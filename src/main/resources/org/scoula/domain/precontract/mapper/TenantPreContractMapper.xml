@@ -22,7 +22,7 @@
     <!--=============== 사기 위험도 확인 & 기본 세팅 ==================-->
 
     <select id="selectIdentityId" resultType="Long">
-        SELECT iv.identity_id
+        SELECT DISTINCT iv.identity_id
         FROM contract_chat cc
                  INNER JOIN identity_verification iv
                             ON cc.buyer_id = iv.user_id
@@ -54,26 +54,28 @@
                  INNER JOIN risk_check rc
                             ON cc.home_id = rc.home_id
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
-#           AND DATE(rc.checked_at) = CURRENT_DATE
+           AND DATE(rc.checked_at) = CURRENT_DATE
         ORDER BY checked_at DESC
         LIMIT 1
     </select>
 
+    <!-- 기본 저장 -->
     <insert id="insertPreContractSet">
         INSERT INTO tenant_precontract_check (contract_chat_id, identity_id, riskck_id, rent_type, risk_type)
-        VALUES (#{contractChatId}, #{identityId}, #{riskId}, #{rentType}, #{riskType});
+        VALUES (#{contractChatId}, #{identityId}, #{riskId}, #{rentType}, #{riskType})
+        ON DUPLICATE KEY UPDATE contract_chat_id = contract_chat_id;
+    </insert>
 
-        <!-- 전세일 경우: JEONSE -->
-        <if test="rentType == 'JEONSE'">
-            INSERT INTO tenant_jeonse_info (tenant_precontract_check_id)
-            VALUES (#{contractChatId});
-        </if>
+    <insert id="insertJeonseInfo">
+        INSERT INTO tenant_jeonse_info (tenant_precheck_id)
+        VALUES (#{contractChatId})
+            ON DUPLICATE KEY UPDATE tenant_precheck_id = VALUES(tenant_precheck_id);
+    </insert>
 
-        <!-- 월세일 경우: WOLSE -->
-        <if test="rentType == 'WOLSE'">
-            INSERT INTO tenant_wolse_info (tenant_precontract_check_id)
-            VALUES (#{contractChatId});
-        </if>
+    <insert id="insertWolseInfo">
+        INSERT INTO tenant_wolse_info (tenant_precheck_id)
+        VALUES (#{contractChatId})
+            ON DUPLICATE KEY UPDATE tenant_precheck_id = VALUES(tenant_precheck_id);
     </insert>
 
 
@@ -82,8 +84,9 @@
     <!-- 임차인 계약 전 전세 정보 등록 -->
     <update id="updateJeonseInfo">
         UPDATE tenant_jeonse_info
-            SET jeonse_loan_plan = #{vo.jeonseLoanPlan}, jeonse_insurance_plan = #{vo.jeonseInsurancePlan})
-        WHERE tenant_precheck_id = #{contractChaId})
+        SET jeonse_loan_plan = #{vo.jeonseLoanPlan},
+            jeonse_insurance_plan = #{vo.jeonseInsurancePlan}
+        WHERE tenant_precheck_id = #{contractChatId}
     </update>
 
     <!-- 임차인 계약 전 월세 정보 등록 -->
@@ -115,6 +118,15 @@
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
     </select>
 
+<!--    <resultMap id="tenantStep1Map" type="org.scoula.domain.precontract.dto.tenant.TenantStep1DTO">-->
+<!--        <result column="loan_plan" property="loanPlan"/>-->
+<!--        <result column="insurance_plan" property="insurancePlan"/>-->
+<!--        <result column="deposit_adjustment" property="depositAdjustment"/>-->
+<!--        <result column="expected_move_in_date" property="expectedMoveInDate"/>-->
+<!--        <result column="contract_duration" property="contractDuration"/>-->
+<!--        <result column="renewal_intent" property="renewalIntent"/>-->
+<!--    </resultMap>-->
+<!--    -->
     <select id="selectStep1" resultType="org.scoula.domain.precontract.dto.tenant.TenantStep1DTO">
         select
             CASE WHEN tpc.rent_type = 'JEONSE' THEN tji.jeonse_loan_plan
@@ -129,6 +141,7 @@
                  LEFT JOIN tenant_jeonse_info tji ON tpc.contract_chat_id = tji.tenant_precheck_id
                  LEFT JOIN tenant_wolse_info twi ON tpc.contract_chat_id = twi.tenant_precheck_id
         WHERE tpc.contract_chat_id = #{contractChatId}
+        LIMIT 1
     </select>
 
     <!--=============== step 2 ==================-->
@@ -227,7 +240,7 @@
                  WHEN tpc.rent_type = 'WOLSE' THEN twi.wolse_insurance_plan
                 END AS insurance_plan,
             tpc.deposit_adjustment, tpc.expected_move_in_date, tpc.contract_duration, tpc.renewal_intent, tpc.facility_repair_needed, tpc.interior_cleaning_needed, tpc.appliance_installation_plan,
-            tpc,has_parking, tpc.parking_count, tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation,tpc.request_to_owner, tpc.checked_at
+            tpc.has_parking, tpc.parking_count, tpc.has_pet, tpc.pet_info, tpc.pet_count,tpc.indoor_smoking_plan, tpc.early_termination_risk, tpc.nonresidential_use_plan, tpc.resident_count, tpc.occupation, tpc.emergency_contact, tpc.relation,tpc.request_to_owner, tpc.checked_at
 
         FROM tenant_precontract_check tpc
                  INNER JOIN contract_chat cc ON tpc.contract_chat_id = cc.contract_chat_id

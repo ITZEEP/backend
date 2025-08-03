@@ -93,17 +93,24 @@ public class PreContractServiceImpl implements PreContractService {
                                   () -> new BusinessException(PreContractErrorCode.TENANT_SELECT));
 
           // 2. tenant_precontract_check 테이블 채우기 (나머지는 Null 값)
-          int result =
+
+          int result1 =
                   tenantMapper.insertPreContractSet(
                           contractChatId, identityId, riskId, rentType, riskType);
-          if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+          if (result1 != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+
+          int result2 = tenantMapper.insertJeonseInfo(contractChatId);
+          if (result2 != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+
+          int result3 = tenantMapper.insertWolseInfo(contractChatId);
+          if (result3 != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
 
           // 3. 다음 페이지를 위해서 전세/월세 여부, pet, parking 여부 보내기
           boolean isPet = tenantMapper.selectIsPet(userId, contractChatId);
           boolean istParkingAvailable = tenantMapper.selectIsParking(userId, contractChatId);
 
           TenantInitRespDTO dto = TenantInitRespDTO.toResp(rentType, isPet, istParkingAvailable);
-
+          System.out.println("넘어온 riskId: " + riskId); // 9가 맞는지 확인
           return dto;
       }
 
@@ -175,7 +182,8 @@ public class PreContractServiceImpl implements PreContractService {
 
           // 1. 값을 받아와서 userid 인증확인하고, 값을 dto로 받는다
           TenantStep1DTO dto = tenantMapper.selectStep1(userId, contractChatId);
-          if (dto == null) throw new BusinessException(PreContractErrorCode.TENANT_SELECT);
+          //          if (dto == null) throw new
+          // BusinessException(PreContractErrorCode.TENANT_SELECT);
 
           // 2. 값을 반환하기
           return dto;

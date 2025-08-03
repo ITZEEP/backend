@@ -44,6 +44,10 @@ public interface TenantPreContractMapper {
               @Param("rentType") String rentType,
               @Param("riskType") String riskType);
 
+      int insertJeonseInfo(@Param("contractChatId") Long contractChatId);
+
+      int insertWolseInfo(@Param("contractChatId") Long contractChatId);
+
       // =============== step 1 ==================
 
       // 전세 정보 테이블 입력
