@@ -2,11 +2,7 @@ package org.scoula.domain.fraud.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
@@ -49,7 +45,6 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       private final FraudRiskMapper fraudRiskMapper;
       private final HomeLikeMapper homeLikeMapper;
       private final S3ServiceInterface s3Service;
-      private final ObjectMapper objectMapper;
       private final AiFraudAnalyzerService aiFraudAnalyzerService;
 
       // 허용된 파일 확장자
@@ -340,7 +335,6 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           return PageResponse.of(list, pageRequest, totalElements);
       }
 
-
       @Override
       @Transactional
       public RiskAnalysisResponse analyzeQuickRisk(Long userId, QuickRiskAnalysisRequest request) {
@@ -483,6 +477,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
       /**
        * AI 분석 결과를 DetailGroup 리스트로 변환
+       *
        * @param analysisResults AI 분석 결과
        * @param recommendations 추천사항 리스트
        * @return DetailGroup 리스트
@@ -504,9 +499,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           return detailGroups;
       }
 
-      /**
-       * 분석 결과를 DetailGroup으로 변환
-       */
+      /** 분석 결과를 DetailGroup으로 변환 */
       private List<RiskCheckDetailResponse.DetailGroup> convertAnalysisResultsToGroups(
               Map<String, Object> analysisResults) {
           List<RiskCheckDetailResponse.DetailGroup> groups = new ArrayList<>();
@@ -518,23 +511,23 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               if (groupValue instanceof Map) {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> groupItems = (Map<String, Object>) groupValue;
-                  
+
                   List<RiskCheckDetailResponse.DetailItem> items = createDetailItems(groupItems);
                   if (!items.isEmpty()) {
-                      groups.add(RiskCheckDetailResponse.DetailGroup.builder()
-                              .title(title1)
-                              .items(items)
-                              .build());
+                      groups.add(
+                              RiskCheckDetailResponse.DetailGroup.builder()
+                                      .title(title1)
+                                      .items(items)
+                                      .build());
                   }
               }
           }
           return groups;
       }
 
-      /**
-       * 상세 항목 생성
-       */
-      private List<RiskCheckDetailResponse.DetailItem> createDetailItems(Map<String, Object> groupItems) {
+      /** 상세 항목 생성 */
+      private List<RiskCheckDetailResponse.DetailItem> createDetailItems(
+              Map<String, Object> groupItems) {
           List<RiskCheckDetailResponse.DetailItem> items = new ArrayList<>();
 
           for (Map.Entry<String, Object> itemEntry : groupItems.entrySet()) {
@@ -547,19 +540,19 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                   String title2 = itemDetails.getOrDefault("title", "").toString();
                   String content = itemDetails.getOrDefault("content", "").toString();
 
-                  items.add(RiskCheckDetailResponse.DetailItem.builder()
-                          .title(title2)
-                          .content(content)
-                          .build());
+                  items.add(
+                          RiskCheckDetailResponse.DetailItem.builder()
+                                  .title(title2)
+                                  .content(content)
+                                  .build());
               }
           }
           return items;
       }
 
-      /**
-       * 추천사항 그룹 생성
-       */
-      private RiskCheckDetailResponse.DetailGroup createRecommendationGroup(List<String> recommendations) {
+      /** 추천사항 그룹 생성 */
+      private RiskCheckDetailResponse.DetailGroup createRecommendationGroup(
+              List<String> recommendations) {
           String recommendationsContent = String.join("\n", recommendations);
           RiskCheckDetailResponse.DetailItem recommendItem =
                   RiskCheckDetailResponse.DetailItem.builder()
@@ -569,12 +562,13 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
           return RiskCheckDetailResponse.DetailGroup.builder()
                   .title("추천사항")
-                  .items(Arrays.asList(recommendItem))
+                  .items(Collections.singletonList(recommendItem))
                   .build();
       }
 
       /**
        * AI 분석 결과를 DB에 저장
+       *
        * @param aiResponse AI 응답
        * @param riskCheckId risk_check ID
        */
@@ -594,9 +588,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           }
       }
 
-      /**
-       * 분석 결과를 DB에 저장
-       */
+      /** 분석 결과를 DB에 저장 */
       private void saveAnalysisResults(Map<String, Object> analysisResults, Long riskCheckId) {
           for (Map.Entry<String, Object> groupEntry : analysisResults.entrySet()) {
               String title1 = groupEntry.getKey();
@@ -610,9 +602,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           }
       }
 
-      /**
-       * 그룹 항목들을 DB에 저장
-       */
+      /** 그룹 항목들을 DB에 저장 */
       private void saveGroupItems(String title1, Map<String, Object> groupItems, Long riskCheckId) {
           for (Map.Entry<String, Object> itemEntry : groupItems.entrySet()) {
               Object itemValue = itemEntry.getValue();
@@ -629,31 +619,32 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           }
       }
 
-      /**
-       * 추천사항을 DB에 저장
-       */
+      /** 추천사항을 DB에 저장 */
       private void saveRecommendations(List<String> recommendations, Long riskCheckId) {
           String content = String.join("\n", recommendations);
           saveRiskCheckDetail(riskCheckId, "추천사항", "AI 분석 기반 추천", content);
       }
 
-      /**
-       * 위험도 체크 상세 정보를 DB에 저장
-       */
-      private void saveRiskCheckDetail(Long riskCheckId, String title1, String title2, String content) {
-          RiskCheckDetailVO detail = RiskCheckDetailVO.builder()
-                  .riskckId(riskCheckId)
-                  .title1(title1)
-                  .title2(title2)
-                  .content(content)
-                  .build();
+      /** 위험도 체크 상세 정보를 DB에 저장 */
+      private void saveRiskCheckDetail(
+              Long riskCheckId, String title1, String title2, String content) {
+          RiskCheckDetailVO detail =
+                  RiskCheckDetailVO.builder()
+                          .riskckId(riskCheckId)
+                          .title1(title1)
+                          .title2(title2)
+                          .content(content)
+                          .build();
 
           try {
               fraudRiskMapper.insertRiskCheckDetail(detail);
               log.debug("상세 분석 결과 저장 성공 - title1: {}, title2: {}", title1, title2);
           } catch (Exception e) {
-              log.warn("상세 분석 결과 저장 실패 - title1: {}, title2: {}, error: {}", 
-                      title1, title2, e.getMessage());
+              log.warn(
+                      "상세 분석 결과 저장 실패 - title1: {}, title2: {}, error: {}",
+                      title1,
+                      title2,
+                      e.getMessage());
           }
       }
 
@@ -706,10 +697,11 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           log.info("오늘 분석한 위험도 체크 요약 조회 - userId: {}, homeId: {}", userId, homeId);
 
           LocalDateTime[] todayRange = getTodayDateRange();
-          
+
           // 오늘 분석한 위험도 체크 ID 조회
-          Long riskCheckId = fraudRiskMapper.selectTodayRiskCheckId(
-                  userId, homeId, todayRange[0], todayRange[1]);
+          Long riskCheckId =
+                  fraudRiskMapper.selectTodayRiskCheckId(
+                          userId, homeId, todayRange[0], todayRange[1]);
 
           if (riskCheckId == null) {
               return null; // 오늘 분석한 결과가 없는 경우
@@ -722,7 +714,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           }
 
           // 상세 분석 결과 조회 및 변환
-          List<RiskCheckSummaryResponse.DetailGroup> detailGroups = 
+          List<RiskCheckSummaryResponse.DetailGroup> detailGroups =
                   convertToSummaryDetailGroups(riskCheckId);
 
           return RiskCheckSummaryResponse.builder()
@@ -732,22 +724,16 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                   .build();
       }
 
-      /**
-       * 오늘의 시작과 끝 시간 반환
-       */
+      /** 오늘의 시작과 끝 시간 반환 */
       private LocalDateTime[] getTodayDateRange() {
           LocalDate today = LocalDate.now();
-          return new LocalDateTime[]{
-                  today.atStartOfDay(),
-                  today.atTime(23, 59, 59)
-          };
+          return new LocalDateTime[] {today.atStartOfDay(), today.atTime(23, 59, 59)};
       }
 
-      /**
-       * DB에서 조회한 상세 정보를 RiskCheckSummaryResponse.DetailGroup으로 변환
-       */
-      private List<RiskCheckSummaryResponse.DetailGroup> convertToSummaryDetailGroups(Long riskCheckId) {
-          List<RiskCheckDetailVO> details = 
+      /** DB에서 조회한 상세 정보를 RiskCheckSummaryResponse.DetailGroup으로 변환 */
+      private List<RiskCheckSummaryResponse.DetailGroup> convertToSummaryDetailGroups(
+              Long riskCheckId) {
+          List<RiskCheckDetailVO> details =
                   fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId);
 
           if (details == null || details.isEmpty()) {
@@ -755,27 +741,34 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           }
 
           // title1별로 그룹화
-          Map<String, List<RiskCheckDetailVO>> groupedDetails = details.stream()
-                  .collect(Collectors.groupingBy(
-                          RiskCheckDetailVO::getTitle1,
-                          LinkedHashMap::new,
-                          Collectors.toList()));
+          Map<String, List<RiskCheckDetailVO>> groupedDetails =
+                  details.stream()
+                          .collect(
+                                  Collectors.groupingBy(
+                                          RiskCheckDetailVO::getTitle1,
+                                          LinkedHashMap::new,
+                                          Collectors.toList()));
 
           // DetailGroup으로 변환
           return groupedDetails.entrySet().stream()
-                  .map(entry -> {
-                      List<RiskCheckSummaryResponse.DetailItem> items = entry.getValue().stream()
-                              .map(detail -> RiskCheckSummaryResponse.DetailItem.builder()
-                                      .title(detail.getTitle2())
-                                      .content(detail.getContent())
-                                      .build())
-                              .collect(Collectors.toList());
+                  .map(
+                          entry -> {
+                              List<RiskCheckSummaryResponse.DetailItem> items =
+                                      entry.getValue().stream()
+                                              .map(
+                                                      detail ->
+                                                              RiskCheckSummaryResponse.DetailItem
+                                                                      .builder()
+                                                                      .title(detail.getTitle2())
+                                                                      .content(detail.getContent())
+                                                                      .build())
+                                              .collect(Collectors.toList());
 
-                      return RiskCheckSummaryResponse.DetailGroup.builder()
-                              .title(entry.getKey())
-                              .items(items)
-                              .build();
-                  })
+                              return RiskCheckSummaryResponse.DetailGroup.builder()
+                                      .title(entry.getKey())
+                                      .items(items)
+                                      .build();
+                          })
                   .collect(Collectors.toList());
       }
 }
