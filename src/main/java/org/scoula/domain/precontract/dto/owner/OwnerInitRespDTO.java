@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@ApiModel(description = "임차인 계약전 기본 정보 반환 DTO")
+@ApiModel(description = "임대인 계약전 기본 정보 반환 DTO")
 @Data
 @Builder
 @NoArgsConstructor

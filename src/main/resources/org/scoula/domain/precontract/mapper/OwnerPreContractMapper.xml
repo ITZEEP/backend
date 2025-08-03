@@ -177,7 +177,11 @@
       has_auto_price_adjustment = #{dto.hasAutoPriceAdjustment},
       checked_at = #{dto.checkedAt}
     WHERE contract_chat_id = #{contractChatId}
-      AND identity_id = #{userId}
+      AND EXISTS (
+          SELECT 1 FROM identity_verification iv
+            WHERE iv.identity_id = owner_precontract_check.identity_id
+            AND iv.user_id = #{userId}
+          )
   </update>
 
   <!-- restore_scope 삽입 or 업데이트 -->
