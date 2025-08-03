@@ -8,8 +8,6 @@ import org.apache.ibatis.annotations.Param;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO;
-import org.scoula.domain.precontract.dto.owner.OwnerLivingStep2JeonseDTO;
-import org.scoula.domain.precontract.dto.owner.OwnerLivingStep2WolseDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerPreContractDTO;
 import org.scoula.domain.precontract.vo.*;
 
@@ -35,42 +33,45 @@ public interface OwnerPreContractMapper {
               @Param("identityId") Long identityId,
               @Param("rentType") String rentType);
 
+      // // 전세 정보 테이블 입력
+      int insertJeonseInfo(@Param("vo") OwnerJeonseInfoVO jeonseInfo);
+
+      // // 월세 정보 테이블 입력
+      int insertWolseInfo(@Param("vo") OwnerWolseInfoVO wolseInfo);
+
       // 계약 조건 설정 - step 1
       // // 조회하기
       Optional<OwnerContractStep1DTO> selectContractSub1(
-              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       // // 저장하기
       int updateContractSub1(
-          @Param("contractChatId") Long contractChatId,
-          @Param("dto") OwnerContractStep1DTO dto
-      );
+              @Param("contractChatId") Long contractChatId, @Param("dto") OwnerContractStep1DTO dto);
 
       // 계약 조건 설정 - step 2
       // 조회
       Optional<OwnerContractStep2DTO> selectContractSub2(
-              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       List<RestoreCategoryVO> selectRestoreScope(
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
+      Long selectRestoreCategoryIdByName(@Param("name") String name);
+
       // 계약 조건 저장 (DTO 사용)
       int updateContractSub2(
               @Param("dto") OwnerContractStep2DTO dto,
-              @Param("userId") Long userId,
-              @Param("contractChatId") Long contractChatId);
+              @Param("contractChatId") Long contractChatId,
+              @Param("userId") Long userId);
 
-      // restore_scope 삭제
-      int deleteRestoreScopes(@Param("ownerPrecheckId") Long ownerPrecheckId);
-
-      // restore_scope 삽입
-      int insertRestoreScope(
+      // restore_scope UPSERT
+      int upsertRestoreScope(
               @Param("ownerPrecheckId") Long ownerPrecheckId,
               @Param("restoreCategoryId") Long restoreCategoryId);
 
       // 거주 조건 설정 - step 1
       Optional<OwnerLivingStep1DTO> selectLivingSub1(
-              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       int updateLivingSub1(
               @Param("dto") OwnerLivingStep1DTO dto,
@@ -78,32 +79,32 @@ public interface OwnerPreContractMapper {
               @Param("userId") Long userId);
 
       // 거주 조건 설정 - step 2 (전/월세 기준 분기)
-      // // 전세 정보 테이블 입력
-      int insertJeonseInfo(@Param("vo") OwnerJeonseInfoVO jeonseInfo);
-
-      // // 월세 정보 테이블 입력
-      int insertWolseInfo(@Param("vo") OwnerWolseInfoVO wolseInfo);
 
       // === 전세 조건 저장 ===
       int updateLivingJeonse(
-              @Param("dto") OwnerLivingStep2JeonseDTO dto,
               @Param("contractChatId") Long contractChatId,
-              @Param("userId") Long userId);
+              @Param("userId") Long userId,
+              @Param("allowJeonseRightRegistration") Boolean allowJeonseRightRegistration);
 
       // === 월세 조건 저장 ===
       int updateLivingWolse(
-              @Param("dto") OwnerLivingStep2WolseDTO dto,
               @Param("contractChatId") Long contractChatId,
-              @Param("userId") Long userId);
+              @Param("userId") Long userId,
+              @Param("paymentDueDate") Integer paymentDueDate,
+              @Param("lateFeeInterestRate") Double lateFeeInterestRate);
 
       // === 전세 조건 조회 ===
-      Optional<OwnerLivingStep2JeonseDTO> selectLivingJeonse(
+      Optional<OwnerJeonseInfoVO> selectLivingJeonse(
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       // === 월세 조건 조회 ===
-      Optional<OwnerLivingStep2WolseDTO> selectLivingWolse(
+      Optional<OwnerWolseInfoVO> selectLivingWolse(
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       // 최종 정보 확인
-      Optional<OwnerPreContractDTO> selectSummary(@Param("contractChatId") Long contractChatId);
+      Optional<OwnerPreContractDTO> selectOwnerPreContractSummary(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
+
+      Optional<Long> selectOwnerPrecheckId(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 }
