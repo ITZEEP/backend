@@ -4,7 +4,6 @@ import java.util.Optional;
 
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.domain.precontract.dto.owner.*;
-import org.scoula.domain.precontract.exception.OwnerPreContractErrorCode;
 import org.scoula.domain.precontract.service.OwnerPreContractService;
 import org.scoula.domain.user.service.UserServiceImpl;
 import org.scoula.domain.user.vo.User;
@@ -42,20 +41,20 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success("저장 완료"));
       }
 
-      @PutMapping("/contract-step1")
+      @PatchMapping("/contract-step1")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerContractStep1(
               @PathVariable Long contractChatId,
               Authentication authentication,
               @RequestBody OwnerContractStep1DTO contractStep1DTO) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           ownerPreContractService.updateOwnerContractStep1(contractChatId, userId, contractStep1DTO);
           return ResponseEntity.ok(ApiResponse.success(true));
       }
@@ -63,34 +62,34 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       @GetMapping("/contract-step1")
       public ResponseEntity<ApiResponse<OwnerContractStep1DTO>> selectOwnerContractStep1(
               @PathVariable Long contractChatId, Authentication authentication) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           OwnerContractStep1DTO dto =
                   ownerPreContractService.selectOwnerContractStep1(contractChatId, userId);
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
 
-      @PutMapping("/contract-step2")
+      @PatchMapping("/contract-step2")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerContractStep2(
               @PathVariable Long contractChatId,
               Authentication authentication,
               @RequestBody OwnerContractStep2DTO contractStep2DTO) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           ownerPreContractService.updateOwnerContractStep2(contractChatId, userId, contractStep2DTO);
           return ResponseEntity.ok(ApiResponse.success(true));
       }
@@ -98,34 +97,34 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       @GetMapping("/contract-step2")
       public ResponseEntity<ApiResponse<OwnerContractStep2DTO>> selectOwnerContractStep2(
               @PathVariable Long contractChatId, Authentication authentication) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           OwnerContractStep2DTO dto =
                   ownerPreContractService.selectOwnerContractStep2(contractChatId, userId);
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
 
-      @PutMapping("/living-step1")
+      @PatchMapping("/living-step1")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep1(
               @PathVariable Long contractChatId,
               Authentication authentication,
               @RequestBody OwnerLivingStep1DTO livingStep1DTO) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           ownerPreContractService.updateOwnerLivingStep1(contractChatId, userId, livingStep1DTO);
           return ResponseEntity.ok(ApiResponse.success(true));
       }
@@ -133,100 +132,18 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       @GetMapping("/living-step1")
       public ResponseEntity<ApiResponse<OwnerLivingStep1DTO>> selectOwnerLivingStep1(
               @PathVariable Long contractChatId, Authentication authentication) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           OwnerLivingStep1DTO dto =
                   ownerPreContractService.selectOwnerLivingStep1(contractChatId, userId);
           return ResponseEntity.ok(ApiResponse.success(dto));
-      }
-
-      // ====== 전세 조건 저장 ======
-      @PutMapping("/living-step2/jeonse")
-      public ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep2Jeonse(
-              @PathVariable Long contractChatId,
-              Authentication authentication,
-              @RequestBody OwnerLivingStep2JeonseDTO jeonseDTO) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
-
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
-
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
-          ownerPreContractService.updateOwnerLivingStep2(contractChatId, userId);
-          return ResponseEntity.ok(ApiResponse.success(true));
-      }
-
-      // ====== 전세 조건 조회 ======
-      @GetMapping("/living-step2/jeonse")
-      public ResponseEntity<ApiResponse<OwnerLivingStep2JeonseDTO>> selectOwnerLivingStep2Jeonse(
-              @PathVariable Long contractChatId, Authentication authentication) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
-
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
-
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
-          Object dto = ownerPreContractService.selectOwnerLivingStep2(contractChatId, userId);
-          if (dto instanceof OwnerLivingStep2JeonseDTO) {
-              OwnerLivingStep2JeonseDTO jeonseDTO = (OwnerLivingStep2JeonseDTO) dto;
-              return ResponseEntity.ok(ApiResponse.success(jeonseDTO));
-          } else {
-              throw new BusinessException(OwnerPreContractErrorCode.OWNER_SELECT);
-          }
-      }
-
-      // ====== 월세 조건 저장 ======
-      @PutMapping("/living-step2/wolse")
-      public ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep2Wolse(
-              @PathVariable Long contractChatId,
-              Authentication authentication,
-              @RequestBody OwnerLivingStep2WolseDTO wolseDTO) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
-
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
-
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
-          ownerPreContractService.updateOwnerLivingStep2(contractChatId, userId);
-          return ResponseEntity.ok(ApiResponse.success(true));
-      }
-
-      // ====== 월세 조건 조회 ======
-      @GetMapping("/living-step2/wolse")
-      public ResponseEntity<ApiResponse<OwnerLivingStep2WolseDTO>> selectOwnerLivingStep2Wolse(
-              @PathVariable Long contractChatId, Authentication authentication) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
-
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
-
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
-          Object dto = ownerPreContractService.selectOwnerLivingStep2(contractChatId, userId);
-          if (dto instanceof OwnerLivingStep2WolseDTO) {
-              OwnerLivingStep2WolseDTO wolseDTO = (OwnerLivingStep2WolseDTO) dto;
-              return ResponseEntity.ok(ApiResponse.success(wolseDTO));
-          } else {
-              throw new BusinessException(OwnerPreContractErrorCode.OWNER_SELECT);
-          }
       }
 
       @PostMapping("/document")
@@ -234,15 +151,15 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
               @PathVariable Long contractChatId,
               Authentication authentication,
               @RequestBody ContractDocumentDTO contractDocumentDTO) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           ownerPreContractService.saveContractDocument(contractChatId, userId, contractDocumentDTO);
           return ResponseEntity.ok(ApiResponse.success(true));
       }
@@ -250,15 +167,15 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       @GetMapping("/summary")
       public ResponseEntity<ApiResponse<OwnerPreContractDTO>> selectOwnerContract(
               @PathVariable Long contractChatId, Authentication authentication) {
-        String currentUserEmail = authentication.getName();
-        Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-        if (currentUserOpt.isEmpty()) {
-          throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-        }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-        User currentUser = currentUserOpt.get();
-        Long userId = currentUser.getUserId();
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
           OwnerPreContractDTO dto =
                   ownerPreContractService.selectOwnerPreContract(contractChatId, userId);
           return ResponseEntity.ok(ApiResponse.success(dto));
