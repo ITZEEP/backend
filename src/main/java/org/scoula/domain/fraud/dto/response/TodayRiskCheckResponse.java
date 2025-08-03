@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 /** 오늘 분석한 사기 위험도 조회 응답 */
 @Getter
@@ -14,6 +15,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 @ApiModel(description = "오늘 분석한 사기 위험도 조회 응답")
 public class TodayRiskCheckResponse {
 

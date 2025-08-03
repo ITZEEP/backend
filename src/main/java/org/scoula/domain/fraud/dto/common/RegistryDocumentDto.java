@@ -43,17 +43,6 @@ public class RegistryDocumentDto {
       @ApiModelProperty(value = "근저당권자 리스트")
       private List<MortgageeDto> mortgageeList;
 
-      // Deprecated fields - 이전 버전 호환성을 위해 유지
-      @Deprecated
-      @ApiModelProperty(
-              value = "채권 최고액 (원) - deprecated, use mortgageeList instead",
-              example = "500000000")
-      private Long maxClaimAmount;
-
-      @Deprecated
-      @ApiModelProperty(value = "근저당권자 - deprecated, use mortgageeList instead", example = "XX은행")
-      private String mortgagee;
-
       @ApiModelProperty(value = "가압류 여부", example = "false")
       private Boolean hasSeizure;
 

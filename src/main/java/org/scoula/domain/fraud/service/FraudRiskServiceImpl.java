@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
 import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
-import org.scoula.domain.fraud.dto.request.QuickRiskAnalysisRequest;
+import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
@@ -335,7 +335,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
       @Override
       @Transactional
-      public RiskAnalysisResponse analyzeQuickRisk(Long userId, QuickRiskAnalysisRequest request) {
+      public RiskAnalysisResponse analyzeExternalRisk(
+              Long userId, ExternalRiskAnalysisRequest request) {
           log.info("서비스 외 매물 위험도 분석 시작 - userId: {}", userId);
 
           try {
@@ -344,7 +345,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               RiskType riskType = RiskType.WARN; // 기본값을 WARN으로 설정
 
               try {
-                  // AI 서버에 분석 요청 (QuickRiskAnalysisRequest 직접 전달)
+                  // AI 서버에 분석 요청 (ExternalRiskAnalysisRequest 직접 전달)
                   aiResponse = aiFraudAnalyzerService.analyzeFraudRisk(userId, request);
                   riskType = aiFraudAnalyzerService.determineRiskType(aiResponse);
 

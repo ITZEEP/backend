@@ -18,8 +18,8 @@ import lombok.*;
 @AllArgsConstructor
 @ToString
 @EqualsAndHashCode
-@ApiModel(description = "매물 정보 없는 사기 위험도 분석 요청")
-public class QuickRiskAnalysisRequest {
+@ApiModel(description = "외부 매물 사기 위험도 분석 요청")
+public class ExternalRiskAnalysisRequest {
 
       @ApiModelProperty(value = "등기부등본 정보", required = true)
       @NotNull(message = "등기부등본 정보는 필수입니다")

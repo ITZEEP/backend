@@ -3,7 +3,7 @@ package org.scoula.domain.fraud.controller;
 import java.io.IOException;
 import java.util.List;
 
-import org.scoula.domain.fraud.dto.request.QuickRiskAnalysisRequest;
+import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
@@ -156,7 +156,6 @@ public class FraudRiskControllerImpl implements FraudRiskController {
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestParam("file") MultipartFile file) {
 
-          Long userId = userDetails.getUserId();
           try {
               RegistryParseResponse response =
                       aiDocumentAnalyzerService.analyzeAndParseRegistryDocument(file);
@@ -170,9 +169,9 @@ public class FraudRiskControllerImpl implements FraudRiskController {
 
       @Override
       @PostMapping("/analyze/external")
-      public ResponseEntity<ApiResponse<RiskAnalysisResponse>> analyzeQuickRisk(
+      public ResponseEntity<ApiResponse<RiskAnalysisResponse>> analyzeExternalRisk(
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @RequestBody QuickRiskAnalysisRequest request) {
+              @RequestBody ExternalRiskAnalysisRequest request) {
 
           if (request.getRegistryDocument() == null) {
               throw new FraudRiskException(FraudErrorCode.MISSING_REQUIRED_FIELDS, "등기부등본 정보는 필수입니다");
@@ -183,7 +182,7 @@ public class FraudRiskControllerImpl implements FraudRiskController {
           }
 
           Long userId = userDetails.getUserId();
-          RiskAnalysisResponse response = fraudRiskService.analyzeQuickRisk(userId, request);
+          RiskAnalysisResponse response = fraudRiskService.analyzeExternalRisk(userId, request);
 
           return ResponseEntity.ok(ApiResponse.success(response, "사기 위험도 분석이 완료되었습니다."));
       }

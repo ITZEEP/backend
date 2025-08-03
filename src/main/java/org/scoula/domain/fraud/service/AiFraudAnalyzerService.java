@@ -12,7 +12,7 @@ import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
 import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
 import org.scoula.domain.fraud.dto.common.MortgageeDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
-import org.scoula.domain.fraud.dto.request.QuickRiskAnalysisRequest;
+import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudErrorCode;
@@ -361,15 +361,6 @@ public class AiFraudAnalyzerService {
                                       .mortgagee(mortgageeDto.getMortgagee())
                                       .build());
                   }
-              } else if (registry.getMaxClaimAmount() != null || registry.getMortgagee() != null) {
-                  // 이전 버전 호환성: 단일 근저당권 정보가 있으면 리스트에 추가
-                  mortgageeList.add(
-                          FraudRiskCheckDto.MortgageeInfo.builder()
-                                  .priorityNumber(1)
-                                  .maxClaimAmount(registry.getMaxClaimAmount())
-                                  .debtor(registry.getDebtor())
-                                  .mortgagee(registry.getMortgagee())
-                                  .build());
               }
 
               builder.registryDocument(
@@ -411,29 +402,19 @@ public class AiFraudAnalyzerService {
           return builder.build();
       }
 
-      /** QuickRiskAnalysisRequest를 처리하는 오버로드 메소드 */
+      /** ExternalRiskAnalysisRequest를 처리하는 오버로드 메소드 */
       public FraudRiskCheckDto.Response analyzeFraudRisk(
-              Long userId, QuickRiskAnalysisRequest request) {
-          // QuickRiskAnalysisRequest를 RiskAnalysisRequest로 변환
-          RiskAnalysisRequest analysisRequest =
-                  RiskAnalysisRequest.builder()
-                          .homeId(null) // 매물 ID 없음
-                          .registryDocument(request.getRegistryDocument())
-                          .buildingDocument(request.getBuildingDocument())
-                          .registryFileUrl(request.getRegistryFileUrl())
-                          .buildingFileUrl(request.getBuildingFileUrl())
-                          .build();
-
-          // 기존 analyzeFraudRisk 호출하되, QuickRiskAnalysisRequest의 정보로 보정
-          FraudRiskCheckDto.Request aiRequest = buildAiRequestForQuick(userId, request);
+              Long userId, ExternalRiskAnalysisRequest request) {
+          // ExternalRiskAnalysisRequest를 직접 AI 서버 요청 형식으로 변환
+          FraudRiskCheckDto.Request aiRequest = buildAiRequestForExternal(userId, request);
 
           // AI 서버 호출
           return callAiServer(aiRequest);
       }
 
-      /** QuickRiskAnalysisRequest를 AI 서버 요청 형식으로 변환 */
-      private FraudRiskCheckDto.Request buildAiRequestForQuick(
-              Long userId, QuickRiskAnalysisRequest request) {
+      /** ExternalRiskAnalysisRequest를 AI 서버 요청 형식으로 변환 */
+      private FraudRiskCheckDto.Request buildAiRequestForExternal(
+              Long userId, ExternalRiskAnalysisRequest request) {
           FraudRiskCheckDto.Request.RequestBuilder builder =
                   FraudRiskCheckDto.Request.builder()
                           .userId(userId)
@@ -503,15 +484,6 @@ public class AiFraudAnalyzerService {
                                       .mortgagee(mortgageeDto.getMortgagee())
                                       .build());
                   }
-              } else if (registry.getMaxClaimAmount() != null || registry.getMortgagee() != null) {
-                  // 이전 버전 호환성: 단일 근저당권 정보가 있으면 리스트에 추가
-                  mortgageeList.add(
-                          FraudRiskCheckDto.MortgageeInfo.builder()
-                                  .priorityNumber(1)
-                                  .maxClaimAmount(registry.getMaxClaimAmount())
-                                  .debtor(registry.getDebtor())
-                                  .mortgagee(registry.getMortgagee())
-                                  .build());
               }
 
               builder.registryDocument(
@@ -681,17 +653,6 @@ public class AiFraudAnalyzerService {
                                   .build();
                   mortgagees.add(mortgageeDto);
               }
-
-              // 이전 버전 호환성을 위해 첫 번째 근저당권 정보를 단일 필드에도 설정
-              if (!mortgagees.isEmpty()) {
-                  MortgageeDto firstMortgagee = mortgagees.get(0);
-                  builder.maxClaimAmount(firstMortgagee.getMaxClaimAmount());
-                  builder.mortgagee(firstMortgagee.getMortgagee());
-              }
-          } else {
-              // 근저당권 정보가 없는 경우 기본값 설정
-              builder.maxClaimAmount(0L);
-              builder.mortgagee("");
           }
 
           builder.mortgageeList(mortgagees);

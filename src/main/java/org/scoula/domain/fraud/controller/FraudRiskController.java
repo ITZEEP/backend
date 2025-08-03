@@ -2,7 +2,7 @@ package org.scoula.domain.fraud.controller;
 
 import java.util.List;
 
-import org.scoula.domain.fraud.dto.request.QuickRiskAnalysisRequest;
+import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
@@ -60,10 +60,10 @@ public interface FraudRiskController {
               value = "서비스 외 매물 사기 위험도 분석",
               notes = "우리 서비스에 등록되지 않은 외부 매물을 분석합니다. 결과는 DB에 저장되지 않습니다.")
       @PostMapping("/analyze/external")
-      ResponseEntity<ApiResponse<RiskAnalysisResponse>> analyzeQuickRisk(
+      ResponseEntity<ApiResponse<RiskAnalysisResponse>> analyzeExternalRisk(
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @ApiParam(value = "서비스 외 매물 사기 위험도 분석 요청", required = true) @RequestBody
-                      QuickRiskAnalysisRequest request);
+              @ApiParam(value = "외부 매물 사기 위험도 분석 요청", required = true) @RequestBody
+                      ExternalRiskAnalysisRequest request);
 
       @ApiOperation(value = "사기 위험도 분석 결과 상세 조회", notes = "특정 사기 위험도 분석 결과의 상세 정보를 조회합니다.")
       @GetMapping("/{riskCheckId}")

@@ -2,7 +2,7 @@ package org.scoula.domain.fraud.service;
 
 import java.util.List;
 
-import org.scoula.domain.fraud.dto.request.QuickRiskAnalysisRequest;
+import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
@@ -44,7 +44,7 @@ public interface FraudRiskService {
        * @param request 서비스 외 매물 분석 요청 정보
        * @return 위험도 분석 결과
        */
-      RiskAnalysisResponse analyzeQuickRisk(Long userId, QuickRiskAnalysisRequest request);
+      RiskAnalysisResponse analyzeExternalRisk(Long userId, ExternalRiskAnalysisRequest request);
 
       /**
        * 사용자의 위험도 체크 목록 조회
