@@ -4,16 +4,14 @@ import org.scoula.domain.precontract.dto.owner.ContractDocumentDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO;
-import org.scoula.domain.precontract.dto.owner.OwnerLivingStep2JeonseDTO;
-import org.scoula.domain.precontract.dto.owner.OwnerLivingStep2WolseDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerPreContractDTO;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import io.swagger.annotations.Api;
@@ -30,7 +28,7 @@ public interface OwnerPreContractController {
       @ApiOperation(
               value = "임대인 : 계약 정보 설정 step 1 페이지 저장",
               notes = "임대인 사전조사 계약 정보 설정 step1을 데이터베이스에 저장합니다.")
-      @PutMapping
+      @PatchMapping
       ResponseEntity<ApiResponse<Boolean>> updateOwnerContractStep1(
               @PathVariable Long contractChatId,
               Authentication authentication,
@@ -62,7 +60,7 @@ public interface OwnerPreContractController {
       @ApiOperation(
               value = "임대인 : 거주 정보 설정 step 1 페이지 저장",
               notes = "임대인 사전조사 거주 정보 설정 step 1을 데이터베이스에 저장합니다.")
-      @PutMapping
+      @PatchMapping
       ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep1(
               @PathVariable Long contractChatId,
               Authentication authentication,
@@ -73,38 +71,6 @@ public interface OwnerPreContractController {
               notes = "임대인 사전조사 거주 정보 설정 step 1을 조회합니다.")
       @GetMapping
       ResponseEntity<ApiResponse<OwnerLivingStep1DTO>> selectOwnerLivingStep1(
-              @PathVariable Long contractChatId, Authentication authentication);
-
-      @ApiOperation(
-              value = "임대인 : 거주 정보 설정 step 2 - 전세 조건 저장",
-              notes = "임대인 사전 조사 거주 정보 설정 step 2 전세를 데이터베이스에 저장합니다.")
-      @PutMapping
-      ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep2Jeonse(
-              @PathVariable Long contractChatId,
-              Authentication authentication,
-              @RequestBody OwnerLivingStep2JeonseDTO jeonseDTO);
-
-      @ApiOperation(
-              value = "임대인 : 거주 정보 설정 step 2 - 전세 조건 조회",
-              notes = "임대인 사전 조사 거주 정보 설정 step 2 전세를 조회합니다.")
-      @GetMapping
-      ResponseEntity<ApiResponse<OwnerLivingStep2JeonseDTO>> selectOwnerLivingStep2Jeonse(
-              @PathVariable Long contractChatId, Authentication authentication);
-
-      @ApiOperation(
-              value = "임대인 : 거주 정보 설정 step 2 - 월세 조건 저장",
-              notes = "임대인 사전 조사 거주 정보 설정 step 2 월세를 데이터베이스에 저장합니다.")
-      @PutMapping
-      ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep2Wolse(
-              @PathVariable Long contractChatId,
-              Authentication authentication,
-              @RequestBody OwnerLivingStep2WolseDTO wolseDTO);
-
-      @ApiOperation(
-              value = "임대인 : 거주 정보 설정 step 2 - 월세 조건 조회",
-              notes = "임대인 사전 조사 거주 정보 설정 step 2 월세를 조회합니다.")
-      @GetMapping
-      ResponseEntity<ApiResponse<OwnerLivingStep2WolseDTO>> selectOwnerLivingStep2Wolse(
               @PathVariable Long contractChatId, Authentication authentication);
 
       @ApiOperation(value = "임대인 : 계약서 특약 내용 저장", notes = "OCR로 추출된 특약 내용을 저장합니다.")

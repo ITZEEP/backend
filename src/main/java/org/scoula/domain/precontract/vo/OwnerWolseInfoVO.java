@@ -11,11 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class OwnerWolseInfoVO {
       private Long ownerWolseRentId;
-      private Long ownerPrecheckId;
-      private boolean adjustable;
-      private boolean monthlyAdjustable;
-      private Integer depositAdjustmentMin;
-      private Integer rentAdjustmentMin;
+      private Long contractChatId;
       private Integer paymentDueDate;
       private Double lateFeeInterestRate;
 }

@@ -21,12 +21,6 @@ public class OwnerPreContractDTO {
       @ApiModelProperty(value = "거주 조건 설정 - step1")
       private OwnerLivingStep1DTO livingStep1;
 
-      @ApiModelProperty(value = "거주 조건 설정 - step2 - 전세일 경우")
-      private OwnerLivingStep2JeonseDTO livingStep2Jeonse;
-
-      @ApiModelProperty(value = "거주 조건 설정 - step2 - 월세일 경우")
-      private OwnerLivingStep2WolseDTO livingStep2Wolse;
-
       @ApiModelProperty(value = "계약서 특약 내용 (OCR 기반)")
       private ContractDocumentDTO contractDocument;
 }

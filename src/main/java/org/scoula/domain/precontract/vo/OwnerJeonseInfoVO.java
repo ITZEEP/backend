@@ -11,8 +11,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class OwnerJeonseInfoVO {
       private Long ownerJeonseId;
-      private Long ownerPrecheckId;
+      private Long contractChatId;
       private Boolean allowJeonseRightRegistration;
-      private Boolean depositAdjustable;
-      private Integer depositAdjustmentMin;
 }
