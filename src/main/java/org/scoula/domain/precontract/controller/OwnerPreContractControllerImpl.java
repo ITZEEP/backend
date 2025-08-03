@@ -3,6 +3,7 @@ package org.scoula.domain.precontract.controller;
 import java.util.Optional;
 
 import org.scoula.domain.chat.exception.ChatErrorCode;
+import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.dto.owner.*;
 import org.scoula.domain.precontract.service.OwnerPreContractService;
 import org.scoula.domain.user.service.UserServiceImpl;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -144,6 +146,26 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           OwnerLivingStep1DTO dto =
                   ownerPreContractService.selectOwnerLivingStep1(contractChatId, userId);
           return ResponseEntity.ok(ApiResponse.success(dto));
+      }
+
+      @ApiOperation(value = "임대인 : 계약서 특약 내용 조회", notes = "MongoDB에 저장된 계약서 특약 내용을 조회합니다.")
+      @GetMapping("/contract-document")
+      public ResponseEntity<ApiResponse<ContractDocumentMongoDocument>> getContractDocument(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
+
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
+
+          ContractDocumentMongoDocument document =
+                  ownerPreContractService.getContractDocument(contractChatId, userId);
+
+          return ResponseEntity.ok(ApiResponse.success(document));
       }
 
       @PostMapping("/save-contract")

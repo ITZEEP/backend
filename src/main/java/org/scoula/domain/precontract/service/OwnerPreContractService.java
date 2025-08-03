@@ -1,5 +1,6 @@
 package org.scoula.domain.precontract.service;
 
+import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.dto.owner.ContractDocumentDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
@@ -84,6 +85,9 @@ public interface OwnerPreContractService {
 
       // 계약서 특약 문서 저장
       void saveContractDocument(Long contractChatId, Long userId, ContractDocumentDTO dto);
+
+      // 계약서 특약 문서 조회
+      ContractDocumentMongoDocument getContractDocument(Long contractChatId, Long userId);
 
       // ===== 최종 정보 통합 =====
 

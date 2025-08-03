@@ -1,5 +1,6 @@
 package org.scoula.domain.precontract.controller;
 
+import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.dto.owner.ContractDocumentDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
@@ -71,6 +72,11 @@ public interface OwnerPreContractController {
               notes = "임대인 사전조사 거주 정보 설정 step 1을 조회합니다.")
       @GetMapping
       ResponseEntity<ApiResponse<OwnerLivingStep1DTO>> selectOwnerLivingStep1(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "임대인 : 계약서 특약 내용 몽고DB 조회", notes = "OCR로 추출된 특약 내용을 조회합니다.")
+      @GetMapping
+      ResponseEntity<ApiResponse<ContractDocumentMongoDocument>> getContractDocument(
               @PathVariable Long contractChatId, Authentication authentication);
 
       @ApiOperation(value = "임대인 : 계약서 특약 내용 몽고DB에 저장", notes = "OCR로 추출된 특약 내용을 저장합니다.")

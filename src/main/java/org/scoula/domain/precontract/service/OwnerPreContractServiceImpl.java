@@ -230,6 +230,17 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       }
 
       @Override
+      public ContractDocumentMongoDocument getContractDocument(Long contractChatId, Long userId) {
+          ContractDocumentMongoDocument document =
+                  contractDocumentMongoRepository.findByContractChatIdAndUserId(
+                          contractChatId, userId);
+          if (document == null) {
+              throw new BusinessException(OwnerPreContractErrorCode.OWNER_SELECT);
+          }
+          return document;
+      }
+
+      @Override
       public OwnerPreContractDTO selectOwnerPreContract(Long contractChatId, Long userId) {
           validateUser(contractChatId, userId, true);
           return ownerMapper

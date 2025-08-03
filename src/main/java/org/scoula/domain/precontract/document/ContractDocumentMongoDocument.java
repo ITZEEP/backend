@@ -19,6 +19,7 @@ public class ContractDocumentMongoDocument {
       @Id private String id;
 
       private Long contractChatId;
+      private Long userId;
       private Long ownerPrecheckId;
       private List<String> specialTerms;
 
@@ -28,6 +29,7 @@ public class ContractDocumentMongoDocument {
                   .id(contractChatId + "_" + userId)
                   .contractChatId(contractChatId)
                   .ownerPrecheckId(dto.getOwnerPrecheckId())
+                  .userId(userId)
                   .specialTerms(dto.getSpecialTerms())
                   .build();
       }
