@@ -1,5 +1,7 @@
 package org.scoula.domain.precontract.dto.owner;
 
+import java.time.LocalDateTime;
+
 import javax.validation.constraints.NotNull;
 
 import org.scoula.domain.precontract.enums.ContractDuration;
@@ -29,7 +31,7 @@ public class OwnerContractStep1DTO {
       @ApiModelProperty(value = "근저당 설정 여부", required = true, example = "아니오")
       private Boolean mortgaged;
 
-      @ApiModelProperty(value = "계약 기간", required = true, example = "YEAR_2")
+      @ApiModelProperty(value = "계약 기간", required = true, example = "YEAR_1")
       @NotNull
       private ContractDuration contractDuration;
 
@@ -40,4 +42,7 @@ public class OwnerContractStep1DTO {
       @ApiModelProperty(value = "비품 수리 책임 주체", required = true, example = "OWNER")
       @NotNull
       private ResponsibilityParty responseRepairingFixtures;
+
+      @ApiModelProperty(value = "업데이트 날짜")
+      private LocalDateTime checkedAt;
 }

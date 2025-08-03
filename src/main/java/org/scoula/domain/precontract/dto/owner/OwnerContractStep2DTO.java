@@ -1,8 +1,7 @@
 package org.scoula.domain.precontract.dto.owner;
 
+import java.time.LocalDateTime;
 import java.util.List;
-
-import org.scoula.domain.precontract.vo.RestoreCategoryVO;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -26,10 +25,11 @@ public class OwnerContractStep2DTO {
       @ApiModelProperty(value = "임대인 계약 사전 조사 id (owner_precontract_check PK)", required = true)
       private Long ownerPrecheckId;
 
-      @ApiModelProperty(
-              value = "원상복구 범위 카테고리 ID 목록 또는 이름 목록",
-              example = "'['1, 2, 3']' or '['\"벽지\", \"가구\"']'")
-      private List<RestoreCategoryVO> restoreCategories;
+      @ApiModelProperty(value = "원상복구 범위 카테고리 ID", example = "[1, 2, 3]")
+      private List<Long> restoreCategoryIds;
+
+      @ApiModelProperty(value = "원상복구 범위 카테고리 이름 목록")
+      private List<String> restoreCategories;
 
       @ApiModelProperty(value = "입주 시 상태 기록 여부", required = true)
       private Boolean hasConditionLog;
@@ -45,4 +45,7 @@ public class OwnerContractStep2DTO {
 
       @ApiModelProperty(value = "전세권 설정 허용 여부 (전세일 경우에만)", required = false)
       private Boolean allowJeonseRightRegistration;
+
+      @ApiModelProperty(value = "업데이트 날짜")
+      private LocalDateTime checkedAt;
 }
