@@ -17,6 +17,11 @@ jobs:
   codeql-analysis:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['java']
 
     steps:
       - name: Checkout code
@@ -38,8 +43,8 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: java
-          queries: security-and-quality
+          languages: ${{ matrix.language }}
+          queries: security-extended
 
       - name: Build project
         run: |
@@ -48,6 +53,8 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
 
   trivy-scan:
     name: Trivy Vulnerability Scan
