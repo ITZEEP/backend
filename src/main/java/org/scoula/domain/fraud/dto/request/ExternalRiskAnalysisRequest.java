@@ -18,12 +18,18 @@ import lombok.*;
 @AllArgsConstructor
 @ToString
 @EqualsAndHashCode
-@ApiModel(description = "사기 위험도 분석 요청")
-public class RiskAnalysisRequest {
+@ApiModel(description = "외부 매물 사기 위험도 분석 요청")
+public class ExternalRiskAnalysisRequest {
 
-      @ApiModelProperty(value = "매물 ID", required = true, example = "10")
-      @NotNull(message = "매물 ID는 필수입니다")
-      private Long homeId;
+      @ApiModelProperty(value = "등기부등본 정보", required = true)
+      @NotNull(message = "등기부등본 정보는 필수입니다")
+      @Valid
+      private RegistryDocumentDto registryDocument;
+
+      @ApiModelProperty(value = "건축물대장 정보", required = true)
+      @NotNull(message = "건축물대장 정보는 필수입니다")
+      @Valid
+      private BuildingDocumentDto buildingDocument;
 
       @ApiModelProperty(value = "주소", required = true, example = "서울특별시 강남구 테헤란로 123")
       @NotBlank(message = "주소는 필수입니다")
@@ -47,16 +53,6 @@ public class RiskAnalysisRequest {
 
       @ApiModelProperty(value = "월세 (거래 유형이 WOLSE인 경우)", example = "100")
       private Long monthlyRent;
-
-      @ApiModelProperty(value = "등기부등본 정보", required = true)
-      @NotNull(message = "등기부등본 정보는 필수입니다")
-      @Valid
-      private RegistryDocumentDto registryDocument;
-
-      @ApiModelProperty(value = "건축물대장 정보", required = true)
-      @NotNull(message = "건축물대장 정보는 필수입니다")
-      @Valid
-      private BuildingDocumentDto buildingDocument;
 
       @ApiModelProperty(value = "등기부등본 파일 URL", example = "/files/registry/1234567890.pdf")
       private String registryFileUrl;
