@@ -5,14 +5,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.scoula.domain.precontract.document.OwnerMongoDocument;
 import org.scoula.domain.precontract.dto.owner.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.OwnerPreContractErrorCode;
 import org.scoula.domain.precontract.mapper.OwnerPreContractMapper;
+import org.scoula.domain.precontract.repository.OwnerMongoRepository;
 import org.scoula.domain.precontract.vo.OwnerJeonseInfoVO;
 import org.scoula.domain.precontract.vo.OwnerWolseInfoVO;
 import org.scoula.domain.precontract.vo.RestoreCategoryVO;
 import org.scoula.global.common.exception.BusinessException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,7 @@ import lombok.extern.log4j.Log4j2;
 public class OwnerPreContractServiceImpl implements OwnerPreContractService {
 
       private final OwnerPreContractMapper ownerMapper;
+      private final OwnerMongoRepository mongoRepository;
 
       @Override
       @Transactional
@@ -162,14 +166,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           RentType rentType = RentType.valueOf(dto.getRentType());
 
           // rentType에 따라 전세/월세 조건 저장
-          if (rentType == RentType.JEONSE) {
-              Boolean allow = dto.getAllowJeonseRightRegistration();
-              if (allow == null)
-                  throw new BusinessException(OwnerPreContractErrorCode.OWNER_MISSING_DATA);
-              int jeonseResult = ownerMapper.updateLivingJeonse(contractChatId, userId, allow);
-              if (jeonseResult != 1)
-                  throw new BusinessException(OwnerPreContractErrorCode.OWNER_UPDATE);
-          } else if (rentType == RentType.WOLSE) {
+          if (rentType == RentType.WOLSE) {
               Integer dueDate = dto.getPaymentDueDate();
               Double lateFee = dto.getLateFeeInterestRate();
               if (dueDate == null || lateFee == null)
@@ -201,16 +198,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
 
           RentType rentType = RentType.valueOf(dto.getRentType());
 
-          if (rentType == RentType.JEONSE) {
-              OwnerJeonseInfoVO vo =
-                      ownerMapper
-                              .selectLivingJeonse(contractChatId, userId)
-                              .orElseThrow(
-                                      () ->
-                                              new BusinessException(
-                                                      OwnerPreContractErrorCode.OWNER_SELECT));
-              dto.setAllowJeonseRightRegistration(vo.getAllowJeonseRightRegistration());
-          } else if (rentType == RentType.WOLSE) {
+          if (rentType == RentType.WOLSE) {
               OwnerWolseInfoVO vo =
                       ownerMapper
                               .selectLivingWolse(contractChatId, userId)
@@ -250,5 +238,63 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           if (!contractOwnerId.equals(userId)) {
               throw new BusinessException(OwnerPreContractErrorCode.OWNER_USER);
           }
+      }
+
+      @Override
+      public Void saveMongoDB(Long contractChatId, Long userId) {
+          // 0. UserId 검증
+          ownerMapper
+                  .selectContractOwnerId(contractChatId)
+                  .filter(ownerId -> ownerId.equals(userId))
+                  .orElseThrow(() -> new BusinessException(OwnerPreContractErrorCode.OWNER_USER));
+
+          // 1. Mongo 저장용 DTO 조회
+          OwnerPreContractMongoDTO dto = ownerMapper.selectMongo(contractChatId, userId);
+          if (dto == null) {
+              throw new BusinessException(OwnerPreContractErrorCode.OWNER_SELECT);
+          }
+
+          dto.setContractStep1(
+                  OwnerContractStep1DTO.builder()
+                          .mortgaged(dto.getMortgaged())
+                          .contractDuration(dto.getContractDuration())
+                          .renewalIntent(dto.getRenewalIntent())
+                          .responseRepairingFixtures(dto.getResponseRepairingFixtures())
+                          .build());
+
+          dto.setContractStep2(
+                  OwnerContractStep2DTO.builder()
+                          .hasConditionLog(dto.getHasConditionLog())
+                          .hasPenalty(dto.getHasPenalty())
+                          .hasPriorityForExtension(dto.getHasPriorityForExtension())
+                          .hasAutoPriceAdjustment(dto.getHasAutoPriceAdjustment())
+                          .allowJeonseRightRegistration(dto.getAllowJeonseRightRegistration())
+                          .build());
+
+          dto.setLivingStep1(
+                  OwnerLivingStep1DTO.builder()
+                          .requireRentGuaranteeInsurance(dto.getRequireRentGuaranteeInsurance())
+                          .insuranceBurden(dto.getInsuranceBurden())
+                          .hasNotice(dto.getHasNotice())
+                          .ownerBankName(dto.getOwnerBankName())
+                          .ownerBankAccountNumber(dto.getOwnerBankAccountNumber())
+                          .paymentDueDate(dto.getPaymentDueDate())
+                          .lateFeeInterestRate(dto.getLateFeeInterestRate())
+                          .build());
+
+          // 2. DTO → Document 변환 후 MongoDB 저장
+          try {
+              OwnerMongoDocument document = OwnerMongoDocument.from(dto);
+              log.info("📦 변환된 document: {}", document); // 1. DTO → Document 변환 확인
+
+              OwnerMongoDocument result = mongoRepository.insert(document);
+              log.info("✅ Mongo 저장 결과: {}", result); // 2. Mongo 저장 결과 확인
+
+          } catch (DataAccessException e) {
+              log.error("❌ Mongo 저장 실패", e); // 3. 예외 로그 찍기
+              throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT, e);
+          }
+
+          return null;
       }
 }

@@ -180,4 +180,22 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
                   ownerPreContractService.selectOwnerPreContract(contractChatId, userId);
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
+
+      @Override
+      @PostMapping("/save-mongo")
+      public ResponseEntity<ApiResponse<Void>> saveMongoDB(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
+
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
+
+          ownerPreContractService.saveMongoDB(contractChatId, userId);
+          return ResponseEntity.ok(ApiResponse.success(null));
+      }
 }

@@ -96,4 +96,12 @@ public interface OwnerPreContractService {
        * @return 통합된 계약 정보 DTO
        */
       OwnerPreContractDTO selectOwnerPreContract(Long contractChatId, Long userId);
+
+      /**
+       * 임대인 계약 전 최종본 mongoDB에 저장
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       */
+      Void saveMongoDB(Long contractChatId, Long userId);
 }

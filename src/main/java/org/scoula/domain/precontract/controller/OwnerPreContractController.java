@@ -84,4 +84,9 @@ public interface OwnerPreContractController {
       @GetMapping
       ResponseEntity<ApiResponse<OwnerPreContractDTO>> selectOwnerContract(
               @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "임대인 : 최종 데이터 몽고DB에 저장", notes = "임대인의 계약전 작성 사항을 AI로 보내기 위해 몽고DB에 저장한다.")
+      @PostMapping
+      ResponseEntity<ApiResponse<Void>> saveMongoDB(
+              @PathVariable Long contractChatId, Authentication authentication);
 }

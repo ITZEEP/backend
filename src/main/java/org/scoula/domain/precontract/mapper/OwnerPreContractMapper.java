@@ -9,6 +9,7 @@ import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerPreContractDTO;
+import org.scoula.domain.precontract.dto.owner.OwnerPreContractMongoDTO;
 import org.scoula.domain.precontract.vo.*;
 
 @Mapper
@@ -106,5 +107,10 @@ public interface OwnerPreContractMapper {
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       Optional<Long> selectOwnerPrecheckId(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
+
+      // 최종 정보 MongoDB에 저장
+      // 몽고 DB에 데이터 넘기기
+      OwnerPreContractMongoDTO selectMongo(
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 }

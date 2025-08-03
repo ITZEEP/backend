@@ -39,10 +39,6 @@ public class OwnerLivingStep1DTO {
       @ApiModelProperty(value = "전세 여부 (rentType)", required = true, example = "JEONSE or WOLSE")
       private String rentType;
 
-      // === 전세용 ===
-      @ApiModelProperty(value = "전세권 설정 허용 여부 (전세 전용)")
-      private Boolean allowJeonseRightRegistration;
-
       // === 월세용 ===
       @ApiModelProperty(value = "납부 예정일 (월세 전용)")
       private Integer paymentDueDate;

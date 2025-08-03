@@ -47,9 +47,6 @@
       <result property="ownerBankName" column="owner_bank_name"/>
       <result property="ownerBankAccountNumber" column="owner_account_number"/>
 
-      <!-- 전세 전용 -->
-      <result property="allowJeonseRightRegistration" column="allow_jeonse_right_registration"/>
-
       <!-- 월세 전용 -->
       <result property="paymentDueDate" column="payment_due_day"/>
       <result property="lateFeeInterestRate" column="late_fee_interest_rate"/>
@@ -316,6 +313,40 @@
            JOIN identity_verification iv ON opc.identity_id = iv.identity_id
            LEFT JOIN owner_jeonse_info oji ON opc.contract_chat_id = oji.contract_chat_id
            LEFT JOIN owner_wolse_info owi ON opc.contract_chat_id = owi.contract_chat_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND iv.user_id = #{userId}
+  </select>
+
+  <!-- 최종 정보 MongoDB로 저장 -->
+  <select id="selectMongo" resultType="org.scoula.domain.precontract.dto.owner.OwnerPreContractMongoDTO">
+    SELECT
+      opc.contract_chat_id AS contractChatId,
+      opc.identity_id AS identityId,
+      iv.user_id AS userId,
+      opc.rent_type AS rentType,
+
+      -- 계약 step1
+      opc.is_mortgaged AS isMortgaged,
+      opc.contract_duration AS contractDuration,
+      opc.renewal_intent AS renewalIntent,
+      opc.response_repairing_fixtures AS responseRepairingFixtures,
+
+      -- 계약 step2
+      opc.has_condition_log AS hasConditionLog,
+      opc.has_penalty AS hasPenalty,
+      opc.has_priority_for_extension AS hasPriorityForExtension,
+      opc.has_auto_price_adjustment AS hasAutoPriceAdjustment,
+      opc.require_rent_guarantee_insurance AS requireRentGuaranteeInsurance,
+      oj.allow_jeonse_right_registration AS allowJeonseRightRegistration,
+
+      -- 거주 step1 (월세)
+      ow.payment_due_day AS paymentDueDate,
+      ow.late_fee_interest_rate AS lateFeeInterestRate
+
+    FROM owner_precontract_check opc
+           JOIN identity_verification iv ON opc.identity_id = iv.identity_id
+           LEFT JOIN owner_jeonse_info oj ON opc.contract_chat_id = oj.contract_chat_id
+           LEFT JOIN owner_wolse_info ow ON opc.contract_chat_id = ow.contract_chat_id
     WHERE opc.contract_chat_id = #{contractChatId}
       AND iv.user_id = #{userId}
   </select>
