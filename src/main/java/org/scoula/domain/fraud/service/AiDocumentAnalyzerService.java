@@ -60,8 +60,14 @@ public class AiDocumentAnalyzerService {
                       FraudErrorCode.DOCUMENT_PROCESSING_FAILED, "AI 서버로부터 파싱된 데이터를 받지 못했습니다");
           }
 
-          // parsedData는 Object 타입이므로 Map으로 캐스팅
-          Map<String, Object> parsedData = (Map<String, Object>) data.getParsedData();
+          // parsedData 타입 안전 검증 후 변환
+          Object parsedDataObj = data.getParsedData();
+          if (!(parsedDataObj instanceof Map)) {
+              throw new FraudRiskException(
+                      FraudErrorCode.DOCUMENT_PROCESSING_FAILED, "파싱된 데이터 형식이 올바르지 않습니다");
+          }
+          @SuppressWarnings("unchecked")
+          Map<String, Object> parsedData = (Map<String, Object>) parsedDataObj;
 
           // 응답 DTO 생성
           ParsedRegistryDataDto parsedDataDto = createParsedDataDto(parsedData);
@@ -83,41 +89,7 @@ public class AiDocumentAnalyzerService {
                       FraudErrorCode.DOCUMENT_PROCESSING_FAILED, "파싱된 데이터가 null입니다");
           }
 
-          // 근저당권자 리스트 변환
-          List<Map<String, Object>> mortgageeListData =
-                  (List<Map<String, Object>>) parsedData.get("mortgageeList");
-          List<MortgageeDto> mortgageeList = new ArrayList<>();
-
-          if (mortgageeListData != null) {
-              for (Map<String, Object> mortgageeData : mortgageeListData) {
-                  if (mortgageeData == null) {
-                      continue;
-                  }
-
-                  // null 체크와 안전한 타입 변환
-                  Integer priorityNumber = null;
-                  Long maxClaimAmount = null;
-
-                  Object priorityNumberObj = mortgageeData.get("priorityNumber");
-                  if (priorityNumberObj instanceof Number) {
-                      priorityNumber = ((Number) priorityNumberObj).intValue();
-                  }
-
-                  Object maxClaimAmountObj = mortgageeData.get("maxClaimAmount");
-                  if (maxClaimAmountObj instanceof Number) {
-                      maxClaimAmount = ((Number) maxClaimAmountObj).longValue();
-                  }
-
-                  MortgageeDto mortgagee =
-                          MortgageeDto.builder()
-                                  .priorityNumber(priorityNumber)
-                                  .maxClaimAmount(maxClaimAmount)
-                                  .debtor((String) mortgageeData.get("debtor"))
-                                  .mortgagee((String) mortgageeData.get("mortgagee"))
-                                  .build();
-                  mortgageeList.add(mortgagee);
-              }
-          }
+          List<MortgageeDto> mortgageeList = extractMortgageeList(parsedData);
 
           // Boolean 값 안전하게 처리
           Boolean hasSeizure = getBooleanValue(parsedData.get("hasSeizure"));
@@ -250,5 +222,40 @@ public class AiDocumentAnalyzerService {
                       "AI 서버 통신 중 오류가 발생했습니다: " + e.getMessage(),
                       e);
           }
+      }
+
+      private List<MortgageeDto> extractMortgageeList(Map<String, Object> parsedData) {
+          Object mortgageeListObj = parsedData.get("mortgageeList");
+          if (!(mortgageeListObj instanceof List)) {
+              return new ArrayList<>();
+          }
+
+          @SuppressWarnings("unchecked")
+          List<Map<String, Object>> mortgageeListData = (List<Map<String, Object>>) mortgageeListObj;
+          List<MortgageeDto> mortgageeList = new ArrayList<>();
+
+          for (Map<String, Object> mortgageeData : mortgageeListData) {
+              if (mortgageeData != null) {
+                  mortgageeList.add(createMortgageeDto(mortgageeData));
+              }
+          }
+          return mortgageeList;
+      }
+
+      private MortgageeDto createMortgageeDto(Map<String, Object> mortgageeData) {
+          return MortgageeDto.builder()
+                  .priorityNumber(extractIntegerValue(mortgageeData.get("priorityNumber")))
+                  .maxClaimAmount(extractLongValue(mortgageeData.get("maxClaimAmount")))
+                  .debtor((String) mortgageeData.get("debtor"))
+                  .mortgagee((String) mortgageeData.get("mortgagee"))
+                  .build();
+      }
+
+      private Integer extractIntegerValue(Object value) {
+          return (value instanceof Number) ? ((Number) value).intValue() : null;
+      }
+
+      private Long extractLongValue(Object value) {
+          return (value instanceof Number) ? ((Number) value).longValue() : null;
       }
 }

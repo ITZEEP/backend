@@ -326,7 +326,7 @@ public class AiFraudAnalyzerService {
                   request.getAddress() != null
                           ? request.getAddress()
                           : (address != null ? address : "");
-          log.error(
+          log.debug(
                   "[디버깅] 주소 결정 로직 - request.address: {}, registry.roadAddress: {}, final.address: {}",
                   request.getAddress(),
                   address,
@@ -470,7 +470,7 @@ public class AiFraudAnalyzerService {
           }
 
           // AI 서버가 요구하는 추가 필드들 설정
-          log.error(
+          log.debug(
                   "[디버깅] 서비스 외 매물 주소 결정 - request.address: {}, registry.address: {}, final.address:"
                           + " {}",
                   request.getAddress(),
@@ -564,7 +564,7 @@ public class AiFraudAnalyzerService {
               String url = aiServerUrl + "/api/analyze/risk";
               HttpEntity<FraudRiskCheckDto.Request> httpEntity = new HttpEntity<>(aiRequest, headers);
 
-              log.error(
+              log.debug(
                       "[디버깅] AI 사기 위험도 분석 요청 - URL: {}, homeId: {}, address: {}",
                       LogSanitizerUtil.sanitize(url),
                       LogSanitizerUtil.sanitizeValue(aiRequest.getHomeId()),
@@ -574,9 +574,9 @@ public class AiFraudAnalyzerService {
               try {
                   ObjectMapper mapper = new ObjectMapper();
                   String requestJson = mapper.writeValueAsString(aiRequest);
-                  log.error("[디버깅] AI 서버 전송 데이터: {}", requestJson);
+                  log.debug("[디버깅] AI 서버 전송 데이터: {}", requestJson);
               } catch (Exception e) {
-                  log.error("[디버깅] AI 요청 데이터 JSON 변환 실패", e);
+                  log.error("AI 요청 데이터 JSON 변환 실패", e);
               }
 
               @SuppressWarnings("rawtypes")
