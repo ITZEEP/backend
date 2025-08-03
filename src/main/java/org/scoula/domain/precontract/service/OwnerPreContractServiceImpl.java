@@ -5,11 +5,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.document.OwnerMongoDocument;
 import org.scoula.domain.precontract.dto.owner.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.OwnerPreContractErrorCode;
 import org.scoula.domain.precontract.mapper.OwnerPreContractMapper;
+import org.scoula.domain.precontract.repository.ContractDocumentMongoRepository;
 import org.scoula.domain.precontract.repository.OwnerMongoRepository;
 import org.scoula.domain.precontract.vo.OwnerJeonseInfoVO;
 import org.scoula.domain.precontract.vo.OwnerWolseInfoVO;
@@ -29,6 +31,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
 
       private final OwnerPreContractMapper ownerMapper;
       private final OwnerMongoRepository mongoRepository;
+      private final ContractDocumentMongoRepository contractDocumentMongoRepository;
 
       @Override
       @Transactional
@@ -214,8 +217,17 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       }
 
       @Override
-      public void saveContractDocument(
-              Long contractChatId, Long userId, ContractDocumentDTO contractDocumentDTO) {}
+      public void saveContractDocument(Long contractChatId, Long userId, ContractDocumentDTO dto) {
+          try {
+              ContractDocumentMongoDocument document =
+                      ContractDocumentMongoDocument.from(contractChatId, userId, dto);
+              ContractDocumentMongoDocument result = contractDocumentMongoRepository.save(document);
+              log.info("✅ 특약 문서 Mongo 저장 완료: {}", result);
+          } catch (DataAccessException e) {
+              log.error("❌ Mongo 저장 실패", e);
+              throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT, e);
+          }
+      }
 
       @Override
       public OwnerPreContractDTO selectOwnerPreContract(Long contractChatId, Long userId) {

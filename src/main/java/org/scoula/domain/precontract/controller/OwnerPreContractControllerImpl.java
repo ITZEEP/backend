@@ -146,7 +146,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
           return ResponseEntity.ok(ApiResponse.success(dto));
       }
 
-      @PostMapping("/document")
+      @PostMapping("/save-contract")
       public ResponseEntity<ApiResponse<Boolean>> saveContractDocument(
               @PathVariable Long contractChatId,
               Authentication authentication,

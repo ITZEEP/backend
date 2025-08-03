@@ -83,8 +83,7 @@ public interface OwnerPreContractService {
       // ===== 거주 정보 설정 step2 전세/월세 분기 저장 메서드 =====
 
       // 계약서 특약 문서 저장
-      void saveContractDocument(
-              Long contractChatId, Long userId, ContractDocumentDTO contractDocumentDTO);
+      void saveContractDocument(Long contractChatId, Long userId, ContractDocumentDTO dto);
 
       // ===== 최종 정보 통합 =====
 

@@ -73,7 +73,7 @@ public interface OwnerPreContractController {
       ResponseEntity<ApiResponse<OwnerLivingStep1DTO>> selectOwnerLivingStep1(
               @PathVariable Long contractChatId, Authentication authentication);
 
-      @ApiOperation(value = "임대인 : 계약서 특약 내용 저장", notes = "OCR로 추출된 특약 내용을 저장합니다.")
+      @ApiOperation(value = "임대인 : 계약서 특약 내용 몽고DB에 저장", notes = "OCR로 추출된 특약 내용을 저장합니다.")
       @PostMapping
       ResponseEntity<ApiResponse<Boolean>> saveContractDocument(
               @PathVariable Long contractChatId,
