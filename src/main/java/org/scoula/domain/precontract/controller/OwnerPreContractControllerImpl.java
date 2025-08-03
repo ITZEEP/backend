@@ -28,6 +28,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       private final UserServiceImpl userService;
 
       // =============== 데이터베이스 세팅 ==================
+      @Override
       @PostMapping("/save")
       public ResponseEntity<ApiResponse<String>> saveOwnerInfo(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -46,6 +47,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
 
       // =============== 계약 정보 설정 Step1 ==================
       // 저장
+      @Override
       @PatchMapping("/contract-step1")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerContractStep1(
               @PathVariable Long contractChatId,
@@ -65,6 +67,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       }
 
       // 조회
+      @Override
       @GetMapping("/contract-step1")
       public ResponseEntity<ApiResponse<OwnerContractStep1DTO>> selectOwnerContractStep1(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -84,6 +87,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
 
       // =============== 계약 정보 설정 Step 2 ==================
       // 저장
+      @Override
       @PatchMapping("/contract-step2")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerContractStep2(
               @PathVariable Long contractChatId,
@@ -103,6 +107,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       }
 
       // 조회
+      @Override
       @GetMapping("/contract-step2")
       public ResponseEntity<ApiResponse<OwnerContractStep2DTO>> selectOwnerContractStep2(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -122,6 +127,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
 
       // =============== 거주 정보 설정 ==================
       // 저장
+      @Override
       @PatchMapping("/living-step1")
       public ResponseEntity<ApiResponse<Boolean>> updateOwnerLivingStep1(
               @PathVariable Long contractChatId,
@@ -141,6 +147,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       }
 
       // 조회
+      @Override
       @GetMapping("/living-step1")
       public ResponseEntity<ApiResponse<OwnerLivingStep1DTO>> selectOwnerLivingStep1(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -160,6 +167,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
 
       // =============== 계약서 특약 내용 ==================
       // 조회
+      @Override
       @GetMapping("/contract-document")
       public ResponseEntity<ApiResponse<ContractDocumentMongoDocument>> getContractDocument(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -180,6 +188,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       }
 
       // 저장
+      @Override
       @PostMapping("/save-contract")
       public ResponseEntity<ApiResponse<Boolean>> saveContractDocument(
               @PathVariable Long contractChatId,
@@ -199,6 +208,7 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
       }
 
       // =============== 최종 정보 확인 ==================
+      @Override
       @GetMapping("/summary")
       public ResponseEntity<ApiResponse<OwnerPreContractDTO>> selectOwnerContract(
               @PathVariable Long contractChatId, Authentication authentication) {
