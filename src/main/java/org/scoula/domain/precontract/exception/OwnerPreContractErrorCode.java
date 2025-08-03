@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum OwnerPreContractErrorCode implements IErrorCode {
+
       // 계약 흐름에서 예외
       OWNER_RESPONSE("OWNER_001", HttpStatus.BAD_REQUEST, "임대인 응답 처리 중 오류가 발생했습니다."),
 
@@ -25,7 +26,15 @@ public enum OwnerPreContractErrorCode implements IErrorCode {
       OWNER_INSERT("OWNER_005", HttpStatus.INTERNAL_SERVER_ERROR, "임대인 정보 저장에 실패했습니다."),
 
       // 사용자 검증 실패
-      OWNER_USER("OWNER_006", HttpStatus.FORBIDDEN, "임대인 사용자 정보가 일치하지 않습니다.");
+      OWNER_USER("OWNER_006", HttpStatus.FORBIDDEN, "임대인 사용자 정보가 일치하지 않습니다."),
+
+      // 복구 범위 카테고리 오류
+      INVALID_RESTORE_CATEGORY("OWNER_007", HttpStatus.BAD_REQUEST, "유효하지 않은 복구 범위 카테고리입니다."),
+
+      OWNER_MISSING_DATA("OWNER_008", HttpStatus.BAD_REQUEST, "임대인 필수 데이터가 누락되었습니다."),
+
+      // rentType 누락
+      RENT_TYPE_MISSING("OWNER_009", HttpStatus.BAD_REQUEST, "임대인의 임대 유형(rentType)이 누락되었습니다.");
 
       private final String code;
       private final HttpStatus httpStatus;
