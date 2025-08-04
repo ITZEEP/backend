@@ -22,7 +22,7 @@ public interface OwnerPreContractMapper {
       Optional<Long> selectOwnerIdFromContractChat(@Param("contractChatId") Long contractChatId);
 
       // // identity_verification에서 identity_id 가져오기
-      Optional<Long> selectIdentityId(@Param("userId") Long userId);
+      Optional<Long> selectIdentityId(@Param("contractChatId") Long contractChatId);
 
       // // rent_type (전/월세) 조회
       Optional<String> selectRentType(
@@ -47,7 +47,9 @@ public interface OwnerPreContractMapper {
 
       // // 저장하기
       int updateContractSub1(
-              @Param("contractChatId") Long contractChatId, @Param("dto") OwnerContractStep1DTO dto);
+              @Param("contractChatId") Long contractChatId,
+              @Param("userId") Long userId,
+              @Param("dto") OwnerContractStep1DTO dto);
 
       // 계약 조건 설정 - step 2
       // 조회

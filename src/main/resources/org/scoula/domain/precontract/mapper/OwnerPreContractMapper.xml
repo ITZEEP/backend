@@ -15,11 +15,6 @@
     <collection property="restoreCategories" resultMap="restoreCategoryMap"/>
   </resultMap>
 
-  <resultMap id="restoreCategoryMap" type="org.scoula.domain.precontract.vo.RestoreCategoryVO">
-    <id property="restoreCategoryId" column="restore_category_id"/>
-    <result property="restoreCategoryName" column="restore_category_name"/>
-  </resultMap>
-
   <!-- 임대인 계약 사전 조사 최종 확인 -->
   <resultMap id="ownerPreContractSummaryResultMap" type="org.scoula.domain.precontract.dto.owner.OwnerPreContractDTO">
 
@@ -33,9 +28,14 @@
     </association>
 
     <!-- 계약 조건 Step 2 -->
-    <association property="contractStep2"
-      javaType="org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO"
-      resultMap="selectContractSub2" />
+    <association property="contractStep2" javaType="org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO">
+      <result property="hasConditionLog" column="has_condition_log"/>
+      <result property="hasPenalty" column="has_penalty"/>
+      <result property="hasPriorityForExtension" column="has_priority_for_extension"/>
+      <result property="hasAutoPriceAdjustment" column="has_auto_price_adjustment"/>
+      <result property="allowJeonseRightRegistration" column="allow_jeonse_right_registration"/>
+      <collection property="restoreCategories" resultMap="restoreCategoryMap"/>
+    </association>
 
     <!-- 거주 조건 Step 1 (공통 + 전세/월세) -->
     <association property="livingStep1" javaType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO">
@@ -54,7 +54,13 @@
 
   </resultMap>
 
-<!-- userId 확인 -->
+  <resultMap id="restoreCategoryMap" type="org.scoula.domain.precontract.vo.RestoreCategoryVO">
+    <id property="restoreCategoryId" column="restore_category_id"/>
+    <result property="restoreCategoryName" column="restore_category_name"/>
+  </resultMap>
+
+
+  <!-- userId 확인 -->
   <select id="selectOwnerIdFromContractChat" resultType="Long">
     SELECT owner_id
     FROM contract_chat
@@ -72,11 +78,10 @@
   <!-- 기본 세팅 -->
   <!-- identity_verification 테이블에서 identity_id 가져오기 -->
   <select id="selectIdentityId" resultType="Long">
-    SELECT identity_id
+    SELECT iv.identity_id
     FROM contract_chat cc
-    INNER JOIN identity_verification iv
-    ON cc.owner_id = iv.user_id
-    WHERE cc.owner_id = #{userId}
+           INNER JOIN identity_verification iv ON cc.owner_id = iv.user_id
+    WHERE cc.contract_chat_id = #{contractChatId}
   </select>
 
   <!-- rent_type (전/월세) 조회 -->
@@ -139,6 +144,11 @@
       response_repairing_fixtures = #{dto.responseRepairingFixtures},
       checked_at = #{dto.checkedAt}
     WHERE contract_chat_id = #{contractChatId}
+      AND EXISTS (
+          SELECT 1 FROM identity_verification iv
+            WHERE iv.identity_id = owner_precontract_check.identity_id
+              AND iv.user_id = #{userId}
+          )
   </update>
 
   <!-- 계약 정보 설정 Step 2 -->
@@ -151,6 +161,7 @@
       opc.has_auto_price_adjustment,
       opc.checked_at,
       oji.allow_jeonse_right_registration,
+      rc.restore_category_id,
       rc.restore_category_name
     FROM owner_precontract_check opc
            JOIN identity_verification iv ON opc.identity_id = iv.identity_id
@@ -236,6 +247,11 @@
       owner_bank_name = #{dto.ownerBankName},
       owner_account_number = #{dto.ownerBankAccountNumber}
     WHERE contract_chat_id = #{contractChatId}
+      AND EXISTS (
+      SELECT 1 FROM identity_verification iv
+      WHERE iv.identity_id = owner_precontract_check.identity_id
+        AND iv.user_id = #{userId}
+    )
   </update>
 
   <!-- 전세 조건 조회 -->
@@ -298,6 +314,14 @@
       opc.response_repairing_fixtures,
       opc.checked_at AS contract_checked_at,
 
+      -- 계약 조건 Step 2
+      opc.has_condition_log,
+      opc.has_penalty,
+      opc.has_priority_for_extension,
+      opc.has_auto_price_adjustment,
+      opc.require_rent_guarantee_insurance,
+      oji.allow_jeonse_right_registration,
+
       -- 거주 조건 Step 1 (공통)
       opc.require_rent_guarantee_insurance,
       opc.insurance_burden,
@@ -305,9 +329,6 @@
       opc.owner_bank_name,
       opc.owner_account_number,
       opc.checked_at AS living_checked_at,
-
-      -- 거주 조건 Step 1 (전세)
-      oji.allow_jeonse_right_registration,
 
       -- 거주 조건 Step 1 (월세)
       owi.payment_due_day,

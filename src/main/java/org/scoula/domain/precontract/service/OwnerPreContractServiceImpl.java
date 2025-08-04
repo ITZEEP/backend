@@ -42,7 +42,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           // 2. Identity ID 조회
           Long identityId =
                   ownerMapper
-                          .selectIdentityId(ownerId)
+                          .selectIdentityId(contractChatId)
                           .orElseThrow(
                                   () ->
                                           new BusinessException(
@@ -84,7 +84,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           validateUser(contractChatId, userId, true);
 
           contractStep1DTO.setCheckedAt(LocalDateTime.now());
-          int result = ownerMapper.updateContractSub1(contractChatId, contractStep1DTO);
+          int result = ownerMapper.updateContractSub1(contractChatId, userId, contractStep1DTO);
           if (result != 1) throw new BusinessException(OwnerPreContractErrorCode.OWNER_UPDATE);
           return null;
       }
