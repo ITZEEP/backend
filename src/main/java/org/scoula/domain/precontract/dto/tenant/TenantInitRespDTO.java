@@ -15,8 +15,13 @@ public class TenantInitRespDTO {
 
       private String rentType;
       private boolean hasPet;
+      private boolean hasParking;
 
-      public static TenantInitRespDTO toResp(String rentType, boolean hasPet) {
-          return TenantInitRespDTO.builder().rentType(rentType).hasPet(hasPet).build();
+      public static TenantInitRespDTO toResp(String rentType, boolean hasPet, boolean hasParking) {
+          return TenantInitRespDTO.builder()
+                  .rentType(rentType)
+                  .hasPet(hasPet)
+                  .hasParking(hasParking)
+                  .build();
       }
 }

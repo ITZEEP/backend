@@ -28,6 +28,12 @@ public class TenantStep2DTO {
               allowableValues = "true,false")
       private Boolean applianceInstallationPlan;
 
+      @ApiModelProperty(value = "주차 필요 여부", example = "false", allowableValues = "true,false")
+      private Boolean hasParking;
+
+      @ApiModelProperty(value = "주차 필요 대수", example = "1")
+      private int parkingCount;
+
       @ApiModelProperty(value = "반려동물 여부", example = "true", allowableValues = "true,false")
       private Boolean hasPet;
 

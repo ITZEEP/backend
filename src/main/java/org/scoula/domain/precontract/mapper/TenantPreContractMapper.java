@@ -44,13 +44,19 @@ public interface TenantPreContractMapper {
               @Param("rentType") String rentType,
               @Param("riskType") String riskType);
 
+      int insertJeonseInfo(@Param("contractChatId") Long contractChatId);
+
+      int insertWolseInfo(@Param("contractChatId") Long contractChatId);
+
       // =============== step 1 ==================
 
       // 전세 정보 테이블 입력
-      int insertJeonseInfo(@Param("vo") TenantJeonseInfoVO jeonseInfo);
+      int updateJeonseInfo(
+              @Param("vo") TenantJeonseInfoVO vo, @Param("contractChatId") Long contractChatId);
 
       // 월세 정보 테이블 입력
-      int insertWolseInfo(@Param("vo") TenantWolseInfoVO wolseInfo);
+      int updateWolseInfo(
+              @Param("vo") TenantWolseInfoVO vo, @Param("contractChatId") Long contractChatId);
 
       // step1 저장(update) 하기
       int updateStep1(
@@ -61,6 +67,10 @@ public interface TenantPreContractMapper {
 
       // 애완동물 가능 여부 조회하기 -> 반환값에 넣어서 다음 페이지 준비하기
       boolean selectIsPet(@Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
+
+      // 주차 가능 여부 조회
+      boolean selectIsParking(
+              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
 
       // step1 조회하기
       TenantStep1DTO selectStep1(
