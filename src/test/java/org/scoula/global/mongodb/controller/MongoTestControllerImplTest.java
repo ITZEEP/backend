@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -359,20 +360,14 @@ class MongoTestControllerImplTest {
       @DisplayName("서버 상태 조회 - 성공")
       void getServerStatus_ShouldReturnStatus() {
           // given
-          Map<String, Object> connections = new HashMap<>();
-          connections.put("current", 10);
-          connections.put("available", 990);
-
-          Map<String, Object> memory = new HashMap<>();
-          memory.put("resident", 256);
-          memory.put("virtual", 1024);
+          Map<String, Object> pingResult = new HashMap<>();
+          pingResult.put("ok", 1.0);
 
           Map<String, Object> status = new HashMap<>();
-          status.put("version", "4.4.0");
-          status.put("host", "localhost");
-          status.put("uptime", 12345L);
-          status.put("connections", connections);
-          status.put("mem", memory);
+          status.put("ping", pingResult);
+          status.put("database", "test_db");
+          status.put("status", "connected");
+          status.put("timestamp", new Date());
 
           when(mongoService.getServerStatus()).thenReturn(status);
 
@@ -386,11 +381,11 @@ class MongoTestControllerImplTest {
           assertThat(response.getBody().isSuccess()).isTrue();
 
           MongoDto.ServerStatusResponse statusResponse = response.getBody().getData();
-          assertThat(statusResponse.getVersion()).isEqualTo("4.4.0");
-          assertThat(statusResponse.getHost()).isEqualTo("localhost");
-          assertThat(statusResponse.getUptime()).isEqualTo(12345L);
-          assertThat(statusResponse.getConnections()).isEqualTo(connections);
-          assertThat(statusResponse.getMemory()).isEqualTo(memory);
+          assertThat(statusResponse.getVersion()).isEqualTo("MongoDB Connection");
+          assertThat(statusResponse.getHost()).isEqualTo("Connected to test_db");
+          assertThat(statusResponse.getUptime()).isEqualTo(0L);
+          assertThat(statusResponse.getConnections()).containsKey("ping");
+          assertThat(statusResponse.getMemory()).containsKeys("status", "timestamp");
           assertThat(statusResponse.getQueriedAt()).isNotNull();
 
           verify(mongoService).getServerStatus();

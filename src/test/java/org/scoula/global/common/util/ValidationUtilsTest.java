@@ -181,7 +181,7 @@ class ValidationUtilsTest {
                                   ValidationUtils.validateEmail(
                                           invalidEmail, CommonErrorCode.INVALID_INPUT_VALUE))
                   .isInstanceOf(BusinessException.class)
-                  .hasMessageContaining("Invalid email format");
+                  .hasMessageContaining("올바른 이메일 형식이 아닙니다");
       }
 
       @Test

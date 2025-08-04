@@ -29,6 +29,9 @@ public class TenantStep1DTO {
               allowableValues = "true,false")
       private Boolean insurancePlan;
 
+      @ApiModelProperty(value = "계약금 조정 제안 여부", example = "true", allowableValues = "true,false")
+      private Boolean depositAdjustment;
+
       @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.DateTime.DEFAULT_DATE_FORMAT)
       @ApiModelProperty(value = "입주 예정일", example = "2025-07-22")
       private LocalDate expectedMoveInDate;

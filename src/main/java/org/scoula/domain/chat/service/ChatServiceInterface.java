@@ -7,6 +7,7 @@ import org.scoula.domain.chat.dto.ChatMessageDocument;
 import org.scoula.domain.chat.dto.ChatMessageRequestDto;
 import org.scoula.domain.chat.dto.ChatRoomInfoDto;
 import org.scoula.domain.chat.dto.ChatRoomWithUserInfoDto;
+import org.scoula.domain.chat.vo.ChatRoom;
 
 /**
  * 채팅 서비스 인터페이스
@@ -154,4 +155,45 @@ public interface ChatServiceInterface {
        * @throws RuntimeException 채팅방 또는 매물 정보 조회 실패
        */
       ChatRoomInfoDto getChatRoomInfo(Long chatRoomId, Long userId);
+
+      // ChatServiceInterface에 추가
+      /** 계약 요청을 수락하고 계약 채팅방을 생성합니다. */
+      Long acceptContractRequest(Long chatRoomId, Long userId);
+
+      /** 채팅방 정보를 조회합니다. */
+      ChatRoom getChatRoomById(Long chatRoomId);
+
+      /** 사용자 온라인 상태 확인 */
+      boolean isUserOnline(Long userId);
+
+      /** 사용자를 현재 채팅방에 설정 */
+      void setUserCurrentChatRoom(Long userId, Long chatRoomId);
+
+      /** 사용자를 현재 채팅방에서 제거 */
+      void removeUserFromCurrentChatRoom(Long userId);
+
+      /** 사용자를 오프라인으로 설정 */
+      void setUserOffline(Long userId);
+
+      /** 사용자가 특정 계약 채팅방에 있는지 확인 */
+      boolean isUserInContractChatRoom(Long userId, Long contractChatId);
+
+      /** 온라인 사용자 추가 */
+      void addOnlineUser(Long userId);
+
+      /**
+       * 계약 요청 전송
+       *
+       * @param chatRoomId 채팅방 ID
+       * @param userId 요청자 ID (구매자여야 함)
+       */
+      void sendContractRequest(Long chatRoomId, Long userId);
+
+      /**
+       * 계약 요청 거절
+       *
+       * @param chatRoomId 채팅방 ID
+       * @param userId 거절하는 사용자 ID (소유자여야 함)
+       */
+      void rejectContractRequest(Long chatRoomId, Long userId);
 }

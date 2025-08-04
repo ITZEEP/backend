@@ -211,7 +211,7 @@ class OAuth2CallbackControllerTest {
               loginResult.put("role", "ROLE_USER");
               loginResult.put("expires_in", "86400");
 
-              when(oauth2ManualService.processOAuth2Login(code)).thenReturn(loginResult);
+              when(oauth2ManualService.processOAuth2Login(code, null)).thenReturn(loginResult);
 
               // when & then
               mockMvc.perform(post("/oauth2/login/complete").param("code", code))

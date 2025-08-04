@@ -30,9 +30,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public Boolean getCheckRisk(Long contractChatId, Long userId) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectContractBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 1. risk_check에 riskId가 있는지 확인하기
           tenantMapper
@@ -88,16 +93,24 @@ public class PreContractServiceImpl implements PreContractService {
                                   () -> new BusinessException(PreContractErrorCode.TENANT_SELECT));
 
           // 2. tenant_precontract_check 테이블 채우기 (나머지는 Null 값)
-          int result =
+
+          int result1 =
                   tenantMapper.insertPreContractSet(
                           contractChatId, identityId, riskId, rentType, riskType);
-          if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+          if (result1 != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
 
-          // 3. 다음 페이지를 위해서 전세/월세 여부, pet 여부 보내기
+          int result2 = tenantMapper.insertJeonseInfo(contractChatId);
+          if (result2 != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+
+          int result3 = tenantMapper.insertWolseInfo(contractChatId);
+          if (result3 != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
+
+          // 3. 다음 페이지를 위해서 전세/월세 여부, pet, parking 여부 보내기
           boolean isPet = tenantMapper.selectIsPet(userId, contractChatId);
+          boolean istParkingAvailable = tenantMapper.selectIsParking(userId, contractChatId);
 
-          TenantInitRespDTO dto = TenantInitRespDTO.toResp(rentType, isPet);
-
+          TenantInitRespDTO dto = TenantInitRespDTO.toResp(rentType, isPet, istParkingAvailable);
+          System.out.println("넘어온 riskId: " + riskId); // 9가 맞는지 확인
           return dto;
       }
 
@@ -106,9 +119,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public Void updateTenantStep1(Long contractChatId, Long userId, TenantStep1DTO step1DTO) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 1. home에서 전세인지 월세인지 값을 가져온다.
           RentType rentType =
@@ -123,15 +141,15 @@ public class PreContractServiceImpl implements PreContractService {
           // 2. 해당 테이블에 값을 넣는다. (전세 or 월세)
           if (rentType == RentType.JEONSE) {
               // dto -> vo
-              TenantJeonseInfoVO vo = TenantJeonseInfoVO.toVO(contractChatId, step1DTO);
+              TenantJeonseInfoVO vo = TenantJeonseInfoVO.toVO(step1DTO);
               // mappser
-              int result = tenantMapper.insertJeonseInfo(vo);
+              int result = tenantMapper.updateJeonseInfo(vo, contractChatId);
               if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
           } else if (rentType == RentType.WOLSE) {
               // dto -> vo
-              TenantWolseInfoVO vo = TenantWolseInfoVO.toVO(contractChatId, step1DTO);
+              TenantWolseInfoVO vo = TenantWolseInfoVO.toVO(step1DTO);
               // mapper
-              int result = tenantMapper.insertWolseInfo(vo);
+              int result = tenantMapper.updateWolseInfo(vo, contractChatId);
               if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
           }
 
@@ -153,13 +171,19 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public TenantStep1DTO selectTenantStep1(Long contractChatId, Long userId) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 1. 값을 받아와서 userid 인증확인하고, 값을 dto로 받는다
           TenantStep1DTO dto = tenantMapper.selectStep1(userId, contractChatId);
-          if (dto == null) throw new BusinessException(PreContractErrorCode.TENANT_SELECT);
+          //          if (dto == null) throw new
+          // BusinessException(PreContractErrorCode.TENANT_SELECT);
 
           // 2. 값을 반환하기
           return dto;
@@ -170,9 +194,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public Void updateTenantStep2(Long contractChatId, Long userId, TenantStep2DTO step2DTO) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 1. userid, 정보 가져와서 dto 값으로 저장하기 -> pet이 있고, 없고에 따라서 알아서 저장된다.
           TenantPreContractCheckVO vo = TenantPreContractCheckVO.toStep2VO(step2DTO);
@@ -187,10 +216,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public TenantStep2DTO selectTenantStep2(Long contractChatId, Long userId) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
 
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
           // 1. 인증된 값으로 조회하기
           TenantStep2DTO dto = tenantMapper.selectStep2(userId, contractChatId);
           if (dto == null) throw new BusinessException(PreContractErrorCode.TENANT_SELECT);
@@ -204,9 +237,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public Void updateTenantStep3(Long contractChatId, Long userId, TenantStep3DTO step3DTO) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 인증된 값으로 저장하기
           TenantPreContractCheckVO vo = TenantPreContractCheckVO.toStep3VO(step3DTO);
@@ -221,9 +259,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public TenantStep3DTO selectTenantStep3(Long contractChatId, Long userId) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 1. 보증된 값으로 조회하기
           TenantStep3DTO dto = tenantMapper.selectStep3(userId, contractChatId);
@@ -239,9 +282,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public TenantPreContractDTO selectTenantPreCon(Long contractChatId, Long userId) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 1. 검증된 결과로 조회하기
           TenantPreContractDTO dto = tenantMapper.selectPreCon(userId, contractChatId);
@@ -255,9 +303,14 @@ public class PreContractServiceImpl implements PreContractService {
       @Override
       public Void saveMongoDB(Long contractChatId, Long userId) {
           // 0. UserId 검증하기
-          tenantMapper
-                  .selectBuyerId(contractChatId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          Long buyerId =
+                  tenantMapper
+                          .selectContractBuyerId(contractChatId)
+                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+          if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
 
           // 1. 매퍼에서 보낼것들을 조회해오기
           TenantMongoDTO dto = tenantMapper.selectMongo(userId, contractChatId);

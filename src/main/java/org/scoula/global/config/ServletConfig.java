@@ -2,20 +2,22 @@ package org.scoula.global.config;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.RequiredArgsConstructor;
+
+@Configuration
 @EnableWebMvc
 @ComponentScan(
           basePackages = {
@@ -27,15 +29,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
               "org.scoula.global.email.controller",
               "org.scoula.global.redis.controller",
               "org.scoula.global.mongodb.controller",
-              "org.scoula.global.websocket.controller",
               "org.scoula.global.file.controller",
               "org.scoula.global.oauth2.controller",
               "org.scoula.domain.precontract.controller",
               "org.scoula.domain.home.controller"
           })
+@RequiredArgsConstructor
 public class ServletConfig implements WebMvcConfigurer {
 
-      @Autowired private ObjectMapper objectMapper;
+      private final ObjectMapper objectMapper;
 
       @Bean
       public MultipartResolver multipartResolver() {
@@ -67,15 +69,5 @@ public class ServletConfig implements WebMvcConfigurer {
           MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
           converter.setObjectMapper(objectMapper);
           converters.add(converter);
-      }
-
-      @Override
-      public void addCorsMappings(CorsRegistry registry) {
-          registry.addMapping("/**")
-                  .allowedOriginPatterns("*")
-                  .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                  .allowedHeaders("*")
-                  .allowCredentials(true)
-                  .maxAge(3600);
       }
 }

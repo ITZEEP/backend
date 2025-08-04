@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 
 import org.scoula.global.common.constant.Constants;
@@ -33,13 +34,13 @@ public class JwtUtil {
       @Value("${jwt.secret}")
       private String secret;
 
-      @Value("${jwt.expiration:86400000}") // 24시간 (밀리초)
+      @Value("${jwt.access-token-validity-in-seconds}") // 1시간 (초)
       private Long expiration;
 
-      @Value("${jwt.refresh-expiration:604800000}") // 7일 (밀리초)
+      @Value("${jwt.refresh-token-validity-in-seconds}") // 7일 (초)
       private Long refreshExpiration;
 
-      @Value("${jwt.issuer:itzeep}")
+      @Value("${jwt.issuer:issuer}")
       private String issuer;
 
       // 로그아웃 기능을 위한 토큰 블랙리스트
@@ -52,6 +53,29 @@ public class JwtUtil {
           private Date issuedAt;
           private Date expiresAt;
           private boolean expired;
+      }
+
+      @PostConstruct
+      public void init() {
+          // 필드 초기화 검증
+          if (!StringUtils.hasText(secret)) {
+              throw new IllegalStateException("JWT secret이 설정되지 않았습니다");
+          }
+          if (expiration == null || expiration <= 0) {
+              throw new IllegalStateException("JWT 액세스 토큰 만료 시간이 유효하지 않습니다");
+          }
+          if (refreshExpiration == null || refreshExpiration <= 0) {
+              throw new IllegalStateException("JWT 리프레시 토큰 만료 시간이 유효하지 않습니다");
+          }
+          if (!StringUtils.hasText(issuer)) {
+              throw new IllegalStateException("JWT 발급자가 설정되지 않았습니다");
+          }
+
+          log.info(
+                  "JWT 설정 초기화 완료 - 발급자: {}, 액세스 토큰 만료: {}초, 리프레시 토큰 만료: {}초",
+                  issuer,
+                  expiration,
+                  refreshExpiration);
       }
 
       private SecretKey getSigningKey() {
@@ -115,7 +139,7 @@ public class JwtUtil {
        * @return 만료 시간 (초)
        */
       public Long getAccessTokenExpiration() {
-          return expiration / 1000;
+          return expiration;
       }
 
       /**
@@ -124,14 +148,14 @@ public class JwtUtil {
        * @return 만료 시간 (초)
        */
       public Long getRefreshTokenExpiration() {
-          return refreshExpiration / 1000;
+          return refreshExpiration;
       }
 
       /**
        * 사용자 정의 만료 시간으로 토큰 생성
        *
        * @param username 토큰을 생성할 사용자명
-       * @param tokenExpiration 사용자 정의 만료 시간 (밀리초)
+       * @param tokenExpiration 사용자 정의 만료 시간 (초)
        * @return JWT 토큰
        * @throws BusinessException 매개변수가 유효하지 않은 경우
        */
@@ -140,7 +164,7 @@ public class JwtUtil {
           validateExpiration(tokenExpiration);
 
           Date now = new Date();
-          Date expiryDate = new Date(now.getTime() + tokenExpiration);
+          Date expiryDate = new Date(now.getTime() + (tokenExpiration * 1000));
 
           try {
               String token =
@@ -301,8 +325,8 @@ public class JwtUtil {
               throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "만료 시간은 양수여야 합니다");
           }
 
-          // 최대 30일
-          if (expiration > Constants.Jwt.MAX_EXPIRATION_DAYS * 24 * 60 * 60 * 1000) {
+          // 최대 30일 (초 단위)
+          if (expiration > Constants.Jwt.MAX_EXPIRATION_DAYS * 24 * 60 * 60) {
               throw new BusinessException(
                       CommonErrorCode.INVALID_INPUT_VALUE, "만료 시간이 너무 깁니다 (최대 30일)");
           }

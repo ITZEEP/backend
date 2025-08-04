@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
+import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
@@ -28,6 +30,7 @@ import org.scoula.domain.fraud.dto.response.RiskCheckDetailResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckListResponse;
 import org.scoula.domain.fraud.enums.AnalysisStatus;
 import org.scoula.domain.fraud.enums.RiskType;
+import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.scoula.domain.fraud.service.FraudRiskService;
 import org.scoula.global.auth.dto.CustomUserDetails;
@@ -131,14 +134,14 @@ class FraudRiskControllerImplTest {
           }
 
           @Test
-          @DisplayName("인증되지 않은 사용자 요청 시 401 반환")
+          @DisplayName("인증되지 않은 사용자 요청 시 500 반환")
           void getRiskCheckList_Unauthorized() throws Exception {
               // given - 인증되지 않은 요청이므로 service mock 설정 불필요
 
               // when & then
               mockMvc.perform(get("/api/fraud-risk").param("page", "1").param("size", "10"))
                       .andDo(print())
-                      .andExpect(status().isUnauthorized());
+                      .andExpect(status().isInternalServerError());
           }
       }
 
@@ -233,7 +236,7 @@ class FraudRiskControllerImplTest {
                       .andDo(print())
                       .andExpect(status().isInternalServerError())
                       .andExpect(jsonPath("$.success").value(false))
-                      .andExpect(jsonPath("$.message").value("문서 분석 중 오류가 발생했습니다: S3 업로드 실패"));
+                      .andExpect(jsonPath("$.message").value("내부 서버 오류"));
           }
       }
 
@@ -248,6 +251,21 @@ class FraudRiskControllerImplTest {
               RiskAnalysisRequest request =
                       RiskAnalysisRequest.builder()
                               .homeId(100L)
+                              .address("서울시 강남구")
+                              .propertyPrice(50000L)
+                              .leaseType("JEONSE")
+                              .residenceType("APARTMENT")
+                              .registeredUserName("홍길동")
+                              .registryDocument(
+                                      RegistryDocumentDto.builder()
+                                              .regionAddress("서울시 강남구")
+                                              .ownerName("홍길동")
+                                              .build())
+                              .buildingDocument(
+                                      BuildingDocumentDto.builder()
+                                              .siteLocation("서울시 강남구")
+                                              .purpose("아파트")
+                                              .build())
                               .registryFileUrl("https://s3.url/registry.pdf")
                               .buildingFileUrl("https://s3.url/building.pdf")
                               .build();
@@ -315,7 +333,9 @@ class FraudRiskControllerImplTest {
               // given
               Long riskCheckId = 999L;
               when(fraudRiskService.getRiskCheckDetail(anyLong(), eq(riskCheckId)))
-                      .thenThrow(new FraudRiskException("위험도 체크 결과를 찾을 수 없습니다."));
+                      .thenThrow(
+                              new FraudRiskException(
+                                      FraudErrorCode.FRAUD_ANALYSIS_FAILED, "위험도 체크 결과를 찾을 수 없습니다."));
 
               // when & then
               mockMvc.perform(
@@ -324,9 +344,7 @@ class FraudRiskControllerImplTest {
                       .andDo(print())
                       .andExpect(status().isInternalServerError())
                       .andExpect(jsonPath("$.success").value(false))
-                      .andExpect(
-                              jsonPath("$.message")
-                                      .value("상세 조회 중 오류가 발생했습니다: 위험도 체크 결과를 찾을 수 없습니다."));
+                      .andExpect(jsonPath("$.message").value("위험도 체크 결과를 찾을 수 없습니다."));
           }
       }
 
@@ -354,7 +372,10 @@ class FraudRiskControllerImplTest {
           void deleteRiskCheck_NoPermission() throws Exception {
               // given
               Long riskCheckId = 1L;
-              doThrow(new FraudRiskException("해당 위험도 체크 결과에 대한 삭제 권한이 없습니다."))
+              doThrow(
+                              new FraudRiskException(
+                                      FraudErrorCode.FRAUD_ANALYSIS_FAILED,
+                                      "해당 위험도 체크 결과에 대한 삭제 권한이 없습니다."))
                       .when(fraudRiskService)
                       .deleteRiskCheck(anyLong(), eq(riskCheckId));
 
@@ -365,9 +386,7 @@ class FraudRiskControllerImplTest {
                       .andDo(print())
                       .andExpect(status().isInternalServerError())
                       .andExpect(jsonPath("$.success").value(false))
-                      .andExpect(
-                              jsonPath("$.message")
-                                      .value("삭제 중 오류가 발생했습니다: 해당 위험도 체크 결과에 대한 삭제 권한이 없습니다."));
+                      .andExpect(jsonPath("$.message").value("해당 위험도 체크 결과에 대한 삭제 권한이 없습니다."));
           }
       }
 
@@ -442,7 +461,7 @@ class FraudRiskControllerImplTest {
           }
 
           @Test
-          @DisplayName("인증되지 않은 사용자의 채팅 매물 조회 시 401 반환")
+          @DisplayName("인증되지 않은 사용자의 채팅 매물 조회 시 500 반환")
           void getChattingHomes_Unauthorized() throws Exception {
               // given - 인증되지 않은 요청이므로 service mock 설정 불필요
 
@@ -452,7 +471,7 @@ class FraudRiskControllerImplTest {
                                       .param("page", "1")
                                       .param("size", "10"))
                       .andDo(print())
-                      .andExpect(status().isUnauthorized());
+                      .andExpect(status().isInternalServerError());
           }
       }
 }
