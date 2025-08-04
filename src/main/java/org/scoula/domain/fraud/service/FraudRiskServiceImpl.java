@@ -1,22 +1,21 @@
 package org.scoula.domain.fraud.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
 import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
+import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
 import org.scoula.domain.fraud.dto.response.RiskAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckDetailResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckListResponse;
+import org.scoula.domain.fraud.dto.response.RiskCheckSummaryResponse;
 import org.scoula.domain.fraud.enums.AnalysisStatus;
 import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudErrorCode;
@@ -27,68 +26,60 @@ import org.scoula.domain.fraud.vo.RiskCheckDetailVO;
 import org.scoula.domain.fraud.vo.RiskCheckVO;
 import org.scoula.global.common.dto.PageRequest;
 import org.scoula.global.common.dto.PageResponse;
-import org.scoula.global.common.util.LogSanitizerUtil;
 import org.scoula.global.file.service.S3ServiceInterface;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 @Transactional(readOnly = true)
 public class FraudRiskServiceImpl implements FraudRiskService {
 
       private final FraudRiskMapper fraudRiskMapper;
       private final HomeLikeMapper homeLikeMapper;
       private final S3ServiceInterface s3Service;
-      private final ObjectMapper objectMapper;
       private final AiFraudAnalyzerService aiFraudAnalyzerService;
 
       // 허용된 파일 확장자
       private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("pdf", "PDF");
       private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+      // S3 파일 경로 패턴
+      private static final String S3_BASE_PATH = "fraud";
+      private static final String REGISTRY_FILE_PREFIX = "registry";
+      private static final String BUILDING_FILE_PREFIX = "building";
+      private static final String FILE_EXTENSION = ".pdf";
+
       @Override
       @Transactional
       public DocumentAnalysisResponse analyzeDocuments(
               Long userId, MultipartFile registryFile, MultipartFile buildingFile, Long homeId) {
-          log.info("문서 분석 시작 - homeId: {}", LogSanitizerUtil.sanitizeValue(homeId));
+          log.info("문서 분석 시작 - homeId: {}", homeId);
 
           // 1. 파일 유효성 검증
           validateFile(registryFile, "등기부등본");
           validateFile(buildingFile, "건축물대장");
 
-          // 2. 매물 존재 여부 확인 (homeId가 있는 경우에만)
-          if (homeId != null && !fraudRiskMapper.existsHome(homeId)) {
-              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_NOT_FOUND, "존재하지 않는 매물입니다.");
+          // 2. 매물 ID가 있는 경우에만 검증 (서비스 외 매물은 homeId가 없을 수 있음)
+          if (homeId != null && homeId > 0) {
+              // 매물 존재 여부 확인
+              if (!fraudRiskMapper.existsHome(homeId)) {
+                  throw new FraudRiskException(
+                          FraudErrorCode.FRAUD_CHECK_NOT_FOUND, "존재하지 않는 매물입니다.");
+              }
           }
 
           LocalDateTime startTime = LocalDateTime.now();
 
           try {
               // 3. S3에 파일 업로드
-              String registryFileName =
-                      "fraud/"
-                              + userId
-                              + "/registry_"
-                              + homeId
-                              + "_"
-                              + System.currentTimeMillis()
-                              + ".pdf";
-              String buildingFileName =
-                      "fraud/"
-                              + userId
-                              + "/building_"
-                              + homeId
-                              + "_"
-                              + System.currentTimeMillis()
-                              + ".pdf";
+              String registryFileName = buildS3FilePath(userId, homeId, REGISTRY_FILE_PREFIX);
+              String buildingFileName = buildS3FilePath(userId, homeId, BUILDING_FILE_PREFIX);
 
               String registryFileKey = s3Service.uploadFile(registryFile, registryFileName);
               String buildingFileKey = s3Service.uploadFile(buildingFile, buildingFileName);
@@ -135,7 +126,12 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       @Override
       @Transactional
       public RiskAnalysisResponse analyzeRisk(Long userId, RiskAnalysisRequest request) {
-          log.info("위험도 분석 시작 - homeId: {}", LogSanitizerUtil.sanitizeValue(request.getHomeId()));
+          log.info("위험도 분석 시작 - homeId: {}", request.getHomeId());
+
+          // homeId 필수 체크
+          if (request.getHomeId() == null || request.getHomeId() <= 0) {
+              throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_NOT_FOUND, "유효한 매물 ID가 필요합니다.");
+          }
 
           try {
               // 1. risk_check 레코드 생성
@@ -161,11 +157,10 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                   aiResponse = aiFraudAnalyzerService.analyzeFraudRisk(userId, request);
                   riskType = aiFraudAnalyzerService.determineRiskType(aiResponse);
 
-                  log.info(
+                  log.debug(
                           "AI 분석 결과 - riskType: {}, riskScore: {}",
-                          LogSanitizerUtil.sanitizeValue(riskType),
-                          LogSanitizerUtil.sanitizeValue(
-                                  aiResponse != null ? aiResponse.getRiskScore() : null));
+                          riskType,
+                          aiResponse != null ? aiResponse.getRiskScore() : null);
               } catch (Exception e) {
                   log.error("AI 분석 실패", e);
                   throw new FraudRiskException(
@@ -181,113 +176,11 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               fraudRiskMapper.deleteRiskCheckDetail(riskCheck.getRiskckId());
 
               // 5. AI 분석 결과를 risk_check_detail에 저장
-              if (aiResponse != null && aiResponse.getAnalysisResults() != null) {
-                  Map<String, Object> analysisResults = aiResponse.getAnalysisResults();
-
-                  // AI 분석 결과의 각 항목을 risk_check_detail로 저장
-                  // 변환된 구조: {"그룹명": {"항목명": {"title": "...", "content": "..."}}}
-                  for (Map.Entry<String, Object> groupEntry : analysisResults.entrySet()) {
-                      String title1 = groupEntry.getKey(); // 그룹명 (예: "권리관계 정보")
-                      Object groupValue = groupEntry.getValue();
-
-                      if (groupValue instanceof Map) {
-                          @SuppressWarnings("unchecked")
-                          Map<String, Object> groupItems = (Map<String, Object>) groupValue;
-
-                          // 각 그룹 내의 항목들 처리
-                          for (Map.Entry<String, Object> itemEntry : groupItems.entrySet()) {
-                              Object itemValue = itemEntry.getValue();
-
-                              if (itemValue instanceof Map) {
-                                  @SuppressWarnings("unchecked")
-                                  Map<String, Object> itemDetails = (Map<String, Object>) itemValue;
-
-                                  String title2 = itemDetails.getOrDefault("title", "").toString();
-                                  String content = itemDetails.getOrDefault("content", "").toString();
-
-                                  RiskCheckDetailVO detail =
-                                          RiskCheckDetailVO.builder()
-                                                  .riskckId(riskCheck.getRiskckId())
-                                                  .title1(title1)
-                                                  .title2(title2)
-                                                  .content(content)
-                                                  .build();
-
-                                  try {
-                                      fraudRiskMapper.insertRiskCheckDetail(detail);
-                                      log.debug(
-                                              "상세 분석 결과 저장 성공 - title1: {}, title2: {}",
-                                              LogSanitizerUtil.sanitize(title1),
-                                              LogSanitizerUtil.sanitize(title2));
-                                  } catch (Exception e) {
-                                      log.warn(
-                                              "상세 분석 결과 저장 실패 - title1: {}, title2: {}, error: {}",
-                                              LogSanitizerUtil.sanitize(title1),
-                                              LogSanitizerUtil.sanitize(title2),
-                                              LogSanitizerUtil.sanitize(e.getMessage()));
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
-
-              // 추천사항이 있으면 추가로 저장
-              if (aiResponse != null
-                      && aiResponse.getRecommendations() != null
-                      && !aiResponse.getRecommendations().isEmpty()) {
-                  String recommendations = String.join("\n", aiResponse.getRecommendations());
-                  RiskCheckDetailVO recommendDetail =
-                          RiskCheckDetailVO.builder()
-                                  .riskckId(riskCheck.getRiskckId())
-                                  .title1("추천사항")
-                                  .title2("AI 분석 기반 추천")
-                                  .content(recommendations)
-                                  .build();
-
-                  try {
-                      fraudRiskMapper.insertRiskCheckDetail(recommendDetail);
-                  } catch (Exception e) {
-                      log.warn("추천사항 저장 실패: {}", LogSanitizerUtil.sanitize(e.getMessage()));
-                  }
-              }
+              saveAnalysisResultsToDb(aiResponse, riskCheck.getRiskckId());
 
               // 6. 저장된 상세 분석 결과 조회 및 그룹화
-              List<RiskCheckDetailVO> savedDetails =
-                      fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheck.getRiskckId());
-
-              List<RiskCheckDetailResponse.DetailGroup> detailGroups = new ArrayList<>();
-              if (savedDetails != null && !savedDetails.isEmpty()) {
-                  Map<String, List<RiskCheckDetailVO>> groupedDetails =
-                          savedDetails.stream()
-                                  .collect(
-                                          Collectors.groupingBy(
-                                                  RiskCheckDetailVO::getTitle1,
-                                                  LinkedHashMap::new,
-                                                  Collectors.toList()));
-
-                  for (Map.Entry<String, List<RiskCheckDetailVO>> entry : groupedDetails.entrySet()) {
-                      RiskCheckDetailResponse.DetailGroup group =
-                              RiskCheckDetailResponse.DetailGroup.builder()
-                                      .title(entry.getKey())
-                                      .items(
-                                              entry.getValue().stream()
-                                                      .map(
-                                                              detail ->
-                                                                      RiskCheckDetailResponse
-                                                                              .DetailItem.builder()
-                                                                              .title(
-                                                                                      detail
-                                                                                              .getTitle2())
-                                                                              .content(
-                                                                                      detail
-                                                                                              .getContent())
-                                                                              .build())
-                                                      .collect(Collectors.toList()))
-                                      .build();
-                      detailGroups.add(group);
-                  }
-              }
+              List<RiskCheckDetailResponse.DetailGroup> detailGroups =
+                      getDetailGroupsFromDb(riskCheck.getRiskckId());
 
               // 7. 응답 반환
               return RiskAnalysisResponse.builder()
@@ -350,38 +243,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           // 매물 이미지 URL은 DB에서 조회된 것을 사용 (FraudRiskMapper에서 설정됨)
 
           // RiskCheckDetail 조회 및 title1별로 그룹화
-          List<RiskCheckDetailVO> details =
-                  fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId);
-          if (details != null && !details.isEmpty()) {
-              Map<String, List<RiskCheckDetailVO>> groupedDetails =
-                      details.stream()
-                              .collect(
-                                      Collectors.groupingBy(
-                                              RiskCheckDetailVO::getTitle1,
-                                              LinkedHashMap::new,
-                                              Collectors.toList()));
-
-              List<RiskCheckDetailResponse.DetailGroup> detailGroups = new ArrayList<>();
-              for (Map.Entry<String, List<RiskCheckDetailVO>> entry : groupedDetails.entrySet()) {
-                  RiskCheckDetailResponse.DetailGroup group =
-                          RiskCheckDetailResponse.DetailGroup.builder()
-                                  .title(entry.getKey())
-                                  .items(
-                                          entry.getValue().stream()
-                                                  .map(
-                                                          detail ->
-                                                                  RiskCheckDetailResponse.DetailItem
-                                                                          .builder()
-                                                                          .title(detail.getTitle2())
-                                                                          .content(
-                                                                                  detail.getContent())
-                                                                          .build())
-                                                  .collect(Collectors.toList()))
-                                  .build();
-                  detailGroups.add(group);
-              }
-              response.setDetailGroups(detailGroups);
-          }
+          List<RiskCheckDetailResponse.DetailGroup> detailGroups = getDetailGroupsFromDb(riskCheckId);
+          response.setDetailGroups(detailGroups);
 
           return response;
       }
@@ -395,6 +258,10 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                       FraudErrorCode.FRAUD_CHECK_ACCESS_DENIED, "해당 위험도 체크 결과에 대한 삭제 권한이 없습니다.");
           }
 
+          // 삭제하기 전에 파일 URL 조회
+          RiskCheckDetailResponse riskCheck =
+                  fraudRiskMapper.selectRiskCheckDetailResponse(riskCheckId);
+
           // 상세 정보 먼저 삭제
           fraudRiskMapper.deleteRiskCheckDetail(riskCheckId);
 
@@ -403,6 +270,11 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           if (deleted == 0) {
               throw new FraudRiskException(
                       FraudErrorCode.FRAUD_ANALYSIS_FAILED, "위험도 체크 결과 삭제에 실패했습니다.");
+          }
+
+          // S3 파일 삭제 (실패해도 에러는 발생시키지 않음)
+          if (riskCheck != null) {
+              deleteS3Files(riskCheck.getRegistryFileUrl(), riskCheck.getBuildingFileUrl());
           }
       }
 
@@ -436,7 +308,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
 
       @Override
       public List<LikedHomeResponse> getLikedHomes(Long userId) {
-          log.info("찜한 매물 목록 조회 - userId: {}", LogSanitizerUtil.sanitizeValue(userId));
+          log.info("찜한 매물 목록 조회 - userId: {}", userId);
           return homeLikeMapper.selectLikedHomesByUserId(userId);
       }
 
@@ -444,9 +316,9 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       public PageResponse<LikedHomeResponse> getChattingHomes(Long userId, PageRequest pageRequest) {
           log.info(
                   "채팅 중인 매물 목록 조회 - userId: {}, page: {}, size: {}",
-                  LogSanitizerUtil.sanitizeValue(userId),
-                  LogSanitizerUtil.sanitizeValue(pageRequest.getPage()),
-                  LogSanitizerUtil.sanitizeValue(pageRequest.getSize()));
+                  userId,
+                  pageRequest.getPage(),
+                  pageRequest.getSize());
 
           // 정렬 기본값 설정
           if (pageRequest.getSort() == null || pageRequest.getSort().isEmpty()) {
@@ -461,16 +333,441 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           return PageResponse.of(list, pageRequest, totalElements);
       }
 
-      private String getTitleByRiskType(RiskType riskType) {
-          switch (riskType) {
-              case SAFE:
-                  return "✅ 안전한 매물";
-              case WARN:
-                  return "⚠️ 주의 필요";
-              case DANGER:
-                  return "🚨 위험 매물";
-              default:
-                  return "분석 완료";
+      @Override
+      @Transactional
+      public RiskAnalysisResponse analyzeExternalRisk(
+              Long userId, ExternalRiskAnalysisRequest request) {
+          log.info("서비스 외 매물 위험도 분석 시작 - userId: {}", userId);
+
+          try {
+              // AI 분석 서비스 호출
+              FraudRiskCheckDto.Response aiResponse = null;
+              RiskType riskType = RiskType.WARN; // 기본값을 WARN으로 설정
+
+              try {
+                  // AI 서버에 분석 요청 (ExternalRiskAnalysisRequest 직접 전달)
+                  aiResponse = aiFraudAnalyzerService.analyzeFraudRisk(userId, request);
+                  riskType = aiFraudAnalyzerService.determineRiskType(aiResponse);
+
+                  log.debug(
+                          "AI 분석 결과 - riskType: {}, riskScore: {}",
+                          riskType,
+                          aiResponse != null ? aiResponse.getRiskScore() : null);
+              } catch (Exception e) {
+                  log.error("AI 분석 실패", e);
+                  throw new FraudRiskException(
+                          FraudErrorCode.AI_SERVICE_UNAVAILABLE,
+                          "AI 분석 중 오류가 발생했습니다: " + e.getMessage());
+              }
+
+              // AI 분석 결과를 DetailGroup으로 변환 (DB 저장 없이)
+              List<RiskCheckDetailResponse.DetailGroup> detailGroups =
+                      convertToDetailGroups(
+                              aiResponse != null ? aiResponse.getAnalysisResults() : null,
+                              aiResponse != null ? aiResponse.getRecommendations() : null);
+
+              // 응답 반환 (riskCheckId는 null)
+              return RiskAnalysisResponse.builder()
+                      .riskCheckId(null)
+                      .riskType(riskType)
+                      .analyzedAt(LocalDateTime.now())
+                      .detailGroups(detailGroups)
+                      .build();
+
+          } catch (FraudRiskException e) {
+              // FraudRiskException은 그대로 다시 던지기 (에러 코드 보존)
+              throw e;
+          } catch (Exception e) {
+              log.error("서비스 외 매물 위험도 분석 실패", e);
+              throw new FraudRiskException(
+                      FraudErrorCode.RISK_CALCULATION_ERROR,
+                      "위험도 분석 중 오류가 발생했습니다: " + e.getMessage());
           }
+      }
+
+      /**
+       * S3 파일 경로 생성 헬퍼 메소드
+       *
+       * @param userId 사용자 ID
+       * @param homeId 매물 ID
+       * @param filePrefix 파일 접두사 (registry 또는 building)
+       * @return 생성된 S3 파일 경로
+       */
+      private String buildS3FilePath(Long userId, Long homeId, String filePrefix) {
+          StringBuilder pathBuilder = new StringBuilder();
+          pathBuilder.append(S3_BASE_PATH).append("/");
+          pathBuilder.append(userId).append("/");
+          pathBuilder.append(filePrefix).append("_");
+          pathBuilder.append(homeId != null ? homeId : "quick").append("_");
+          pathBuilder.append(System.currentTimeMillis());
+          pathBuilder.append(FILE_EXTENSION);
+          return pathBuilder.toString();
+      }
+
+      /**
+       * S3에서 파일 삭제 헬퍼 메소드
+       *
+       * @param registryFileUrl 등기부등본 파일 URL
+       * @param buildingFileUrl 건축물대장 파일 URL
+       */
+      private void deleteS3Files(String registryFileUrl, String buildingFileUrl) {
+          // 등기부등본 파일 삭제
+          if (registryFileUrl != null && !registryFileUrl.isEmpty()) {
+              try {
+                  String registryKey = extractS3KeyFromUrl(registryFileUrl);
+                  if (registryKey != null) {
+                      s3Service.deleteFile(registryKey);
+                      log.debug("S3 파일 삭제 성공 - registryKey: {}", registryKey);
+                  }
+              } catch (Exception e) {
+                  log.error("등기부등본 파일 삭제 실패 - URL: {}", registryFileUrl, e);
+              }
+          }
+
+          // 건축물대장 파일 삭제
+          if (buildingFileUrl != null && !buildingFileUrl.isEmpty()) {
+              try {
+                  String buildingKey = extractS3KeyFromUrl(buildingFileUrl);
+                  if (buildingKey != null) {
+                      s3Service.deleteFile(buildingKey);
+                      log.debug("S3 파일 삭제 성공 - buildingKey: {}", buildingKey);
+                  }
+              } catch (Exception e) {
+                  log.error("건축물대장 파일 삭제 실패 - URL: {}", buildingFileUrl, e);
+              }
+          }
+      }
+
+      /**
+       * S3 URL에서 키 추출 헬퍼 메소드
+       *
+       * @param url S3 파일 URL
+       * @return S3 키
+       */
+      private String extractS3KeyFromUrl(String url) {
+          if (url == null || url.isEmpty()) {
+              return null;
+          }
+
+          // URL에서 S3 키 부분만 추출
+          // 예: https://bucket-name.s3.region.amazonaws.com/fraud/123/registry_456_1234567890.pdf
+          // → fraud/123/registry_456_1234567890.pdf
+
+          try {
+              // S3_BASE_PATH로 시작하는 부분을 찾아서 추출
+              int index = url.indexOf(S3_BASE_PATH);
+              if (index != -1) {
+                  return url.substring(index);
+              }
+
+              // 또는 마지막 '/' 이후의 전체 경로를 추출하는 방법
+              // amazonaws.com/ 이후의 경로를 추출
+              String marker = ".amazonaws.com/";
+              index = url.indexOf(marker);
+              if (index != -1) {
+                  return url.substring(index + marker.length());
+              }
+          } catch (Exception e) {
+              log.error("S3 키 추출 실패 - URL: {}", url, e);
+          }
+
+          return null;
+      }
+
+      /**
+       * AI 분석 결과를 DetailGroup 리스트로 변환
+       *
+       * @param analysisResults AI 분석 결과
+       * @param recommendations 추천사항 리스트
+       * @return DetailGroup 리스트
+       */
+      private List<RiskCheckDetailResponse.DetailGroup> convertToDetailGroups(
+              Map<String, Object> analysisResults, List<String> recommendations) {
+          List<RiskCheckDetailResponse.DetailGroup> detailGroups = new ArrayList<>();
+
+          // 분석 결과 변환
+          if (analysisResults != null) {
+              detailGroups.addAll(convertAnalysisResultsToGroups(analysisResults));
+          }
+
+          // 추천사항 추가
+          if (recommendations != null && !recommendations.isEmpty()) {
+              detailGroups.add(createRecommendationGroup(recommendations));
+          }
+
+          return detailGroups;
+      }
+
+      /** 분석 결과를 DetailGroup으로 변환 */
+      private List<RiskCheckDetailResponse.DetailGroup> convertAnalysisResultsToGroups(
+              Map<String, Object> analysisResults) {
+          List<RiskCheckDetailResponse.DetailGroup> groups = new ArrayList<>();
+
+          for (Map.Entry<String, Object> groupEntry : analysisResults.entrySet()) {
+              String title1 = groupEntry.getKey();
+              Object groupValue = groupEntry.getValue();
+
+              if (groupValue instanceof Map) {
+                  @SuppressWarnings("unchecked")
+                  Map<String, Object> groupItems = (Map<String, Object>) groupValue;
+
+                  List<RiskCheckDetailResponse.DetailItem> items = createDetailItems(groupItems);
+                  if (!items.isEmpty()) {
+                      groups.add(
+                              RiskCheckDetailResponse.DetailGroup.builder()
+                                      .title(title1)
+                                      .items(items)
+                                      .build());
+                  }
+              }
+          }
+          return groups;
+      }
+
+      /** 상세 항목 생성 */
+      private List<RiskCheckDetailResponse.DetailItem> createDetailItems(
+              Map<String, Object> groupItems) {
+          List<RiskCheckDetailResponse.DetailItem> items = new ArrayList<>();
+
+          for (Map.Entry<String, Object> itemEntry : groupItems.entrySet()) {
+              Object itemValue = itemEntry.getValue();
+
+              if (itemValue instanceof Map) {
+                  @SuppressWarnings("unchecked")
+                  Map<String, Object> itemDetails = (Map<String, Object>) itemValue;
+
+                  String title2 = itemDetails.getOrDefault("title", "").toString();
+                  String content = itemDetails.getOrDefault("content", "").toString();
+
+                  items.add(
+                          RiskCheckDetailResponse.DetailItem.builder()
+                                  .title(title2)
+                                  .content(content)
+                                  .build());
+              }
+          }
+          return items;
+      }
+
+      /** 추천사항 그룹 생성 */
+      private RiskCheckDetailResponse.DetailGroup createRecommendationGroup(
+              List<String> recommendations) {
+          String recommendationsContent = String.join("\n", recommendations);
+          RiskCheckDetailResponse.DetailItem recommendItem =
+                  RiskCheckDetailResponse.DetailItem.builder()
+                          .title("AI 분석 기반 추천")
+                          .content(recommendationsContent)
+                          .build();
+
+          return RiskCheckDetailResponse.DetailGroup.builder()
+                  .title("추천사항")
+                  .items(Collections.singletonList(recommendItem))
+                  .build();
+      }
+
+      /**
+       * AI 분석 결과를 DB에 저장
+       *
+       * @param aiResponse AI 응답
+       * @param riskCheckId risk_check ID
+       */
+      private void saveAnalysisResultsToDb(FraudRiskCheckDto.Response aiResponse, Long riskCheckId) {
+          if (aiResponse == null || riskCheckId == null) {
+              return;
+          }
+
+          // 분석 결과 저장
+          if (aiResponse.getAnalysisResults() != null) {
+              saveAnalysisResults(aiResponse.getAnalysisResults(), riskCheckId);
+          }
+
+          // 추천사항 저장
+          if (aiResponse.getRecommendations() != null && !aiResponse.getRecommendations().isEmpty()) {
+              saveRecommendations(aiResponse.getRecommendations(), riskCheckId);
+          }
+      }
+
+      /** 분석 결과를 DB에 저장 */
+      private void saveAnalysisResults(Map<String, Object> analysisResults, Long riskCheckId) {
+          for (Map.Entry<String, Object> groupEntry : analysisResults.entrySet()) {
+              String title1 = groupEntry.getKey();
+              Object groupValue = groupEntry.getValue();
+
+              if (groupValue instanceof Map) {
+                  @SuppressWarnings("unchecked")
+                  Map<String, Object> groupItems = (Map<String, Object>) groupValue;
+                  saveGroupItems(title1, groupItems, riskCheckId);
+              }
+          }
+      }
+
+      /** 그룹 항목들을 DB에 저장 */
+      private void saveGroupItems(String title1, Map<String, Object> groupItems, Long riskCheckId) {
+          for (Map.Entry<String, Object> itemEntry : groupItems.entrySet()) {
+              Object itemValue = itemEntry.getValue();
+
+              if (itemValue instanceof Map) {
+                  @SuppressWarnings("unchecked")
+                  Map<String, Object> itemDetails = (Map<String, Object>) itemValue;
+
+                  String title2 = itemDetails.getOrDefault("title", "").toString();
+                  String content = itemDetails.getOrDefault("content", "").toString();
+
+                  saveRiskCheckDetail(riskCheckId, title1, title2, content);
+              }
+          }
+      }
+
+      /** 추천사항을 DB에 저장 */
+      private void saveRecommendations(List<String> recommendations, Long riskCheckId) {
+          String content = String.join("\n", recommendations);
+          saveRiskCheckDetail(riskCheckId, "추천사항", "AI 분석 기반 추천", content);
+      }
+
+      /** 위험도 체크 상세 정보를 DB에 저장 */
+      private void saveRiskCheckDetail(
+              Long riskCheckId, String title1, String title2, String content) {
+          RiskCheckDetailVO detail =
+                  RiskCheckDetailVO.builder()
+                          .riskckId(riskCheckId)
+                          .title1(title1)
+                          .title2(title2)
+                          .content(content)
+                          .build();
+
+          try {
+              fraudRiskMapper.insertRiskCheckDetail(detail);
+              log.debug("상세 분석 결과 저장 성공 - title1: {}, title2: {}", title1, title2);
+          } catch (Exception e) {
+              log.warn(
+                      "상세 분석 결과 저장 실패 - title1: {}, title2: {}, error: {}",
+                      title1,
+                      title2,
+                      e.getMessage());
+          }
+      }
+
+      /**
+       * DB에서 상세 분석 결과를 조회하여 DetailGroup으로 변환
+       *
+       * @param riskCheckId risk_check ID
+       * @return DetailGroup 리스트
+       */
+      private List<RiskCheckDetailResponse.DetailGroup> getDetailGroupsFromDb(Long riskCheckId) {
+          List<RiskCheckDetailVO> details =
+                  fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId);
+
+          if (details == null || details.isEmpty()) {
+              return new ArrayList<>();
+          }
+
+          Map<String, List<RiskCheckDetailVO>> groupedDetails =
+                  details.stream()
+                          .collect(
+                                  Collectors.groupingBy(
+                                          RiskCheckDetailVO::getTitle1,
+                                          LinkedHashMap::new,
+                                          Collectors.toList()));
+
+          List<RiskCheckDetailResponse.DetailGroup> detailGroups = new ArrayList<>();
+          for (Map.Entry<String, List<RiskCheckDetailVO>> entry : groupedDetails.entrySet()) {
+              RiskCheckDetailResponse.DetailGroup group =
+                      RiskCheckDetailResponse.DetailGroup.builder()
+                              .title(entry.getKey())
+                              .items(
+                                      entry.getValue().stream()
+                                              .map(
+                                                      detail ->
+                                                              RiskCheckDetailResponse.DetailItem
+                                                                      .builder()
+                                                                      .title(detail.getTitle2())
+                                                                      .content(detail.getContent())
+                                                                      .build())
+                                              .collect(Collectors.toList()))
+                              .build();
+              detailGroups.add(group);
+          }
+
+          return detailGroups;
+      }
+
+      @Override
+      public RiskCheckSummaryResponse getTodayRiskCheckSummary(Long userId, Long homeId) {
+          log.info("오늘 분석한 위험도 체크 요약 조회 - userId: {}, homeId: {}", userId, homeId);
+
+          LocalDateTime[] todayRange = getTodayDateRange();
+
+          // 오늘 분석한 위험도 체크 ID 조회
+          Long riskCheckId =
+                  fraudRiskMapper.selectTodayRiskCheckId(
+                          userId, homeId, todayRange[0], todayRange[1]);
+
+          if (riskCheckId == null) {
+              return null; // 오늘 분석한 결과가 없는 경우
+          }
+
+          // 위험도 체크 정보 조회
+          RiskCheckVO riskCheck = fraudRiskMapper.selectRiskCheckById(riskCheckId);
+          if (riskCheck == null) {
+              return null;
+          }
+
+          // 상세 분석 결과 조회 및 변환
+          List<RiskCheckSummaryResponse.DetailGroup> detailGroups =
+                  convertToSummaryDetailGroups(riskCheckId);
+
+          return RiskCheckSummaryResponse.builder()
+                  .riskCheckId(riskCheck.getRiskckId())
+                  .riskType(riskCheck.getRiskType().name())
+                  .detailGroups(detailGroups)
+                  .build();
+      }
+
+      /** 오늘의 시작과 끝 시간 반환 */
+      private LocalDateTime[] getTodayDateRange() {
+          LocalDate today = LocalDate.now();
+          return new LocalDateTime[] {today.atStartOfDay(), today.atTime(23, 59, 59)};
+      }
+
+      /** DB에서 조회한 상세 정보를 RiskCheckSummaryResponse.DetailGroup으로 변환 */
+      private List<RiskCheckSummaryResponse.DetailGroup> convertToSummaryDetailGroups(
+              Long riskCheckId) {
+          List<RiskCheckDetailVO> details =
+                  fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId);
+
+          if (details == null || details.isEmpty()) {
+              return new ArrayList<>();
+          }
+
+          // title1별로 그룹화
+          Map<String, List<RiskCheckDetailVO>> groupedDetails =
+                  details.stream()
+                          .collect(
+                                  Collectors.groupingBy(
+                                          RiskCheckDetailVO::getTitle1,
+                                          LinkedHashMap::new,
+                                          Collectors.toList()));
+
+          // DetailGroup으로 변환
+          return groupedDetails.entrySet().stream()
+                  .map(
+                          entry -> {
+                              List<RiskCheckSummaryResponse.DetailItem> items =
+                                      entry.getValue().stream()
+                                              .map(
+                                                      detail ->
+                                                              RiskCheckSummaryResponse.DetailItem
+                                                                      .builder()
+                                                                      .title(detail.getTitle2())
+                                                                      .content(detail.getContent())
+                                                                      .build())
+                                              .collect(Collectors.toList());
+
+                              return RiskCheckSummaryResponse.DetailGroup.builder()
+                                      .title(entry.getKey())
+                                      .items(items)
+                                      .build();
+                          })
+                  .collect(Collectors.toList());
       }
 }

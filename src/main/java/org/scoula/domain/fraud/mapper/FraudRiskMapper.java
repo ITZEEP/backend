@@ -111,4 +111,35 @@ public interface FraudRiskMapper {
        * @return 소유자 여부
        */
       boolean isOwnerOfRiskCheck(@Param("riskckId") Long riskckId, @Param("userId") Long userId);
+
+      /**
+       * 매물 ID로 가장 최근의 위험도 체크 정보 조회
+       *
+       * @param homeId 매물 ID
+       * @return 가장 최근의 위험도 체크 정보
+       */
+      RiskCheckVO selectLatestRiskCheckByHomeId(@Param("homeId") Long homeId);
+
+      /**
+       * 위험도 체크 ID로 위험도 체크 정보 조회
+       *
+       * @param riskckId 위험도 체크 ID
+       * @return 위험도 체크 정보
+       */
+      RiskCheckVO selectRiskCheckById(@Param("riskckId") Long riskckId);
+
+      /**
+       * 오늘 분석한 위험도 체크 ID 조회
+       *
+       * @param userId 사용자 ID
+       * @param homeId 매물 ID
+       * @param startOfDay 오늘 시작 시간
+       * @param endOfDay 오늘 종료 시간
+       * @return 위험도 체크 ID (없으면 null)
+       */
+      Long selectTodayRiskCheckId(
+              @Param("userId") Long userId,
+              @Param("homeId") Long homeId,
+              @Param("startOfDay") java.time.LocalDateTime startOfDay,
+              @Param("endOfDay") java.time.LocalDateTime endOfDay);
 }
