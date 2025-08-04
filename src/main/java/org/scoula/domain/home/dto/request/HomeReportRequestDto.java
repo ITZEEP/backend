@@ -2,6 +2,7 @@ package org.scoula.domain.home.dto.request;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 import org.scoula.domain.home.vo.HomeReportVO;
 
@@ -35,17 +36,20 @@ public class HomeReportRequestDto {
       @ApiModelProperty(value = "신고 처리 상태", example = "PROCESSING", readOnly = true)
       private String reportStatus;
 
+      private static final DateTimeFormatter DATE_TIME_FORMATTER =
+              DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
       // VO -> DTO
       public static HomeReportRequestDto from(HomeReportVO vo) {
+          if (vo == null) {
+              return null;
+          }
           return HomeReportRequestDto.builder()
                   .reportId(vo.getReportId())
                   .userId(vo.getUserId())
                   .homeId(vo.getHomeId())
                   .reportReason(vo.getReportReason())
-                  .reportAt(
-                          LocalDateTime.parse(
-                                  vo.getReportAt(),
-                                  DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                  .reportAt(vo.getReportAt())
                   .reportStatus(vo.getReportStatus())
                   .build();
       }
@@ -57,7 +61,17 @@ public class HomeReportRequestDto {
                   this.userId,
                   this.homeId,
                   this.reportReason,
-                  this.reportAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                  this.reportAt,
                   this.reportStatus);
+      }
+
+      // 날짜 문자열 -> LocalDateTime 변환
+      private static LocalDateTime parseDateTime(String dateTime) {
+          try {
+              return LocalDateTime.parse(
+                      dateTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+          } catch (DateTimeParseException e) {
+              throw new IllegalArgumentException("Invalid date format: " + dateTime, e);
+          }
       }
 }

@@ -1,4 +1,4 @@
-package org.scoula.domain.home.controller;
+package org.scoula.domain.health.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

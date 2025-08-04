@@ -14,7 +14,7 @@ import org.scoula.global.common.dto.PageRequest;
 public interface HomeMapper {
 
       /** 매물 전체 조회 (페이징 포함) */
-      List<HomeRegisterVO> findHomes(@Param("offset") int offset, @Param("size") int size);
+      List<HomeRegisterVO> findHomes(@Param("pageRequest") PageRequest pageRequest);
 
       /** 매물 총 개수 조회 */
       long countHomes(@Param("pageRequest") PageRequest pageRequest);
@@ -35,7 +35,7 @@ public interface HomeMapper {
       void deleteHome(@Param("homeId") Long homeId);
 
       /** 찜 추가 */
-      void insertLike(@Param("userId") Long userId, @Param("homeId") Long homeId);
+      void insertHomeLike(@Param("userId") Long userId, @Param("homeId") Long homeId);
 
       /** 찜 제거 */
       void deleteLike(@Param("userId") Long userId, @Param("homeId") Long homeId);
@@ -55,11 +55,8 @@ public interface HomeMapper {
       // 상세 정보 등록 (home_detail)
       void insertHomeDetail(HomeRegisterVO vo);
 
-      void insertHomeFacilities(Map<String, Object> param);
-
       // 옵션 정보 등록 (home_facility)
-      void insertHomeFacilities(
-              @Param("homeDetailId") Long homeDetailId, @Param("itemIds") List<Long> itemIds);
+      void insertHomeFacilities(Map<String, Object> param);
 
       // 이미지 등록 (home_image)
       void insertHomeImages(Map<String, Object> param);

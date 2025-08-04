@@ -47,7 +47,7 @@ public class HomeRegisterVO {
       // 상세 정보
       private Long homeDetailId;
       private LocalDateTime buildDate;
-      private Integer Floor;
+      private Integer floor;
       private Integer buildingTotalFloors;
       private HomeDirection homeDirection;
       private Integer bathroomCount;
@@ -87,6 +87,7 @@ public class HomeRegisterVO {
                   .monthlyRent(dto.getMonthlyRent())
                   .maintenanceFee(dto.getMaintenanceFee())
                   .supplyArea(dto.getSupplyArea())
+                  .homeFloor(dto.getHomefloor())
                   .roomCnt(dto.getRoomCnt())
                   .bathroomCount(dto.getBathroomCount())
                   .homeDirection(
@@ -108,6 +109,7 @@ public class HomeRegisterVO {
           return HomeRegisterVO.builder()
                   .homeId(dto.getHomeId())
                   .userId(userId)
+                  .userName(dto.getUserName())
                   .addr1(dto.getAddr1())
                   .addr2(dto.getAddr2())
                   .residenceType(dto.getResidenceType())
@@ -116,6 +118,7 @@ public class HomeRegisterVO {
                   .monthlyRent(dto.getMonthlyRent())
                   .maintenanceFee(dto.getMaintenanceFee())
                   .supplyArea(dto.getSupplyArea())
+                  .homeFloor(dto.getHomefloor())
                   .roomCnt(dto.getRoomCnt())
                   .bathroomCount(dto.getBathroomCount())
                   .homeDirection(
@@ -130,5 +133,13 @@ public class HomeRegisterVO {
                   .isPet(dto.getIsPet())
                   .moveInDate(dto.getMoveInDate())
                   .build();
+      }
+
+      private static HomeDirection parseHomeDirection(String direction) {
+          try {
+              return HomeDirection.valueOf(direction);
+          } catch (IllegalArgumentException e) {
+              return null; // 또는 기본값 설정
+          }
       }
 }

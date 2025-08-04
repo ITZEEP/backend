@@ -33,7 +33,7 @@ public class HomeServiceImpl implements HomeService {
       public PageResponse<HomeResponseDto> getHomeList(PageRequest pageRequest) {
           int offset = pageRequest.getOffset();
           int size = pageRequest.getSize();
-          List<HomeRegisterVO> homes = homeMapper.findHomes(offset, size);
+          List<HomeRegisterVO> homes = homeMapper.findHomes(pageRequest);
           long totalCount = homeMapper.countHomes(pageRequest);
 
           List<HomeResponseDto> content =
@@ -65,7 +65,7 @@ public class HomeServiceImpl implements HomeService {
 
           // 2. 매물 등록 (home)
           homeMapper.insertHome(userId, request.getUserName(), vo);
-          log.error("username: {}", request.getUserName());
+          log.debug("username: {}", request.getUserName());
           Long homeId = vo.getHomeId();
 
           // 3. 상세 정보 등록 (home_detail)
@@ -95,6 +95,14 @@ public class HomeServiceImpl implements HomeService {
       @Override
       @Transactional
       public void updateHome(Long userId, Long homeId, HomeUpdateRequestDto request) {
+          HomeRegisterVO existingHome =
+                  homeMapper
+                          .findHomeById(homeId)
+                          .orElseThrow(() -> new HomeRegisterException("매물을 찾을 수 없습니다."));
+
+          if (!existingHome.getUserId().equals(userId)) {
+              throw new HomeRegisterException("매물 수정 권한이 없습니다.");
+          }
           HomeRegisterVO vo = HomeRegisterVO.from(homeId, request);
           homeMapper.updateHome(vo);
       }
@@ -102,13 +110,22 @@ public class HomeServiceImpl implements HomeService {
       @Override
       @Transactional
       public void deleteHome(Long userId, Long homeId) {
+          HomeRegisterVO existingHome =
+                  homeMapper
+                          .findHomeById(homeId)
+                          .orElseThrow(() -> new HomeRegisterException("매물을 찾을 수 없습니다."));
+
+          if (!existingHome.getUserId().equals(userId)) {
+              throw new HomeRegisterException("매물 삭제 권한이 없습니다.");
+          }
+
           homeMapper.deleteHome(homeId);
       }
 
       @Override
       @Transactional
       public void addLike(Long userId, Long homeId) {
-          homeMapper.insertLike(userId, homeId);
+          homeMapper.insertHomeLike(userId, homeId);
       }
 
       @Override
@@ -131,18 +148,23 @@ public class HomeServiceImpl implements HomeService {
       }
 
       @Override
+      @Transactional
       public void reportHome(HomeReportRequestDto requestDto) {
-          // reportAt이 null이면 현재 시간으로 설정
-          if (requestDto.getReportAt() == null) {
-              requestDto.setReportAt(LocalDateTime.now());
-          }
+          LocalDateTime reportAt =
+                  requestDto.getReportAt() != null ? requestDto.getReportAt() : LocalDateTime.now();
+          String reportStatus =
+                  requestDto.getReportStatus() != null ? requestDto.getReportStatus() : "WAITING";
 
-          // reportStatus도 기본값 설정
-          if (requestDto.getReportStatus() == null) {
-              requestDto.setReportStatus("WAITING");
-          }
+          HomeReportVO vo =
+                  HomeReportVO.builder()
+                          .reportId(requestDto.getReportId())
+                          .userId(requestDto.getUserId())
+                          .homeId(requestDto.getHomeId())
+                          .reportReason(requestDto.getReportReason())
+                          .reportAt(reportAt)
+                          .reportStatus(reportStatus)
+                          .build();
 
-          HomeReportVO vo = requestDto.toVO();
           homeMapper.insertHomeReport(vo);
       }
 

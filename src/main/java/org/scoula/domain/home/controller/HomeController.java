@@ -2,6 +2,8 @@ package org.scoula.domain.home.controller;
 
 import java.util.List;
 
+import javax.validation.Valid;
+
 import org.scoula.domain.home.dto.request.HomeCreateRequestDto;
 import org.scoula.domain.home.dto.request.HomeReportRequestDto;
 import org.scoula.domain.home.dto.request.HomeUpdateRequestDto;
@@ -32,7 +34,7 @@ public class HomeController {
       @PostMapping
       public ResponseEntity<ApiResponse<Long>> createHome(
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @RequestBody HomeCreateRequestDto request) {
+              @Valid @RequestBody HomeCreateRequestDto request) {
           Long homeId = homeService.createHome(userDetails.getUserId(), request);
           return ResponseEntity.ok(ApiResponse.success(homeId));
       }
@@ -42,7 +44,7 @@ public class HomeController {
       public ResponseEntity<ApiResponse<Void>> updateHome(
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @PathVariable Long homeId,
-              @RequestBody HomeUpdateRequestDto request) {
+              @Valid HomeUpdateRequestDto request) {
           homeService.updateHome(userDetails.getUserId(), homeId, request);
           return ResponseEntity.ok(ApiResponse.success());
       }
@@ -126,11 +128,19 @@ public class HomeController {
 
       @ApiOperation(value = "매물 신고", notes = "해당 매물을 신고합니다.")
       @PostMapping("/report")
-      public ResponseEntity<String> reportHome(
+      public ResponseEntity<ApiResponse<Void>> reportHome(
               @RequestBody HomeReportRequestDto requestDto,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
-          requestDto.setUserId(userDetails.getUserId());
-          homeService.reportHome(requestDto);
-          return ResponseEntity.ok("신고가 접수되었습니다.");
+          HomeReportRequestDto reportRequest =
+                  HomeReportRequestDto.builder()
+                          .reportId(requestDto.getReportId())
+                          .userId(userDetails.getUserId())
+                          .homeId(requestDto.getHomeId())
+                          .reportReason(requestDto.getReportReason())
+                          .reportAt(requestDto.getReportAt())
+                          .reportStatus(requestDto.getReportStatus())
+                          .build();
+          homeService.reportHome(reportRequest);
+          return ResponseEntity.ok(ApiResponse.success());
       }
 }

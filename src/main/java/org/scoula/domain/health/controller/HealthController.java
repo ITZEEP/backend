@@ -10,7 +10,7 @@ import io.swagger.annotations.ApiOperation;
 
 /** 홈 컨트롤러 인터페이스 - API 서비스의 기본 엔드포인트와 건강 상태 확인 기능을 정의합니다 */
 @Api(tags = "홈 API", description = "기본 엔드포인트 및 헬스체크")
-public interface HomeController {
+public interface HealthController {
 
       @ApiOperation(value = "환영 메시지", notes = "API 서비스의 기본 정보를 반환합니다")
       ResponseEntity<ApiResponse<WelcomeResponse>> home();

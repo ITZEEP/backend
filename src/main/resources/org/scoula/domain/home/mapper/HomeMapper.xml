@@ -8,13 +8,13 @@
     <!-- 1. 홈 등록 -->
     <insert id="insertHome" parameterType="map" useGeneratedKeys="true" keyProperty="home.homeId">
         INSERT INTO home (
-            user_id, user_name, home_id,
+            user_id, user_name,
             addr1, addr2, residence_type, lease_type, deposit_price,
             monthly_rent, maintenance_fee, supply_area, home_status,
             view_cnt, like_cnt, chat_cnt, report_cnt,
             room_cnt, created_at, updated_at
         ) VALUES (
-                     #{userId}, #{userName}, #{home.homeId},
+                     #{userId}, #{userName},
                      #{home.addr1}, #{home.addr2}, #{home.residenceType}, #{home.leaseType}, #{home.depositPrice},
                      #{home.monthlyRent}, #{home.maintenanceFee}, #{home.supplyArea}, #{home.homeStatus},
                      0, 0, 0, 0,
@@ -50,7 +50,7 @@
     </insert>
 
     <!-- 3. 옵션(시설) 등록 -->
-    <insert id="insertHomeFacilities">
+    <insert id="insertHomeFacilities" parameterType="map">
         INSERT INTO home_facility (home_detail_id, item_id)
         VALUES
         <foreach collection="facilityItemIds" item="itemId" separator=",">
@@ -87,12 +87,12 @@
         INSERT INTO home_report (
             report_id, user_id, home_id, report_reason, report_at, report_status
         ) VALUES (
-                     #{report.reportId},
-                     #{report.userId},
-                     #{report.homeId},
-                     #{report.reportReason},
-                     #{report.reportAt},
-                     #{report.reportStatus}
+                     #{reportId},
+                     #{userId},
+                     #{homeId},
+                     #{reportReason},
+                     #{reportAt},
+                     #{reportStatus}
                  )
     </insert>
 
@@ -121,16 +121,16 @@
     <update id="updateHome" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
         UPDATE home
         SET
-            addr1 = #{home.addr1},
-            addr2 = #{home.addr2},
-            residence_type = #{home.residenceType},
-            lease_type = #{home.leaseType},
-            deposit_price = #{home.depositPrice},
-            monthly_rent = #{home.monthlyRent},
-            maintenance_fee = #{home.maintenanceFee},
-            supply_area = #{home.supplyArea},
+            addr1 = #{addr1},
+            addr2 = #{addr2},
+            residence_type = #{residenceType},
+            lease_type = #{leaseType},
+            deposit_price = #{depositPrice},
+            monthly_rent = #{monthlyRent},
+            maintenance_fee = #{maintenanceFee},
+            supply_area = #{supplyArea},
             updated_at = NOW()
-        WHERE home_id = #{home.homeId}
+        WHERE home_id = #{homeId}
     </update>
 
     <!-- 매물 삭제 -->
@@ -139,11 +139,6 @@
         WHERE home_id = #{homeId}
     </delete>
 
-    <!-- 찜 추가 -->
-    <insert id="insertLike">
-        INSERT INTO home_like (user_id, home_id)
-        VALUES (#{userId}, #{homeId})
-    </insert>
 
     <!-- 찜 제거 -->
     <delete id="deleteLike">

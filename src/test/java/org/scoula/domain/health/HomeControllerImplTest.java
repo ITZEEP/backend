@@ -18,11 +18,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 @DisplayName("홈 컨트롤러 구현체 단위 테스트")
 class HomeControllerImplTest {
 
-      private HomeControllerImpl homeController;
+      private HealthControllerImpl homeController;
 
       @BeforeEach
       void setUp() {
-          homeController = new HomeControllerImpl();
+          homeController = new HealthControllerImpl();
 
           // 테스트용 설정값 주입
           ReflectionTestUtils.setField(homeController, "applicationName", "itzeep-backend-test");

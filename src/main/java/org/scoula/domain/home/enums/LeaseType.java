@@ -20,11 +20,16 @@ public enum LeaseType {
 
       @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
       public static LeaseType from(String value) {
+          if (value == null || value.trim().isEmpty()) {
+              throw new IllegalArgumentException("임대 유형 값이 null이거나 비어있습니다.");
+          }
+
+          String trimmedValue = value.trim();
           for (LeaseType type : values()) {
-              if (type.description.equals(value)) {
+              if (type.description.equals(trimmedValue)) {
                   return type;
               }
           }
-          throw new IllegalArgumentException("Unknown lease type: " + value);
+          throw new IllegalArgumentException("알 수 없는 임대 유형입니다: " + value);
       }
 }

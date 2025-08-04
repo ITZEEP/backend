@@ -20,7 +20,7 @@ import lombok.extern.log4j.Log4j2;
 @RestController
 @RequestMapping("/api")
 @Log4j2
-public class HomeControllerImpl implements HomeController {
+public class HealthControllerImpl implements HealthController {
 
       @Value("${spring.application.name:itzeep-backend}")
       private String applicationName;

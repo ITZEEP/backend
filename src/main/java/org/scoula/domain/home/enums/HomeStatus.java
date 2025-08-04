@@ -21,11 +21,16 @@ public enum HomeStatus {
 
       @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
       public static HomeStatus from(String value) {
+          if (value == null || value.trim().isEmpty()) {
+              throw new IllegalArgumentException("매물 상태 값이 null이거나 비어있습니다.");
+          }
+
+          String trimmedValue = value.trim();
           for (HomeStatus status : values()) {
-              if (status.description.equals(value)) {
+              if (status.description.equals(trimmedValue)) {
                   return status;
               }
           }
-          throw new IllegalArgumentException("Unknown home status: " + value);
+          throw new IllegalArgumentException("알 수 없는 매물 상태입니다: " + value);
       }
 }

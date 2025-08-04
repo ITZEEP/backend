@@ -65,7 +65,7 @@ public class HomeResponseDto {
                   .monthlyRent(vo.getMonthlyRent())
                   .maintenanceFee(vo.getMaintenanceFee())
                   .supplyArea(vo.getSupplyArea())
-                  .homeFloor(String.valueOf(vo.getFloor()))
+                  .homeFloor(vo.getFloor() != null ? vo.getFloor().toString() : "")
                   .roomCnt(vo.getRoomCnt())
                   .bathroomCount(vo.getBathroomCount())
                   .homeDirection(vo.getHomeDirection() != null ? vo.getHomeDirection().name() : null)
