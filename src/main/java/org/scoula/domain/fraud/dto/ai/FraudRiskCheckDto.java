@@ -35,6 +35,9 @@ public class FraudRiskCheckDto {
           @JsonProperty("leaseType")
           private String leaseType;
 
+          @JsonProperty("monthlyRent")
+          private Long monthlyRent;
+
           @JsonProperty("registryDocument")
           private RegistryDocument registryDocument;
 
