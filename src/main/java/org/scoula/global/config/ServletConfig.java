@@ -32,6 +32,7 @@ import lombok.RequiredArgsConstructor;
               "org.scoula.global.file.controller",
               "org.scoula.global.oauth2.controller",
               "org.scoula.domain.precontract.controller",
+              "org.scoula.domain.home.controller"
           })
 @RequiredArgsConstructor
 public class ServletConfig implements WebMvcConfigurer {

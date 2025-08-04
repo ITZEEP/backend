@@ -1,4 +1,4 @@
-package org.scoula.domain.home.dto;
+package org.scoula.domain.health.dto;
 
 import java.time.LocalDateTime;
 
