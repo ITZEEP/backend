@@ -1,10 +1,10 @@
-package org.scoula.domain.home.controller;
+package org.scoula.domain.health.controller;
 
 import java.time.LocalDateTime;
 
-import org.scoula.domain.home.dto.HealthResponse;
-import org.scoula.domain.home.dto.WelcomeResponse;
-import org.scoula.domain.home.exception.HomeErrorCode;
+import org.scoula.domain.health.dto.HealthResponse;
+import org.scoula.domain.health.dto.WelcomeResponse;
+import org.scoula.domain.health.exception.HomeErrorCode;
 import org.scoula.global.common.dto.ApiResponse;
 import org.scoula.global.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;

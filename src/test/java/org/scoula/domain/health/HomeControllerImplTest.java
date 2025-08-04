@@ -1,4 +1,4 @@
-package org.scoula.domain.home.controller;
+package org.scoula.domain.health.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -7,8 +7,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.scoula.domain.home.dto.HealthResponse;
-import org.scoula.domain.home.dto.WelcomeResponse;
+import org.scoula.domain.health.dto.HealthResponse;
+import org.scoula.domain.health.dto.WelcomeResponse;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

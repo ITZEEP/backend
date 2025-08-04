@@ -3,7 +3,7 @@ package org.scoula.domain.precontract.dto.tenant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.scoula.domain.home.enums.ResidenceType;
+import org.scoula.domain.health.enums.ResidenceType;
 import org.scoula.global.common.constant.Constants;
 
 import com.fasterxml.jackson.annotation.JsonFormat;

@@ -21,6 +21,7 @@ CREATE TABLE social_account (
 CREATE TABLE home (
                       home_id BIGINT PRIMARY KEY AUTO_INCREMENT,
                       user_id BIGINT,
+                      user_name VARCHAR(50),
                       addr1 VARCHAR(255),
                       addr2 VARCHAR(255),
                       lease_type ENUM('JEONSE', 'WOLSE'),
@@ -180,3 +181,5 @@ CREATE TABLE home_report (
                              FOREIGN KEY (user_id) REFERENCES user(user_id),
                              FOREIGN KEY (home_id) REFERENCES home(home_id)
 );
+
+alter table home drop column user_name
