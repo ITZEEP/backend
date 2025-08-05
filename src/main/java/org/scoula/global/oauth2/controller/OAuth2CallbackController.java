@@ -34,7 +34,8 @@ public class OAuth2CallbackController {
 
       private final OAuth2ManualServiceInterface oauth2ManualService;
 
-      @Value("${oauth2.success.redirect-url:http://localhost:5173/oauth/callback}")
+      @Value(
+              "${spring.security.oauth2.client.registration.kakao.redirect-uri:http://localhost:5173/oauth/callback}")
       private String frontendRedirectUrl;
 
       @GetMapping("/callback/{registrationId}")

@@ -25,28 +25,32 @@ public class TenantPreContractCheckVO {
 
       private RiskType riskType;
       private RentType rentType;
+      private Boolean depositAdjustment;
       private LocalDate expectedMoveInDate;
       private ContractDuration contractDuration;
       private RenewalIntent renewalIntent;
       private Boolean facilityRepairNeeded;
       private Boolean interiorCleaningNeeded;
       private Boolean applianceInstallationPlan;
+      private Boolean hasParking;
+      private Integer parkingCount;
       private Boolean hasPet;
       private String petInfo;
       private Long petCount;
       private Boolean indoorSmokingPlan;
       private Boolean earlyTerminationRisk;
       private NonresidentialUsePlan nonresidentialUsePlan;
-      private String requestToOwner;
       private LocalDateTime checkedAt;
       private Integer residentCount;
       private String occupation;
       private String emergencyContact;
       private String relation;
+      private String requestToOwner;
 
       // 1. step1
       public static TenantPreContractCheckVO toStep1VO(TenantStep1DTO dto) {
           return TenantPreContractCheckVO.builder()
+                  .depositAdjustment(dto.getDepositAdjustment())
                   .expectedMoveInDate(dto.getExpectedMoveInDate())
                   .contractDuration(ContractDuration.valueOf(dto.getContractDuration()))
                   .renewalIntent(RenewalIntent.valueOf(dto.getRenewalIntent()))
@@ -59,6 +63,8 @@ public class TenantPreContractCheckVO {
                   .facilityRepairNeeded(dto.getFacilityRepairNeeded())
                   .interiorCleaningNeeded(dto.getInteriorCleaningNeeded())
                   .applianceInstallationPlan(dto.getApplianceInstallationPlan())
+                  .hasParking(dto.getHasParking())
+                  .parkingCount(dto.getParkingCount())
                   .hasPet(dto.getHasPet())
                   .petInfo(dto.getPetInfo())
                   .petCount(dto.getPetCount())
@@ -72,11 +78,11 @@ public class TenantPreContractCheckVO {
                   .earlyTerminationRisk(dto.getEarlyTerminationRisk())
                   .nonresidentialUsePlan(
                           NonresidentialUsePlan.valueOf(dto.getNonresidentialUsePlan()))
-                  .requestToOwner(dto.getRequestToOwner())
                   .residentCount(dto.getResidentCount())
                   .occupation(dto.getOccupation())
                   .emergencyContact(dto.getEmergencyContact())
                   .relation(dto.getRelation())
+                  .requestToOwner(dto.getRequestToOwner())
                   .build();
       }
 }

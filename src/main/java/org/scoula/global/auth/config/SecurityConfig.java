@@ -1,5 +1,7 @@
 package org.scoula.global.auth.config;
 
+import java.util.List;
+
 import org.mybatis.spring.annotation.MapperScan;
 import org.scoula.global.auth.filter.AuthenticationErrorFilter;
 import org.scoula.global.auth.filter.JwtAuthenticationFilter;
@@ -10,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -21,6 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CharacterEncodingFilter;
@@ -83,8 +87,37 @@ public class SecurityConfig {
                   .and()
 
                   // 접근 경로 제어 설정
-                  .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                  .authorizeHttpRequests(
+                          auth ->
+                                  auth
+                                          // OPTIONS 요청은 모두 허용
+                                          .requestMatchers(
+                                                  new AntPathRequestMatcher(
+                                                          "/**", HttpMethod.OPTIONS.name()))
+                                          .permitAll()
+                                          // 공개 API
+                                          .requestMatchers(
+                                                  new AntPathRequestMatcher(
+                                                          "/api", HttpMethod.GET.name()),
+                                                  new AntPathRequestMatcher("/api/health"),
+                                                  new AntPathRequestMatcher("/api/auth/login"),
+                                                  new AntPathRequestMatcher("/api/auth/signup"),
+                                                  new AntPathRequestMatcher("/api/auth/refresh"),
+                                                  new AntPathRequestMatcher("/api/auth/oauth/**"),
+                                                  new AntPathRequestMatcher("/swagger-ui/**"),
+                                                  new AntPathRequestMatcher("/v2/api-docs"),
+                                                  new AntPathRequestMatcher("/swagger-resources/**"),
+                                                  new AntPathRequestMatcher("/webjars/**"))
+                                          .permitAll()
+                                          // 사기 위험도 분석 API는 인증 필요
+                                          .requestMatchers(
+                                                  new AntPathRequestMatcher("/api/fraud-risk/**"))
+                                          .authenticated()
+                                          // 나머지 모든 요청은 인증 필요
+                                          .anyRequest()
+                                          .permitAll())
                   // 필터 설정
+                  .addFilter(corsFilter())
                   .addFilterBefore(encodingFilter(), CsrfFilter.class)
                   .addFilterBefore(
                           authenticationErrorFilter, UsernamePasswordAuthenticationFilter.class)
@@ -123,7 +156,7 @@ public class SecurityConfig {
           config.setAllowCredentials(true);
           config.addAllowedOriginPattern("*");
           config.addAllowedHeader("*");
-          config.addAllowedMethod("*");
+          config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
           source.registerCorsConfiguration("/**", config);
 
           return new CorsFilter(source);

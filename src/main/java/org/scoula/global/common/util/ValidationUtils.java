@@ -67,7 +67,7 @@ public class ValidationUtils {
           validateNotEmpty(email, "Email", errorCode);
 
           if (!EMAIL_PATTERN.matcher(email).matches()) {
-              throw new BusinessException(errorCode, "Invalid email format");
+              throw new BusinessException(errorCode, "올바른 이메일 형식이 아닙니다");
           }
       }
 

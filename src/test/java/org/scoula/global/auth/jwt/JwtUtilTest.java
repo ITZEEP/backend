@@ -22,9 +22,12 @@ class JwtUtilTest {
           // 테스트용 설정값 주입
           ReflectionTestUtils.setField(
                   jwtUtil, "secret", "bXlTZWNyZXRLZXkxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTA=");
-          ReflectionTestUtils.setField(jwtUtil, "expiration", 86400000L); // 24시간
-          ReflectionTestUtils.setField(jwtUtil, "refreshExpiration", 604800000L); // 7일
+          ReflectionTestUtils.setField(jwtUtil, "expiration", 86400L); // 24시간 (초 단위)
+          ReflectionTestUtils.setField(jwtUtil, "refreshExpiration", 604800L); // 7일 (초 단위)
           ReflectionTestUtils.setField(jwtUtil, "issuer", "itzeep");
+
+          // init 메서드 호출하여 초기화 검증 통과
+          jwtUtil.init();
       }
 
       @Test

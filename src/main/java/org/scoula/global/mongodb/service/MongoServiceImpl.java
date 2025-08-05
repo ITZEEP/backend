@@ -1,5 +1,7 @@
 package org.scoula.global.mongodb.service;
 
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -200,13 +202,21 @@ public class MongoServiceImpl extends AbstractExternalService implements MongoSe
       public Map<String, Object> getServerStatus() {
           return executeSafely(
                   () -> {
-                      log.debug("MongoDB 서버 상태 조회");
-                      Document serverStatus =
-                              mongoTemplate.getDb().runCommand(new Document("serverStatus", 1));
-                      log.debug("서버 상태 조회 완료");
-                      return serverStatus;
+                      log.debug("MongoDB 연결 상태 확인");
+                      // serverStatus 대신 간단한 ping 명령 사용 (권한 불필요)
+                      Document pingResult = mongoTemplate.getDb().runCommand(new Document("ping", 1));
+                      log.debug("MongoDB 연결 확인 완료");
+
+                      // 추가로 데이터베이스 이름과 연결 정보 포함
+                      Map<String, Object> result = new HashMap<>();
+                      result.put("ping", pingResult);
+                      result.put("database", mongoTemplate.getDb().getName());
+                      result.put("status", "connected");
+                      result.put("timestamp", new Date());
+
+                      return result;
                   },
-                  "MongoDB 서버 상태 조회");
+                  "MongoDB 연결 상태 확인");
       }
 
       /** {@inheritDoc} */
