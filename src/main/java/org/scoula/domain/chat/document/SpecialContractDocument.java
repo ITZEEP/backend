@@ -31,7 +31,7 @@ public class SpecialContractDocument {
       @AllArgsConstructor
       @Builder
       public static class Clause {
-          private Integer id;
+          private Integer order;
           private String title;
           private String content;
           private Assessment assessment;
