@@ -34,7 +34,13 @@ public enum OwnerPreContractErrorCode implements IErrorCode {
       OWNER_MISSING_DATA("OWNER_008", HttpStatus.BAD_REQUEST, "임대인 필수 데이터가 누락되었습니다."),
 
       // rentType 누락
-      RENT_TYPE_MISSING("OWNER_009", HttpStatus.BAD_REQUEST, "임대인의 임대 유형(rentType)이 누락되었습니다.");
+      RENT_TYPE_MISSING("OWNER_009", HttpStatus.BAD_REQUEST, "임대인의 임대 유형(rentType)이 누락되었습니다."),
+
+      // AI 서비스 오류
+      AI_SERVICE_ERROR("OWNER_010", HttpStatus.SERVICE_UNAVAILABLE, "AI 서비스 처리 중 오류가 발생했습니다."),
+
+      // AI 서버 오류
+      AI_SERVER_ERROR("OWNER_011", HttpStatus.SERVICE_UNAVAILABLE, "AI 서버 통신 중 오류가 발생했습니다.");
 
       private final String code;
       private final HttpStatus httpStatus;
