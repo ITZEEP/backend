@@ -3,8 +3,11 @@ package org.scoula.domain.chat.service;
 import java.util.List;
 import java.util.Map;
 
-import org.scoula.domain.chat.dto.ContractChatDocument;
+import org.scoula.domain.chat.document.ContractChatDocument;
+import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
+import org.scoula.domain.chat.dto.SpecialContractDto;
+import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
 import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
@@ -85,7 +88,7 @@ public interface ContractChatServiceInterface {
        * @throws IllegalArgumentException 파라미터가 null이거나 권한이 없거나 시작점이 설정되지 않은 경우
        * @throws RuntimeException 종료점 설정 또는 대화 내용 추출 실패
        */
-      String setEndPointAndExport(Long contractChatId, Long userId);
+      String setEndPointAndExport(Long contractChatId, Long userId, Long order);
 
       /**
        * 사용자가 계약 채팅방에 참여했는지 확인합니다.
@@ -178,4 +181,116 @@ public interface ContractChatServiceInterface {
        * @throws EntityNotFoundException 계약 채팅방이 존재하지 않는 경우
        */
       ContractChat getContractChatInfo(Long contractChatId, Long userId);
+
+      // 특약 추출 메서드
+      Object submitUserSelection(Long contractChatId, Long userId, Map<Integer, Boolean> selections);
+
+      /**
+       * 특약 선택 결과를 처리하여 N이 선택된 특약들의 문서를 생성합니다.
+       *
+       * @param selectionDto 임대인과 임차인의 선택 결과
+       * @param userId 요청 사용자 ID
+       * @return 생성된 특약 order 목록
+       */
+      //      List<Long> createSpecialContractsFromSelections(SpecialContractSelectionDto
+      // selectionDto, Long userId);
+
+      // 5. 서비스 구현체에 메서드 추가
+      /**
+       * 특약 문서 생성 (초기 껍데기)
+       *
+       * @param contractChatId 특약 대화 ID
+       * @param order 순서 (특약 번호와 동일)
+       * @return 생성된 특약 문서
+       * @throws IllegalArgumentException 이미 존재하는 특약 대화 ID인 경우
+       */
+      SpecialContractFixDocument createSpecialContract(Long contractChatId, Long order);
+
+      SpecialContractUserViewDto getSpecialContractForUser(Long contractChatId, Long userId);
+
+      /**
+       * 특약 문서 조회
+       *
+       * @param contractChatId 특약 대화 ID
+       * @return 특약 문서
+       * @throws IllegalArgumentException 문서를 찾을 수 없는 경우
+       */
+      SpecialContractFixDocument findSpecialContract(Long contractChatId);
+
+      /**
+       * recentData 업데이트
+       *
+       * @param contractChatId 특약 대화 ID
+       * @param messages 대화 메시지
+       * @return 업데이트된 특약 문서
+       */
+      SpecialContractFixDocument updateRecentData(Long contractChatId, Long order, String messages);
+
+      /**
+       * 다음 라운드로 진행 (prevData의 특정 인덱스에 현재 recentData 저장)
+       *
+       * @param contractChatId 특약 대화 ID
+       * @param prevDataIndex prevData 배열에서 저장할 인덱스 (0 또는 1)
+       * @return 업데이트된 특약 문서
+       */
+      SpecialContractFixDocument proceedToNextRound(
+              Long contractChatId, Long order, int prevDataIndex);
+
+      /**
+       * 자동으로 다음 라운드로 진행 (현재 라운드에 따라 인덱스 자동 결정)
+       *
+       * @param contractChatId 특약 대화 ID
+       * @return 업데이트된 특약 문서
+       */
+      SpecialContractFixDocument proceedToNextRoundAuto(Long contractChatId, Long order);
+
+      /**
+       * AI 서버 전송용 DTO로 변환
+       *
+       * @param contractChatId 특약 대화 ID
+       * @return AI 서버 전송용 DTO
+       */
+      SpecialContractDto formatForAI(Long contractChatId, Long order);
+
+      /**
+       * 특약 완료 처리
+       *
+       * @param contractChatId 특약 대화 ID
+       * @return 업데이트된 특약 문서
+       */
+      SpecialContractFixDocument markSpecialContractAsPassed(Long contractChatId, Long order);
+
+      /**
+       * 특약 문서 삭제
+       *
+       * @param contractChatId 특약 대화 ID
+       */
+      void deleteSpecialContract(Long contractChatId);
+
+      /**
+       * 특약 문서 존재 여부 확인
+       *
+       * @param contractChatId 특약 대화 ID
+       * @return 존재 여부
+       */
+      boolean existsSpecialContract(Long contractChatId);
+
+      /**
+       * 완료된 특약 문서들 조회
+       *
+       * @return 완료된 특약 문서 리스트
+       */
+      List<SpecialContractFixDocument> getCompletedSpecialContracts();
+
+      /**
+       * 미완료 특약 문서들 조회
+       *
+       * @return 미완료 특약 문서 리스트
+       */
+      List<SpecialContractFixDocument> getIncompleteSpecialContractsByChat(
+              Long contractChatId, Long userId);
+
+      String saveOwnerSelectionToRedis(Long contractChatId, Map<Integer, Boolean> selections);
+
+      Object saveTenantSelectionAndProcess(Long contractChatId, Map<Integer, Boolean> selections);
 }
