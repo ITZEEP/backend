@@ -40,6 +40,7 @@ public class HomeRegisterVO {
       private Integer reportCnt;
       private Integer roomCnt;
       private Float supplyArea;
+      private Float exclusiveArea;
       private String homeFloor;
       private LocalDateTime createdAt;
       private LocalDateTime updatedAt;
@@ -87,6 +88,7 @@ public class HomeRegisterVO {
                   .monthlyRent(dto.getMonthlyRent())
                   .maintenanceFee(dto.getMaintenanceFee())
                   .supplyArea(dto.getSupplyArea())
+                  .exclusiveArea(dto.getExclusiveArea())
                   .homeFloor(dto.getHomefloor())
                   .roomCnt(dto.getRoomCnt())
                   .bathroomCount(dto.getBathroomCount())

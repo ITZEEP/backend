@@ -32,6 +32,7 @@ public class HomeResponseDto {
       private Integer maintenanceFee;
 
       private Float supplyArea;
+      private Float exclusiveArea;
 
       private String homeFloor;
 
@@ -65,6 +66,7 @@ public class HomeResponseDto {
                   .monthlyRent(vo.getMonthlyRent())
                   .maintenanceFee(vo.getMaintenanceFee())
                   .supplyArea(vo.getSupplyArea())
+                  .exclusiveArea(vo.getExclusiveArea())
                   .homeFloor(vo.getFloor() != null ? vo.getFloor().toString() : "")
                   .roomCnt(vo.getRoomCnt())
                   .bathroomCount(vo.getBathroomCount())

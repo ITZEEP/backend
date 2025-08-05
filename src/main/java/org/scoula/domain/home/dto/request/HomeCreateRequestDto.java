@@ -28,7 +28,8 @@ public class HomeCreateRequestDto {
       private Integer monthlyRent; // 월세
       private Integer maintenanceFee; // 관리비
 
-      private Float supplyArea; // 전용면적
+      private Float supplyArea;// 전용면적
+      private Float exclusiveArea;
 
       private String homefloor; // 층 정보 (예: 5층 / 15층)
       private LocalDate buildDate;

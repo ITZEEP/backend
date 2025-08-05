@@ -31,6 +31,7 @@ public class HomeUpdateRequestDto {
       private Integer maintenanceFee;
 
       private Float supplyArea;
+      private Float exclusiveArea;
 
       private String homefloor;
       private LocalDate buildDate;
