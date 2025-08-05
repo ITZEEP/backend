@@ -36,7 +36,7 @@ class OwnerPreContractCheckVO {
       private ResponsibilityParty insuranceBurden;
       private YesNoEnum hasNotice;
       private String ownerBankName;
-      private String ownerBankAccountNumber;
+      private String ownerAccountNumber;
 
       private String contractFileUrl;
       private DateTime checkedAt;
