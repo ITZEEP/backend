@@ -83,7 +83,9 @@ public class AiClauseImproveServiceImpl implements AiClauseImproveService {
                       LogSanitizerUtil.sanitize(responseBody.getMessage()));
               throw new BusinessException(
                       ChatErrorCode.AI_SERVER_ERROR,
-                      responseBody.getMessage() != null ? responseBody.getMessage() : "특약 개선 실패");
+                      responseBody.getMessage() != null
+                              ? LogSanitizerUtil.sanitize(responseBody.getMessage())
+                              : "특약 개선 실패");
           }
 
           logResponseSuccess(responseBody.getData());
