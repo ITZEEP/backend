@@ -4,6 +4,7 @@ import org.scoula.domain.chat.dto.ai.ClauseImproveRequestDto;
 import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.global.common.exception.BusinessException;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -77,7 +78,7 @@ public class AiClauseImproveServiceImpl implements AiClauseImproveService {
 
           ClauseImproveResponseDto responseBody = response.getBody();
           if (!responseBody.isSuccess() || responseBody.getData() == null) {
-              log.error("AI 특약 개선 실패 - message: {}", responseBody.getMessage());
+              log.error("AI 특약 개선 실패 - message: {}", LogSanitizerUtil.sanitize(responseBody.getMessage()));
               throw new BusinessException(
                       ChatErrorCode.AI_SERVER_ERROR,
                       responseBody.getMessage() != null ? responseBody.getMessage() : "특약 개선 실패");
@@ -92,7 +93,7 @@ public class AiClauseImproveServiceImpl implements AiClauseImproveService {
                   "AI 특약 개선 완료 - round: {}, order: {}, title: {}",
                   data.getRound(),
                   data.getOrder(),
-                  data.getTitle());
+                  LogSanitizerUtil.sanitize(data.getTitle()));
       }
 
       private void logRequest(ClauseImproveRequestDto request) {

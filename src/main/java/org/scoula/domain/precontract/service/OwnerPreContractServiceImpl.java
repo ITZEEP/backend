@@ -22,6 +22,7 @@ import org.scoula.domain.precontract.vo.OwnerJeonseInfoVO;
 import org.scoula.domain.precontract.vo.OwnerWolseInfoVO;
 import org.scoula.domain.precontract.vo.RestoreCategoryVO;
 import org.scoula.global.common.exception.BusinessException;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
@@ -220,7 +221,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       @Override
       public ContractParseResponseDto analyzeContractDocument(MultipartFile file) {
           try {
-              log.info("계약서 특약 OCR 요청 시작 - 파일명: {}", file.getOriginalFilename());
+              log.info("계약서 특약 OCR 요청 시작 - 파일명: {}", LogSanitizerUtil.sanitize(file.getOriginalFilename()));
               ContractParseResponseDto aiResponse =
                       aiContractAnalyzerService.parseContractDocument(file);
 
