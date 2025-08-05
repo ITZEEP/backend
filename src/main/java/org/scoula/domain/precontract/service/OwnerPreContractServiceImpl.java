@@ -221,7 +221,9 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       @Override
       public ContractParseResponseDto analyzeContractDocument(MultipartFile file) {
           try {
-              log.info("계약서 특약 OCR 요청 시작 - 파일명: {}", LogSanitizerUtil.sanitize(file.getOriginalFilename()));
+              log.info(
+                      "계약서 특약 OCR 요청 시작 - 파일명: {}",
+                      LogSanitizerUtil.sanitize(file.getOriginalFilename()));
               ContractParseResponseDto aiResponse =
                       aiContractAnalyzerService.parseContractDocument(file);
 

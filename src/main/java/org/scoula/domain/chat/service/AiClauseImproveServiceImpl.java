@@ -78,7 +78,9 @@ public class AiClauseImproveServiceImpl implements AiClauseImproveService {
 
           ClauseImproveResponseDto responseBody = response.getBody();
           if (!responseBody.isSuccess() || responseBody.getData() == null) {
-              log.error("AI 특약 개선 실패 - message: {}", LogSanitizerUtil.sanitize(responseBody.getMessage()));
+              log.error(
+                      "AI 특약 개선 실패 - message: {}",
+                      LogSanitizerUtil.sanitize(responseBody.getMessage()));
               throw new BusinessException(
                       ChatErrorCode.AI_SERVER_ERROR,
                       responseBody.getMessage() != null ? responseBody.getMessage() : "특약 개선 실패");
