@@ -91,7 +91,6 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
               Long contractChatId, Long userId, OwnerContractStep1DTO contractStep1DTO) {
           validateUser(contractChatId, userId, true);
 
-          contractStep1DTO.setCheckedAt(LocalDateTime.now());
           int result = ownerMapper.updateContractSub1(contractChatId, userId, contractStep1DTO);
           if (result != 1) throw new BusinessException(OwnerPreContractErrorCode.OWNER_UPDATE);
           return null;
@@ -108,11 +107,13 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       @Override
       public Void updateOwnerContractStep2(
               Long contractChatId, Long userId, OwnerContractStep2DTO dto) {
+
           validateUser(contractChatId, userId, true);
 
-          dto.setCheckedAt(LocalDateTime.now());
+          // 1. 계약 조건 업데이트
           ownerMapper.updateContractSub2(dto, contractChatId, userId);
 
+          // 2. ownerPrecheckId 조회
           Long ownerPrecheckId =
                   ownerMapper
                           .selectOwnerPrecheckId(contractChatId, userId)
@@ -121,11 +122,8 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           new BusinessException(
                                                   OwnerPreContractErrorCode.OWNER_SELECT));
 
-          if (dto.getRestoreCategoryIds() != null && !dto.getRestoreCategoryIds().isEmpty()) {
-              for (Long categoryId : dto.getRestoreCategoryIds()) {
-                  ownerMapper.upsertRestoreScope(ownerPrecheckId, categoryId);
-              }
-          } else if (dto.getRestoreCategories() != null && !dto.getRestoreCategories().isEmpty()) {
+          // 3. 복구 범위 upsert - restoreCategories(name) 사용
+          if (dto.getRestoreCategories() != null && !dto.getRestoreCategories().isEmpty()) {
               for (String categoryName : dto.getRestoreCategories()) {
                   Long categoryId = ownerMapper.selectRestoreCategoryIdByName(categoryName);
                   if (categoryId == null) {
@@ -164,18 +162,27 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       public Void updateOwnerLivingStep1(Long contractChatId, Long userId, OwnerLivingStep1DTO dto) {
           validateUser(contractChatId, userId, true);
 
-          dto.setCheckedAt(LocalDateTime.now());
+          // Step1 공통 정보 업데이트
           int updated = ownerMapper.updateLivingSub1(dto, contractChatId, userId);
           if (updated != 1) throw new BusinessException(OwnerPreContractErrorCode.OWNER_UPDATE);
 
-          RentType rentType = RentType.valueOf(dto.getRentType());
+          // rentType을 DB에서 직접 조회
+          String rentTypeStr =
+                  ownerMapper
+                          .selectRentType(contractChatId, userId)
+                          .orElseThrow(
+                                  () ->
+                                          new BusinessException(
+                                                  OwnerPreContractErrorCode.OWNER_SELECT));
+          RentType rentType = RentType.valueOf(rentTypeStr);
 
-          // rentType에 따라 전세/월세 조건 저장
+          // 월세일 경우 추가 정보 업데이트
           if (rentType == RentType.WOLSE) {
               Integer dueDate = dto.getPaymentDueDate();
               Double lateFee = dto.getLateFeeInterestRate();
               if (dueDate == null || lateFee == null)
                   throw new BusinessException(OwnerPreContractErrorCode.OWNER_MISSING_DATA);
+
               int wolseResult =
                       ownerMapper.updateLivingWolse(contractChatId, userId, dueDate, lateFee);
               if (wolseResult != 1)
@@ -197,11 +204,16 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           new BusinessException(
                                                   OwnerPreContractErrorCode.OWNER_SELECT));
 
-          if (dto.getRentType() == null) {
-              throw new BusinessException(OwnerPreContractErrorCode.RENT_TYPE_MISSING);
-          }
+          // rentType을 DB에서 조회
+          String rentTypeStr =
+                  ownerMapper
+                          .selectRentType(contractChatId, userId)
+                          .orElseThrow(
+                                  () ->
+                                          new BusinessException(
+                                                  OwnerPreContractErrorCode.RENT_TYPE_MISSING));
 
-          RentType rentType = RentType.valueOf(dto.getRentType());
+          RentType rentType = RentType.valueOf(rentTypeStr);
 
           if (rentType == RentType.WOLSE) {
               OwnerWolseInfoVO vo =
@@ -348,7 +360,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                           .insuranceBurden(dto.getInsuranceBurden())
                           .hasNotice(dto.getHasNotice())
                           .ownerBankName(dto.getOwnerBankName())
-                          .ownerBankAccountNumber(dto.getOwnerBankAccountNumber())
+                          .ownerAccountNumber(dto.getOwnerAccountNumber())
                           .paymentDueDate(dto.getPaymentDueDate())
                           .lateFeeInterestRate(dto.getLateFeeInterestRate())
                           .build());
@@ -488,7 +500,6 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       private ClauseRecommendRequestDto.OwnerData buildOwnerData(OwnerPreContractMongoDTO ownerData) {
           ClauseRecommendRequestDto.OwnerData ownerRequestData =
                   ClauseRecommendRequestDto.OwnerData.builder()
-                          .checkedAt(LocalDateTime.now().toString())
                           .contractChatId(ownerData.getContractChatId())
                           .contractDuration(
                                   ownerData.getContractDuration() != null
@@ -509,7 +520,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           : "")
                           .isMortgaged(
                                   ownerData.getMortgaged() != null ? ownerData.getMortgaged() : false)
-                          .ownerAccountNumber(ownerData.getOwnerBankAccountNumber())
+                          .ownerAccountNumber(ownerData.getOwnerAccountNumber())
                           .ownerBankName(ownerData.getOwnerBankName())
                           .ownerPrecheckId(null)
                           .renewalIntent(

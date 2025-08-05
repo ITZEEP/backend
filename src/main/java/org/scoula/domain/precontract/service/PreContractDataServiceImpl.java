@@ -207,7 +207,7 @@ public class PreContractDataServiceImpl implements PreContractDataService {
                   .identityId(identityId)
                   .insuranceBurden(safeEnumToStringWithDefault(ownerDto.getInsuranceBurden(), ""))
                   .isMortgaged(ownerDto.getMortgaged() != null ? ownerDto.getMortgaged() : false)
-                  .ownerAccountNumber(ownerDto.getOwnerBankAccountNumber())
+                  .ownerAccountNumber(ownerDto.getOwnerAccountNumber())
                   .ownerBankName(ownerDto.getOwnerBankName())
                   .ownerPrecheckId(ownerPrecheckId)
                   .renewalIntent(safeEnumToString(ownerDto.getRenewalIntent()))

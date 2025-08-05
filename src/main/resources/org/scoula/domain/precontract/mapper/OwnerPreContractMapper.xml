@@ -5,12 +5,10 @@
 
 <mapper namespace="org.scoula.domain.precontract.mapper.OwnerPreContractMapper">
   <resultMap id="selectContractSub2" type="org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO">
-    <result property="ownerPrecheckId" column="contract_chat_id"/>
     <result property="hasConditionLog" column="has_condition_log"/>
     <result property="hasPenalty" column="has_penalty"/>
     <result property="hasPriorityForExtension" column="has_priority_for_extension"/>
     <result property="hasAutoPriceAdjustment" column="has_auto_price_adjustment"/>
-    <result property="checkedAt" column="checked_at"/>
     <result property="allowJeonseRightRegistration" column="allow_jeonse_right_registration"/>
     <collection property="restoreCategories" resultMap="restoreCategoryMap"/>
   </resultMap>
@@ -24,7 +22,6 @@
       <result property="contractDuration" column="contract_duration"/>
       <result property="renewalIntent" column="renewal_intent"/>
       <result property="responseRepairingFixtures" column="response_repairing_fixtures"/>
-      <result property="checkedAt" column="contract_checked_at"/>
     </association>
 
     <!-- 계약 조건 Step 2 -->
@@ -43,9 +40,8 @@
       <result property="requireRentGuaranteeInsurance" column="require_rent_guarantee_insurance"/>
       <result property="insuranceBurden" column="insurance_burden"/>
       <result property="hasNotice" column="has_notice"/>
-      <result property="checkedAt" column="living_checked_at"/>
       <result property="ownerBankName" column="owner_bank_name"/>
-      <result property="ownerBankAccountNumber" column="owner_account_number"/>
+      <result property="ownerAccountNumber" column="owner_account_number"/>
 
       <!-- 월세 전용 -->
       <result property="paymentDueDate" column="payment_due_day"/>
@@ -58,7 +54,6 @@
     <id property="restoreCategoryId" column="restore_category_id"/>
     <result property="restoreCategoryName" column="restore_category_name"/>
   </resultMap>
-
 
   <!-- userId 확인 -->
   <select id="selectOwnerIdFromContractChat" resultType="Long">
@@ -142,7 +137,7 @@
       contract_duration = #{dto.contractDuration},
       renewal_intent = #{dto.renewalIntent},
       response_repairing_fixtures = #{dto.responseRepairingFixtures},
-      checked_at = #{dto.checkedAt}
+      checked_at = now()
     WHERE contract_chat_id = #{contractChatId}
       AND EXISTS (
           SELECT 1 FROM identity_verification iv
@@ -186,7 +181,7 @@
       has_penalty = #{dto.hasPenalty},
       has_priority_for_extension = #{dto.hasPriorityForExtension},
       has_auto_price_adjustment = #{dto.hasAutoPriceAdjustment},
-      checked_at = #{dto.checkedAt}
+      checked_at = now()
     WHERE contract_chat_id = #{contractChatId}
       AND EXISTS (
           SELECT 1 FROM identity_verification iv
@@ -225,15 +220,18 @@
   <!-- 거주 정보 설정 Step 1 -->
   <select id="selectLivingSub1" resultType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO">
     SELECT
-      rent_type,
-      require_rent_guarantee_insurance,
-      insurance_burden,
-      has_notice,
-      checked_at,
-      owner_bank_name,
-      owner_account_number
-    FROM owner_precontract_check
-    WHERE contract_chat_id = #{contractChatId}
+      opc.rent_type,
+      opc.require_rent_guarantee_insurance,
+      opc.insurance_burden,
+      opc.has_notice,
+      opc.checked_at,
+      opc.owner_bank_name,
+      opc.owner_account_number
+    FROM owner_precontract_check opc
+           JOIN owner_precontract_check c ON opc.contract_chat_id = c.contract_chat_id
+           JOIN identity_verification v ON c.identity_id = v.identity_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND v.user_id = #{userId}
   </select>
 
   <!-- 저장 -->
@@ -243,9 +241,9 @@
       require_rent_guarantee_insurance = #{dto.requireRentGuaranteeInsurance},
       insurance_burden = #{dto.insuranceBurden},
       has_notice = #{dto.hasNotice},
-      checked_at = #{dto.checkedAt},
+      checked_at = now(),
       owner_bank_name = #{dto.ownerBankName},
-      owner_account_number = #{dto.ownerBankAccountNumber}
+      owner_account_number = #{dto.ownerAccountNumber}
     WHERE contract_chat_id = #{contractChatId}
       AND EXISTS (
       SELECT 1 FROM identity_verification iv
@@ -312,7 +310,6 @@
       opc.contract_duration,
       opc.renewal_intent,
       opc.response_repairing_fixtures,
-      opc.checked_at AS contract_checked_at,
 
       -- 계약 조건 Step 2
       opc.has_condition_log,
@@ -328,7 +325,6 @@
       opc.has_notice,
       opc.owner_bank_name,
       opc.owner_account_number,
-      opc.checked_at AS living_checked_at,
 
       -- 거주 조건 Step 1 (월세)
       owi.payment_due_day,
