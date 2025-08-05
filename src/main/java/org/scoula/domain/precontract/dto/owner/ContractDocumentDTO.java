@@ -22,4 +22,19 @@ public class ContractDocumentDTO {
 
       @ApiModelProperty(value = "특약 목록", required = true)
       private List<String> specialTerms;
+
+      @ApiModelProperty(value = "파일명")
+      private String filename;
+
+      @ApiModelProperty(value = "문서 타입")
+      private String documentType;
+
+      @ApiModelProperty(value = "추출 시간")
+      private String extractedAt;
+
+      @ApiModelProperty(value = "소스")
+      private String source;
+
+      @ApiModelProperty(value = "원본 텍스트")
+      private String rawText;
 }
