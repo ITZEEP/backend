@@ -81,7 +81,10 @@ public enum ChatErrorCode implements IErrorCode {
       INVALID_USER_ID("CHAT_081", HttpStatus.BAD_REQUEST, "유효하지 않은 사용자 ID입니다"),
       INVALID_MESSAGE_CONTENT("CHAT_082", HttpStatus.BAD_REQUEST, "유효하지 않은 메시지 내용입니다"),
       INVALID_FILE_FORMAT("CHAT_083", HttpStatus.BAD_REQUEST, "유효하지 않은 파일 형식입니다"),
-      INVALID_DATE_RANGE("CHAT_084", HttpStatus.BAD_REQUEST, "유효하지 않은 날짜 범위입니다");
+      INVALID_DATE_RANGE("CHAT_084", HttpStatus.BAD_REQUEST, "유효하지 않은 날짜 범위입니다"),
+
+      // AI 서버 에러
+      AI_SERVER_ERROR("CHAT_090", HttpStatus.INTERNAL_SERVER_ERROR, "AI 서버 요청 처리 중 오류가 발생했습니다");
 
       private final String code;
       private final HttpStatus httpStatus;
