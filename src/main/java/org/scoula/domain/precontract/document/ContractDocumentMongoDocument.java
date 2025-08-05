@@ -23,6 +23,13 @@ public class ContractDocumentMongoDocument {
       private Long ownerPrecheckId;
       private List<String> specialTerms;
 
+      // AI OCR 분석 결과
+      private String filename;
+      private String documentType;
+      private String extractedAt;
+      private String source;
+      private String rawText;
+
       public static ContractDocumentMongoDocument from(
               Long contractChatId, Long userId, ContractDocumentDTO dto) {
           return ContractDocumentMongoDocument.builder()
@@ -31,6 +38,11 @@ public class ContractDocumentMongoDocument {
                   .ownerPrecheckId(dto.getOwnerPrecheckId())
                   .userId(userId)
                   .specialTerms(dto.getSpecialTerms())
+                  .filename(dto.getFilename())
+                  .documentType(dto.getDocumentType())
+                  .extractedAt(dto.getExtractedAt())
+                  .source(dto.getSource())
+                  .rawText(dto.getRawText())
                   .build();
       }
 }
