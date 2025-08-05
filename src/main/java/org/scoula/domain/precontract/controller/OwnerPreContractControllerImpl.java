@@ -4,15 +4,18 @@ import java.util.Optional;
 
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
+import org.scoula.domain.precontract.dto.ai.ContractParseResponseDto;
 import org.scoula.domain.precontract.dto.owner.*;
 import org.scoula.domain.precontract.service.OwnerPreContractService;
 import org.scoula.domain.user.service.UserServiceImpl;
 import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.dto.ApiResponse;
 import org.scoula.global.common.exception.BusinessException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -184,6 +187,26 @@ public class OwnerPreContractControllerImpl implements OwnerPreContractControlle
                   ownerPreContractService.getContractDocument(contractChatId, userId);
 
           return ResponseEntity.ok(ApiResponse.success(document));
+      }
+
+      // OCR 분석
+      @Override
+      @PostMapping(value = "/analyze-contract", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+      public ResponseEntity<ApiResponse<ContractParseResponseDto>> analyzeContractDocument(
+              @PathVariable Long contractChatId,
+              Authentication authentication,
+              @RequestPart("file") MultipartFile file) {
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
+
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
+          ContractParseResponseDto result = ownerPreContractService.analyzeContractDocument(file);
+          return ResponseEntity.ok(ApiResponse.success(result));
       }
 
       // 저장
