@@ -44,7 +44,7 @@ public class OwnerPreContractMongoDTO {
       private ResponsibilityParty insuranceBurden;
       private YesNoEnum hasNotice;
       private String ownerBankName;
-      private String ownerBankAccountNumber;
+      private String ownerAccountNumber;
       private Integer paymentDueDate;
       private Double lateFeeInterestRate;
 
