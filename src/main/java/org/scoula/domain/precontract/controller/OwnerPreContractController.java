@@ -1,6 +1,7 @@
 package org.scoula.domain.precontract.controller;
 
 import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
+import org.scoula.domain.precontract.dto.ai.ContractParseResponseDto;
 import org.scoula.domain.precontract.dto.owner.ContractDocumentDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
@@ -11,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -71,6 +74,12 @@ public interface OwnerPreContractController {
       @ApiOperation(value = "임대인 : 계약서 특약 내용 몽고DB 조회", notes = "OCR로 추출된 특약 내용을 조회합니다.")
       ResponseEntity<ApiResponse<ContractDocumentMongoDocument>> getContractDocument(
               @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "임대인 : 계약서 특약 OCR 분석", notes = "계약서 PDF 파일을 AI 서버로 전송하여 특약 내용을 추출합니다.")
+      ResponseEntity<ApiResponse<ContractParseResponseDto>> analyzeContractDocument(
+              @PathVariable Long contractChatId,
+              Authentication authentication,
+              @RequestPart("file") MultipartFile file);
 
       @ApiOperation(value = "임대인 : 계약서 특약 내용 몽고DB에 저장", notes = "OCR로 추출된 특약 내용을 저장합니다.")
       ResponseEntity<ApiResponse<Boolean>> saveContractDocument(

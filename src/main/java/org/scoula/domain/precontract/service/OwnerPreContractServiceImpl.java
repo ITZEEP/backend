@@ -1,12 +1,17 @@
 package org.scoula.domain.precontract.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.scoula.domain.chat.document.SpecialContractDocument;
 import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.document.OwnerMongoDocument;
+import org.scoula.domain.precontract.dto.ai.ClauseRecommendRequestDto;
+import org.scoula.domain.precontract.dto.ai.ClauseRecommendResponseDto;
+import org.scoula.domain.precontract.dto.ai.ContractParseResponseDto;
 import org.scoula.domain.precontract.dto.owner.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.OwnerPreContractErrorCode;
@@ -17,9 +22,14 @@ import org.scoula.domain.precontract.vo.OwnerJeonseInfoVO;
 import org.scoula.domain.precontract.vo.OwnerWolseInfoVO;
 import org.scoula.domain.precontract.vo.RestoreCategoryVO;
 import org.scoula.global.common.exception.BusinessException;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -32,14 +42,16 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       private final OwnerPreContractMapper ownerMapper;
       private final OwnerMongoRepository mongoRepository;
       private final ContractDocumentMongoRepository contractDocumentMongoRepository;
+      private final AiContractAnalyzerService aiContractAnalyzerService;
+      private final AiClauseRecommendService aiClauseRecommendService;
+      private final MongoTemplate mongoTemplate;
+      private final ObjectMapper objectMapper;
 
       @Override
       @Transactional
       public OwnerInitRespDTO saveOwnerInfo(Long contractChatId, Long ownerId) {
-          // 1. 권한 검증
           validateUser(contractChatId, ownerId, false);
 
-          // 2. Identity ID 조회
           Long identityId =
                   ownerMapper
                           .selectIdentityId(contractChatId)
@@ -48,7 +60,6 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           new BusinessException(
                                                   OwnerPreContractErrorCode.OWNER_SELECT));
 
-          // 3. Rent Type 조회
           String rentType =
                   ownerMapper
                           .selectRentType(contractChatId, ownerId)
@@ -57,13 +68,11 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           new BusinessException(
                                                   OwnerPreContractErrorCode.OWNER_SELECT));
 
-          // 4. INSERT 기본 세팅
           int inserted = ownerMapper.insertOwnerPreContractSet(contractChatId, identityId, rentType);
           if (inserted == 0) {
               throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT);
           }
 
-          // 5. 전/월세 조건에 따라 초기화 insert (contract_chat_id만 삽입, 나머지는 null)
           if ("JEONSE".equalsIgnoreCase(rentType)) {
               OwnerJeonseInfoVO jeonseInfo =
                       OwnerJeonseInfoVO.builder().contractChatId(contractChatId).build();
@@ -74,7 +83,6 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
               ownerMapper.insertWolseInfo(wolseInfo);
           }
 
-          // 6. 반환
           return OwnerInitRespDTO.toResp(rentType);
       }
 
@@ -100,14 +108,11 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       @Override
       public Void updateOwnerContractStep2(
               Long contractChatId, Long userId, OwnerContractStep2DTO dto) {
-
           validateUser(contractChatId, userId, true);
 
-          // 1. 계약 조건 업데이트
           dto.setCheckedAt(LocalDateTime.now());
           ownerMapper.updateContractSub2(dto, contractChatId, userId);
 
-          // 2. ownerPrecheckId 조회
           Long ownerPrecheckId =
                   ownerMapper
                           .selectOwnerPrecheckId(contractChatId, userId)
@@ -116,7 +121,6 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           new BusinessException(
                                                   OwnerPreContractErrorCode.OWNER_SELECT));
 
-          // 3. 복구 범위 upsert - restoreCategoryIds 우선, 없으면 restoreCategories(name) 사용
           if (dto.getRestoreCategoryIds() != null && !dto.getRestoreCategoryIds().isEmpty()) {
               for (Long categoryId : dto.getRestoreCategoryIds()) {
                   ownerMapper.upsertRestoreScope(ownerPrecheckId, categoryId);
@@ -125,8 +129,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
               for (String categoryName : dto.getRestoreCategories()) {
                   Long categoryId = ownerMapper.selectRestoreCategoryIdByName(categoryName);
                   if (categoryId == null) {
-                      throw new BusinessException(
-                              OwnerPreContractErrorCode.ENUM_VALUE_OF); // 혹은 새 에러코드 정의
+                      throw new BusinessException(OwnerPreContractErrorCode.ENUM_VALUE_OF);
                   }
                   ownerMapper.upsertRestoreScope(ownerPrecheckId, categoryId);
               }
@@ -147,7 +150,6 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           new BusinessException(
                                                   OwnerPreContractErrorCode.OWNER_SELECT));
 
-          // 복구 범위 조회 → 이름만 추출
           List<RestoreCategoryVO> categories = ownerMapper.selectRestoreScope(contractChatId, userId);
           List<String> categoryNames =
                   categories.stream()
@@ -217,14 +219,44 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       }
 
       @Override
+      public ContractParseResponseDto analyzeContractDocument(MultipartFile file) {
+          try {
+              log.info(
+                      "계약서 특약 OCR 요청 시작 - 파일명: {}",
+                      LogSanitizerUtil.sanitize(file.getOriginalFilename()));
+              ContractParseResponseDto aiResponse =
+                      aiContractAnalyzerService.parseContractDocument(file);
+
+              log.info(
+                      "계약서 특약 OCR 완료 - 특약 수: {}",
+                      aiResponse != null
+                                      && aiResponse.getParsedData() != null
+                                      && aiResponse.getParsedData().getSpecialTerms() != null
+                              ? aiResponse.getParsedData().getSpecialTerms().size()
+                              : 0);
+
+              return aiResponse;
+          } catch (BusinessException e) {
+              log.error("AI 서비스 오류", e);
+              throw e;
+          } catch (Exception e) {
+              log.error("특약 문서 분석 중 예상치 못한 오류", e);
+              throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT, e);
+          }
+      }
+
+      @Override
       public void saveContractDocument(Long contractChatId, Long userId, ContractDocumentDTO dto) {
           try {
               ContractDocumentMongoDocument document =
                       ContractDocumentMongoDocument.from(contractChatId, userId, dto);
               ContractDocumentMongoDocument result = contractDocumentMongoRepository.save(document);
-              log.info("✅ 특약 문서 Mongo 저장 완료: {}", result);
+              log.info("특약 문서 Mongo 저장 완료: {}", result);
           } catch (DataAccessException e) {
-              log.error("❌ Mongo 저장 실패", e);
+              log.error("Mongo 저장 실패", e);
+              throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT, e);
+          } catch (Exception e) {
+              log.error("특약 문서 저장 중 예상치 못한 오류", e);
               throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT, e);
           }
       }
@@ -264,19 +296,35 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       }
 
       @Override
+      @Transactional
       public Void saveMongoDB(Long contractChatId, Long userId) {
-          // 0. UserId 검증
+          validateOwnerForMongoDB(contractChatId, userId);
+
+          OwnerPreContractMongoDTO dto = fetchOwnerData(contractChatId, userId);
+          populateDTOSteps(dto);
+
+          saveOwnerDocument(dto);
+          processAiClauseRecommendation(contractChatId, userId, dto);
+
+          return null;
+      }
+
+      private void validateOwnerForMongoDB(Long contractChatId, Long userId) {
           ownerMapper
                   .selectContractOwnerId(contractChatId)
                   .filter(ownerId -> ownerId.equals(userId))
                   .orElseThrow(() -> new BusinessException(OwnerPreContractErrorCode.OWNER_USER));
+      }
 
-          // 1. Mongo 저장용 DTO 조회
+      private OwnerPreContractMongoDTO fetchOwnerData(Long contractChatId, Long userId) {
           OwnerPreContractMongoDTO dto = ownerMapper.selectMongo(contractChatId, userId);
           if (dto == null) {
               throw new BusinessException(OwnerPreContractErrorCode.OWNER_SELECT);
           }
+          return dto;
+      }
 
+      private void populateDTOSteps(OwnerPreContractMongoDTO dto) {
           dto.setContractStep1(
                   OwnerContractStep1DTO.builder()
                           .mortgaged(dto.getMortgaged())
@@ -304,20 +352,260 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                           .paymentDueDate(dto.getPaymentDueDate())
                           .lateFeeInterestRate(dto.getLateFeeInterestRate())
                           .build());
+      }
 
-          // 2. DTO → Document 변환 후 MongoDB 저장
+      private void saveOwnerDocument(OwnerPreContractMongoDTO dto) {
           try {
               OwnerMongoDocument document = OwnerMongoDocument.from(dto);
-              log.info("📦 변환된 document: {}", document); // 1. DTO → Document 변환 확인
+              log.info("변환된 document: {}", document);
 
               OwnerMongoDocument result = mongoRepository.insert(document);
-              log.info("✅ Mongo 저장 결과: {}", result); // 2. Mongo 저장 결과 확인
-
+              log.info("Mongo 저장 결과: {}", result);
           } catch (DataAccessException e) {
-              log.error("❌ Mongo 저장 실패", e); // 3. 예외 로그 찍기
+              log.error("Mongo 저장 실패", e);
               throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT, e);
           }
+      }
 
-          return null;
+      private void processAiClauseRecommendation(
+              Long contractChatId, Long userId, OwnerPreContractMongoDTO ownerDto) {
+          try {
+              ContractDocumentMongoDocument contractDocument =
+                      contractDocumentMongoRepository.findByContractChatIdAndUserId(
+                              contractChatId, userId);
+
+              ClauseRecommendRequestDto aiRequest =
+                      prepareAiRequest(contractChatId, userId, ownerDto, contractDocument);
+
+              log.info("AI 특약 추천 요청 시작 - contractChatId: {}", contractChatId);
+              logAiRequest(aiRequest);
+
+              ClauseRecommendResponseDto aiResponse =
+                      aiClauseRecommendService.recommendClauses(aiRequest);
+              saveAiRecommendation(contractChatId, aiResponse);
+
+          } catch (Exception e) {
+              log.error("AI 특약 추천 중 오류 발생", e);
+              throw new BusinessException(OwnerPreContractErrorCode.OWNER_INSERT, "AI 특약 추천 실패");
+          }
+      }
+
+      private ClauseRecommendRequestDto prepareAiRequest(
+              Long contractChatId,
+              Long userId,
+              OwnerPreContractMongoDTO ownerDto,
+              ContractDocumentMongoDocument contractDocument) {
+
+          Long identityId = ownerMapper.selectIdentityId(contractChatId).orElse(null);
+          Long ownerPrecheckId =
+                  ownerMapper.selectOwnerPrecheckId(contractChatId, userId).orElse(null);
+
+          List<ClauseRecommendRequestDto.RestoreCategory> restoreCategoryList =
+                  fetchRestoreCategories(contractChatId, userId);
+
+          ClauseRecommendRequestDto aiRequest =
+                  buildClauseRecommendRequest(ownerDto, contractDocument);
+          aiRequest.getOwnerData().setIdentityId(identityId);
+          aiRequest.getOwnerData().setOwnerPrecheckId(ownerPrecheckId);
+          aiRequest.getOwnerData().setRestoreCategories(restoreCategoryList);
+
+          return aiRequest;
+      }
+
+      private List<ClauseRecommendRequestDto.RestoreCategory> fetchRestoreCategories(
+              Long contractChatId, Long userId) {
+          List<RestoreCategoryVO> restoreCategories =
+                  ownerMapper.selectRestoreScope(contractChatId, userId);
+          return restoreCategories.stream()
+                  .map(
+                          cat ->
+                                  ClauseRecommendRequestDto.RestoreCategory.builder()
+                                          .restoreCategoryId(cat.getRestoreCategoryId())
+                                          .restoreCategoryName(cat.getRestoreCategoryName())
+                                          .build())
+                  .collect(Collectors.toList());
+      }
+
+      private void logAiRequest(ClauseRecommendRequestDto aiRequest) {
+          try {
+              log.info("AI 요청 데이터: {}", objectMapper.writeValueAsString(aiRequest));
+          } catch (Exception e) {
+              log.error("요청 데이터 로깅 실패", e);
+          }
+      }
+
+      private void saveAiRecommendation(Long contractChatId, ClauseRecommendResponseDto aiResponse) {
+          if (aiResponse != null && aiResponse.isSuccess() && aiResponse.getData() != null) {
+              Long round = 1L;
+
+              SpecialContractDocument specialContract =
+                      SpecialContractDocument.builder()
+                              .contractChatId(contractChatId)
+                              .round(round)
+                              .totalClauses(aiResponse.getData().getTotalClauses())
+                              .clauses(convertClauses(aiResponse.getData().getClauses()))
+                              .build();
+
+              SpecialContractDocument savedContract = mongoTemplate.save(specialContract);
+              log.info("AI 특약 추천 저장 완료 - 특약 수: {}", savedContract.getTotalClauses());
+          }
+      }
+
+      private ClauseRecommendRequestDto buildClauseRecommendRequest(
+              OwnerPreContractMongoDTO ownerData, ContractDocumentMongoDocument contractDocument) {
+          ClauseRecommendRequestDto.OcrData ocrData = buildOcrData(contractDocument);
+          ClauseRecommendRequestDto.OwnerData ownerRequestData = buildOwnerData(ownerData);
+          ClauseRecommendRequestDto.TenantData tenantData = buildTenantData(ownerData);
+
+          return ClauseRecommendRequestDto.builder()
+                  .ocrData(ocrData)
+                  .ownerData(ownerRequestData)
+                  .tenantData(tenantData)
+                  .build();
+      }
+
+      private ClauseRecommendRequestDto.OcrData buildOcrData(
+              ContractDocumentMongoDocument contractDocument) {
+          if (contractDocument == null) {
+              return ClauseRecommendRequestDto.OcrData.builder()
+                      .extractedAt(null)
+                      .fileName(null)
+                      .rawText(null)
+                      .source(null)
+                      .specialTerms(null)
+                      .build();
+          }
+
+          return ClauseRecommendRequestDto.OcrData.builder()
+                  .extractedAt(contractDocument.getExtractedAt())
+                  .fileName(contractDocument.getFilename())
+                  .rawText(contractDocument.getRawText())
+                  .source(contractDocument.getSource())
+                  .specialTerms(contractDocument.getSpecialTerms())
+                  .build();
+      }
+
+      private ClauseRecommendRequestDto.OwnerData buildOwnerData(OwnerPreContractMongoDTO ownerData) {
+          ClauseRecommendRequestDto.OwnerData ownerRequestData =
+                  ClauseRecommendRequestDto.OwnerData.builder()
+                          .checkedAt(LocalDateTime.now().toString())
+                          .contractChatId(ownerData.getContractChatId())
+                          .contractDuration(
+                                  ownerData.getContractDuration() != null
+                                          ? ownerData.getContractDuration().name()
+                                          : null)
+                          .hasAutoPriceAdjustment(ownerData.getHasAutoPriceAdjustment())
+                          .hasConditionLog(ownerData.getHasConditionLog())
+                          .hasNotice(
+                                  ownerData.getHasNotice() != null
+                                          ? ownerData.getHasNotice().name()
+                                          : "")
+                          .hasPenalty(ownerData.getHasPenalty())
+                          .hasPriorityForExtension(ownerData.getHasPriorityForExtension())
+                          .identityId(null)
+                          .insuranceBurden(
+                                  ownerData.getInsuranceBurden() != null
+                                          ? ownerData.getInsuranceBurden().name()
+                                          : "")
+                          .isMortgaged(
+                                  ownerData.getMortgaged() != null ? ownerData.getMortgaged() : false)
+                          .ownerAccountNumber(ownerData.getOwnerBankAccountNumber())
+                          .ownerBankName(ownerData.getOwnerBankName())
+                          .ownerPrecheckId(null)
+                          .renewalIntent(
+                                  ownerData.getRenewalIntent() != null
+                                          ? ownerData.getRenewalIntent().name()
+                                          : null)
+                          .rentType(
+                                  ownerData.getRentType() != null
+                                          ? ownerData.getRentType().name()
+                                          : null)
+                          .requireRentGuaranteeInsurance(ownerData.getRequireRentGuaranteeInsurance())
+                          .responseRepairingFixtures(
+                                  ownerData.getResponseRepairingFixtures() != null
+                                          ? ownerData.getResponseRepairingFixtures().name()
+                                          : null)
+                          .restoreCategories(null)
+                          .wolseInfo(null)
+                          .build();
+
+          if (ownerData.getRentType() == RentType.WOLSE
+                  && ownerData.getPaymentDueDate() != null
+                  && ownerData.getLateFeeInterestRate() != null) {
+              ClauseRecommendRequestDto.WolseInfo wolseInfo =
+                      ClauseRecommendRequestDto.WolseInfo.builder()
+                              .paymentDueDay(ownerData.getPaymentDueDate())
+                              .lateFeeInterestRate(ownerData.getLateFeeInterestRate())
+                              .build();
+              ownerRequestData.setWolseInfo(wolseInfo);
+          }
+
+          return ownerRequestData;
+      }
+
+      private ClauseRecommendRequestDto.TenantData buildTenantData(
+              OwnerPreContractMongoDTO ownerData) {
+          return ClauseRecommendRequestDto.TenantData.builder()
+                  .contractChatId(ownerData.getContractChatId())
+                  .rentType(ownerData.getRentType() != null ? ownerData.getRentType().name() : "")
+                  .loanPlan(false)
+                  .insurancePlan(false)
+                  .expectedMoveInDate("")
+                  .contractDuration("")
+                  .renewalIntent("")
+                  .facilityRepairNeeded(false)
+                  .interiorCleaningNeeded(false)
+                  .applianceInstallationPlan(false)
+                  .hasPet(false)
+                  .indoorSmokingPlan(false)
+                  .earlyTerminationRisk(false)
+                  .checkedAt(LocalDateTime.now().toString())
+                  .residentCount(0)
+                  .occupation("")
+                  .emergencyContact("")
+                  .relation("")
+                  .build();
+      }
+
+      private List<SpecialContractDocument.Clause> convertClauses(
+              List<ClauseRecommendResponseDto.Clause> aiClauses) {
+          if (aiClauses == null) {
+              return new ArrayList<>();
+          }
+
+          return aiClauses.stream()
+                  .map(
+                          aiClause ->
+                                  SpecialContractDocument.Clause.builder()
+                                          .order(aiClause.getOrder())
+                                          .title(aiClause.getTitle())
+                                          .content(aiClause.getContent())
+                                          .assessment(convertAssessment(aiClause.getAssessment()))
+                                          .build())
+                  .collect(Collectors.toList());
+      }
+
+      private SpecialContractDocument.Assessment convertAssessment(
+              ClauseRecommendResponseDto.Assessment aiAssessment) {
+          if (aiAssessment == null) {
+              return null;
+          }
+
+          return SpecialContractDocument.Assessment.builder()
+                  .owner(convertEvaluation(aiAssessment.getOwner()))
+                  .tenant(convertEvaluation(aiAssessment.getTenant()))
+                  .build();
+      }
+
+      private SpecialContractDocument.Evaluation convertEvaluation(
+              ClauseRecommendResponseDto.PartyAssessment partyAssessment) {
+          if (partyAssessment == null) {
+              return null;
+          }
+
+          return SpecialContractDocument.Evaluation.builder()
+                  .level(partyAssessment.getLevel())
+                  .reason(partyAssessment.getReason())
+                  .build();
       }
 }

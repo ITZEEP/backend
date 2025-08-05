@@ -1,12 +1,14 @@
 package org.scoula.domain.precontract.service;
 
 import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
+import org.scoula.domain.precontract.dto.ai.ContractParseResponseDto;
 import org.scoula.domain.precontract.dto.owner.ContractDocumentDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerInitRespDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerPreContractDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 /** 임대인 사전 계약 정보 설정 서비스 인터페이스 */
 public interface OwnerPreContractService {
@@ -82,6 +84,9 @@ public interface OwnerPreContractService {
       OwnerLivingStep1DTO selectOwnerLivingStep1(Long contractChatId, Long userId);
 
       // ===== 거주 정보 설정 step2 전세/월세 분기 저장 메서드 =====
+
+      // 계약서 특약 OCR 분석
+      ContractParseResponseDto analyzeContractDocument(MultipartFile file);
 
       // 계약서 특약 문서 저장
       void saveContractDocument(Long contractChatId, Long userId, ContractDocumentDTO dto);
