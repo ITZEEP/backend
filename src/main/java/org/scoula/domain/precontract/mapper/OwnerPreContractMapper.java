@@ -81,8 +81,6 @@ public interface OwnerPreContractMapper {
               @Param("contractChatId") Long contractChatId,
               @Param("userId") Long userId);
 
-      // 거주 조건 설정 - step 2 (전/월세 기준 분기)
-
       // === 전세 조건 저장 ===
       int updateLivingJeonse(
               @Param("contractChatId") Long contractChatId,
