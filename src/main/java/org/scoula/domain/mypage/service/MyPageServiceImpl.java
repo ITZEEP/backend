@@ -60,7 +60,7 @@ public class MyPageServiceImpl implements MyPageService {
               return newImageUrl;
 
           } catch (BusinessException e) {
-              throw e;  // 비즈니스 예외는 그대로 전파
+              throw e; // 비즈니스 예외는 그대로 전파
           } catch (Exception e) {
               log.error("프로필 이미지 업데이트 실패 - userId: {}", userId, e);
               throw new BusinessException(MyPageErrorCode.IMAGE_UPLOAD_FAILED);
