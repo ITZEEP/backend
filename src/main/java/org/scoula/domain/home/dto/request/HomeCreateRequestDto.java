@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.scoula.domain.home.enums.LeaseType;
 import org.scoula.domain.home.enums.ResidenceType;
+import org.springframework.web.multipart.MultipartFile;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,7 +29,7 @@ public class HomeCreateRequestDto {
       private Integer monthlyRent; // 월세
       private Integer maintenanceFee; // 관리비
 
-      private Float supplyArea;// 전용면적
+      private Float supplyArea; // 전용면적
       private Float exclusiveArea;
 
       private String homefloor; // 층 정보 (예: 5층 / 15층)
@@ -42,7 +43,10 @@ public class HomeCreateRequestDto {
       private String homeDirection; // 남향, 북향 등
       private LocalDate moveInDate;
 
-      private List<String> imageUrls; // 매물 사진
       private List<String> options; // 옵션 (가전 등)
       private List<Long> facilityItemIds; // 시설 ID 리스트
+
+      // 이미지 파일들을 직접 받기
+      private List<MultipartFile> images;
+      private List<MultipartFile> imageFiles;
 }

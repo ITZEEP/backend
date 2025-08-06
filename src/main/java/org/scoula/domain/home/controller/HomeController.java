@@ -13,6 +13,7 @@ import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
 import org.scoula.global.common.dto.PageRequest;
 import org.scoula.global.common.dto.PageResponse;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,10 +32,11 @@ public class HomeController {
       private final HomeService homeService;
 
       @ApiOperation(value = "매물 등록", notes = "새로운 매물을 등록합니다.")
-      @PostMapping
+      @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
       public ResponseEntity<ApiResponse<Long>> createHome(
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @Valid @RequestBody HomeCreateRequestDto request) {
+              @ModelAttribute HomeCreateRequestDto request) {
+
           Long homeId = homeService.createHome(userDetails.getUserId(), request);
           return ResponseEntity.ok(ApiResponse.success(homeId));
       }

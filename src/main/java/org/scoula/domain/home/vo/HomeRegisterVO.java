@@ -96,7 +96,6 @@ public class HomeRegisterVO {
                           dto.getHomeDirection() != null
                                   ? HomeDirection.valueOf(dto.getHomeDirection())
                                   : null)
-                  .imageUrls(dto.getImageUrls())
                   .facilityItemIds(dto.getFacilityItemIds())
                   .options(dto.getOptions())
                   .isParkingAvailable(dto.getIsParkingAvailable())

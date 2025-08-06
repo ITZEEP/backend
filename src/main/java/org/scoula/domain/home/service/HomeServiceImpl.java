@@ -13,6 +13,7 @@ import org.scoula.domain.home.exception.HomeRegisterException;
 import org.scoula.domain.home.mapper.HomeMapper;
 import org.scoula.domain.home.vo.HomeRegisterVO;
 import org.scoula.domain.home.vo.HomeReportVO;
+import org.scoula.global.auth.util.S3Uploader;
 import org.scoula.global.common.dto.PageRequest;
 import org.scoula.global.common.dto.PageResponse;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ import lombok.extern.log4j.Log4j2;
 public class HomeServiceImpl implements HomeService {
 
       private final HomeMapper homeMapper;
+      private final S3Uploader s3Uploader;
 
       @Override
       public PageResponse<HomeResponseDto> getHomeList(PageRequest pageRequest) {
@@ -84,9 +86,13 @@ public class HomeServiceImpl implements HomeService {
           }
 
           // 5. 이미지 등록 (home_image)
-          if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
-              homeMapper.insertHomeImages(
-                      Map.of("homeId", homeId, "imageUrls", request.getImageUrls()));
+          if (request.getImageFiles() != null && !request.getImageFiles().isEmpty()) {
+              List<String> imageUrls =
+                      request.getImageFiles().stream()
+                              .map(file -> s3Uploader.upload(file, "homes"))
+                              .collect(Collectors.toList());
+
+              homeMapper.insertHomeImages(Map.of("homeId", homeId, "imageUrls", imageUrls));
           }
 
           return homeId;
