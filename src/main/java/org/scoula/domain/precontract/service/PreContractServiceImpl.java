@@ -1,5 +1,7 @@
 package org.scoula.domain.precontract.service;
 
+import java.util.Optional;
+
 import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
@@ -40,12 +42,10 @@ public class PreContractServiceImpl implements PreContractService {
           }
 
           // 1. risk_check에 riskId가 있는지 확인하기
-          tenantMapper
-                  .selectRiskId(contractChatId, userId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_SELECT));
+          Optional<Long> riskId = tenantMapper.selectRiskId(contractChatId, userId);
 
           // 2. iF : 있다면 -> true 값 보내기 / 없다면 -> false 값 보내기
-          return true; // 사기 위험도 값 받기 (프론트에서 다른 api 호출)
+          return riskId.isPresent(); // 사기 위험도 값 받기 (프론트에서 다른 api 호출)
       }
 
       // =============== 본인인증 하기 ==================
