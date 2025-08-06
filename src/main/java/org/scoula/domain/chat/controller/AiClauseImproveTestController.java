@@ -3,6 +3,7 @@ package org.scoula.domain.chat.controller;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.scoula.domain.chat.dto.ContentDataDto;
 import org.scoula.domain.chat.dto.ai.ClauseImproveRequestDto;
 import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.domain.chat.service.AiClauseImproveService;
@@ -51,12 +52,10 @@ public class AiClauseImproveTestController {
                       preContractDataService.fetchOcrData(contractChatId);
 
               // 4. 이전 특약 데이터 설정 (테스트용)
-              List<ClauseImproveRequestDto.PrevClause> prevClauses =
-                      convertPrevClauses(testRequest.getPrevClauses());
+              List<ContentDataDto> prevClauses = convertPrevClauses(testRequest.getPrevClauses());
 
               // 5. 최근 특약 데이터 설정 (테스트용)
-              ClauseImproveRequestDto.RecentClause recentClause =
-                      convertRecentClause(testRequest.getRecentClause());
+              ContentDataDto recentClause = convertRecentClause(testRequest.getRecentClause());
 
               // 6. AI 특약 개선 요청
               ClauseImproveRequestDto aiRequest =
@@ -83,109 +82,46 @@ public class AiClauseImproveTestController {
 
       // 테스트 요청 DTO
       public static class TestImproveRequestDto {
-          private Integer round;
-          private Integer order;
-          private List<TestPrevClause> prevClauses;
-          private TestRecentClause recentClause;
+          private Long round;
+          private Long order;
+          private List<ContentDataDto> prevClauses;
+          private ContentDataDto recentClause;
 
           // Getters and Setters
-          public Integer getRound() {
+          public Long getRound() {
               return round;
           }
 
-          public void setRound(Integer round) {
+          public void setRound(Long round) {
               this.round = round;
           }
 
-          public Integer getOrder() {
+          public Long getOrder() {
               return order;
           }
 
-          public void setOrder(Integer order) {
+          public void setOrder(Long order) {
               this.order = order;
           }
 
-          public List<TestPrevClause> getPrevClauses() {
+          public List<ContentDataDto> getPrevClauses() {
               return prevClauses;
           }
 
-          public void setPrevClauses(List<TestPrevClause> prevClauses) {
+          public void setPrevClauses(List<ContentDataDto> prevClauses) {
               this.prevClauses = prevClauses;
           }
 
-          public TestRecentClause getRecentClause() {
+          public ContentDataDto getRecentClause() {
               return recentClause;
           }
 
-          public void setRecentClause(TestRecentClause recentClause) {
+          public void setRecentClause(ContentDataDto recentClause) {
               this.recentClause = recentClause;
           }
       }
 
-      public static class TestPrevClause {
-          private String title;
-          private String content;
-          private String messages;
-
-          // Getters and Setters
-          public String getTitle() {
-              return title;
-          }
-
-          public void setTitle(String title) {
-              this.title = title;
-          }
-
-          public String getContent() {
-              return content;
-          }
-
-          public void setContent(String content) {
-              this.content = content;
-          }
-
-          public String getMessages() {
-              return messages;
-          }
-
-          public void setMessages(String messages) {
-              this.messages = messages;
-          }
-      }
-
-      public static class TestRecentClause {
-          private String title;
-          private String content;
-          private String messages;
-
-          // Getters and Setters
-          public String getTitle() {
-              return title;
-          }
-
-          public void setTitle(String title) {
-              this.title = title;
-          }
-
-          public String getContent() {
-              return content;
-          }
-
-          public void setContent(String content) {
-              this.content = content;
-          }
-
-          public String getMessages() {
-              return messages;
-          }
-
-          public void setMessages(String messages) {
-              this.messages = messages;
-          }
-      }
-
-      private List<ClauseImproveRequestDto.PrevClause> convertPrevClauses(
-              List<TestPrevClause> testPrevClauses) {
+      private List<ContentDataDto> convertPrevClauses(List<ContentDataDto> testPrevClauses) {
           if (testPrevClauses == null) {
               return new ArrayList<>();
           }
@@ -193,7 +129,7 @@ public class AiClauseImproveTestController {
           return testPrevClauses.stream()
                   .map(
                           prevClause ->
-                                  ClauseImproveRequestDto.PrevClause.builder()
+                                  ContentDataDto.builder()
                                           .title(prevClause.getTitle())
                                           .content(prevClause.getContent())
                                           .messages(prevClause.getMessages())
@@ -201,13 +137,12 @@ public class AiClauseImproveTestController {
                   .collect(java.util.stream.Collectors.toList());
       }
 
-      private ClauseImproveRequestDto.RecentClause convertRecentClause(
-              TestRecentClause testRecentClause) {
+      private ContentDataDto convertRecentClause(ContentDataDto testRecentClause) {
           if (testRecentClause == null) {
               return null;
           }
 
-          return ClauseImproveRequestDto.RecentClause.builder()
+          return ContentDataDto.builder()
                   .title(testRecentClause.getTitle())
                   .content(testRecentClause.getContent())
                   .messages(testRecentClause.getMessages())
