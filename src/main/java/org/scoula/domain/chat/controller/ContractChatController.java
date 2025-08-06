@@ -103,13 +103,6 @@ public interface ContractChatController {
       ResponseEntity<ApiResponse<SpecialContractUserViewDto>> getSpecialContractForUser(
               @PathVariable Long contractChatId, Authentication authentication);
 
-      @ApiOperation(value = "AI 서버 전송용 특약 데이터 조회", notes = "AI 서버로 전송할 수 있는 형식의 특약 데이터를 조회합니다.")
-      @GetMapping("/special-contract/{contractChatId}/ai-format")
-      ResponseEntity<ApiResponse<SpecialContractDto>> getSpecialContractForAI(
-              @PathVariable Long contractChatId,
-              @RequestParam Long order,
-              Authentication authentication);
-
       @ApiOperation(value = "특약 recentData 업데이트", notes = "현재 라운드의 특약 내용을 업데이트합니다.")
       @PutMapping("/special-contract/{contractChatId}/recent")
       ResponseEntity<ApiResponse<SpecialContractFixDocument>> updateRecentData(
@@ -118,20 +111,10 @@ public interface ContractChatController {
               @RequestParam(required = false) String messages,
               Authentication authentication);
 
-      @ApiOperation(value = "다음 라운드로 진행", notes = "현재 recentData를 prevData에 저장하고 다음 라운드로 진행합니다.")
-      @PostMapping("/special-contract/{contractChatId}/next-round")
-      ResponseEntity<ApiResponse<SpecialContractFixDocument>> proceedToNextRound(
-              @PathVariable Long contractChatId,
-              @RequestParam Long order,
-              @RequestParam int prevDataIndex,
-              Authentication authentication);
-
-      @ApiOperation(value = "다음 라운드로 자동 진행", notes = "현재 라운드에 따라 자동으로 인덱스를 결정하여 다음 라운드로 진행합니다.")
+      @ApiOperation(value = "다음 라운드로 자동 진행", notes = "isPassed가 false인 모든 특약을 자동으로 다음 라운드로 진행합니다.")
       @PostMapping("/special-contract/{contractChatId}/next-round-auto")
-      ResponseEntity<ApiResponse<SpecialContractFixDocument>> proceedToNextRoundAuto(
-              @PathVariable Long contractChatId,
-              @RequestParam Long order,
-              Authentication authentication);
+      ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> proceedToNextRoundAuto(
+              @PathVariable Long contractChatId, Authentication authentication);
 
       @ApiOperation(value = "특약 완료 처리", notes = "특약을 완료 상태로 변경합니다.")
       @PatchMapping("/special-contract/{contractChatId}/complete")
@@ -139,11 +122,6 @@ public interface ContractChatController {
               @PathVariable Long contractChatId,
               @RequestParam Long order,
               Authentication authentication);
-
-      @ApiOperation(value = "특약 문서 삭제", notes = "특약 문서를 삭제합니다.")
-      @DeleteMapping("/special-contract/{contractChatId}")
-      ResponseEntity<ApiResponse<String>> deleteSpecialContract(
-              @PathVariable Long contractChatId, Authentication authentication);
 
       @ApiOperation(value = "특약 문서 존재 여부 확인", notes = "특약 문서의 존재 여부를 확인합니다.")
       @GetMapping("/special-contract/{contractChatId}/exists")
