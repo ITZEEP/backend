@@ -208,4 +208,9 @@ public class SpecialContractMongoRepository {
                   mongoTemplate.findOne(query, SpecialContractDocument.class);
           return Optional.ofNullable(result);
       }
+
+      public SpecialContractDocument saveSpecialContractForNewRound(
+              SpecialContractDocument document) {
+          return mongoTemplate.save(document, "SPECIAL_CONTRACT");
+      }
 }
