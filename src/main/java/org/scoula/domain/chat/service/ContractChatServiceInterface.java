@@ -87,7 +87,7 @@ public interface ContractChatServiceInterface {
        * @throws IllegalArgumentException 파라미터가 null이거나 권한이 없거나 시작점이 설정되지 않은 경우
        * @throws RuntimeException 종료점 설정 또는 대화 내용 추출 실패
        */
-      String setEndPointAndExport(Long contractChatId, Long userId, Long order);
+      boolean setEndPointAndExport(Long contractChatId, Long userId, Long order);
 
       /**
        * 사용자가 계약 채팅방에 참여했는지 확인합니다.
@@ -195,7 +195,6 @@ public interface ContractChatServiceInterface {
        */
       SpecialContractFixDocument createSpecialContract(Long contractChatId, Long order);
 
-
       /**
        * 특약 문서 조회
        *
@@ -221,7 +220,6 @@ public interface ContractChatServiceInterface {
        * @return 업데이트된 특약 문서
        */
       SpecialContractFixDocument markSpecialContractAsPassed(Long contractChatId, Long order);
-
 
       /**
        * 특약 문서 존재 여부 확인
