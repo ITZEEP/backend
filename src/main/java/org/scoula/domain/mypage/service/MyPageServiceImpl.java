@@ -6,6 +6,7 @@ import org.scoula.domain.mypage.dto.*;
 import org.scoula.domain.mypage.exception.MyPageErrorCode;
 import org.scoula.domain.mypage.mapper.MyPageMapper;
 import org.scoula.global.common.exception.BusinessException;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -70,7 +71,7 @@ public class MyPageServiceImpl implements MyPageService {
       @Override
       @Transactional
       public void updateNickname(Long userId, String nickname) {
-          log.info("닉네임 변경 - userId: {}, nickname: {}", userId, nickname);
+          log.info("닉네임 변경 - userId: {}, nickname: {}", userId, LogSanitizerUtil.sanitize(nickname));
 
           // 닉네임 중복 체크
           boolean isDuplicated = myPageMapper.existsByNickname(nickname, userId);

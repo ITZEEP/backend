@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import org.scoula.domain.mypage.exception.MyPageErrorCode;
 import org.scoula.global.common.exception.BusinessException;
+import org.scoula.global.common.util.LogSanitizerUtil;
 import org.scoula.global.file.service.S3ServiceInterface;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -102,12 +103,17 @@ public class ProfileImageServiceImpl implements ProfileImageService {
               return null;
           }
 
-          log.info("프로필 이미지 업로드 시작 - URL: {}, User ID: {}", imageUrl, userId);
+          // OAuth 프로필 이미지 다운로드는 신뢰할 수 있는 소스에서만 사용됨
+
+          log.info(
+                  "프로필 이미지 업로드 시작 - URL: {}, User ID: {}",
+                  LogSanitizerUtil.sanitize(imageUrl),
+                  userId);
 
           try {
               // URL에서 이미지 다운로드
               URL url = new URL(imageUrl);
-              log.info("이미지 다운로드 시작 - URL: {}", imageUrl);
+              log.info("이미지 다운로드 시작 - URL: {}", LogSanitizerUtil.sanitize(imageUrl));
 
               HttpURLConnection connection = (HttpURLConnection) url.openConnection();
               connection.setRequestMethod("GET");
@@ -170,7 +176,7 @@ public class ProfileImageServiceImpl implements ProfileImageService {
                   }
               }
           } catch (Exception e) {
-              log.error("프로필 이미지 업로드 실패: {}", imageUrl, e);
+              log.error("프로필 이미지 업로드 실패: {}", LogSanitizerUtil.sanitize(imageUrl), e);
               return null; // 프로필 이미지 업로드 실패 시 null 반환
           }
       }
