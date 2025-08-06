@@ -219,11 +219,15 @@ public class SpecialContractMongoRepository {
               Long contractChatId, Long round, Integer order, SpecialContractDocument.Clause clause) {
           Query query =
                   new Query(
-                          Criteria.where("contractChatId").is(contractChatId).and("round").is(round));
-          Update update = new Update().set("content." + String.valueOf(order), clause);
-          return mongoTemplate
-                  .updateFirst(query, update, SpecialContractDocument.class)
-                  .getUpsertedId()
-                  .toString();
+                          Criteria.where("contractChatId").is(contractChatId).and("round").is(round+1));
+          Update update = new Update().set("clauses." + (order - 1), clause);
+          
+          com.mongodb.client.result.UpdateResult result = 
+                  mongoTemplate.updateFirst(query, update, SpecialContractDocument.class);
+          
+          if (result.getModifiedCount() > 0) {
+              return contractChatId.toString();
+          }
+          return null;
       }
 }
