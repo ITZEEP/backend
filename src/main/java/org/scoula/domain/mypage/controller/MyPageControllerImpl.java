@@ -70,7 +70,7 @@ public class MyPageControllerImpl implements MyPageController {
           Pageable pageable = PageRequest.of(page, size, Sort.by("contractDate").descending());
           Page<MyPageContractDto> contracts = myPageService.getMyContracts(userId, pageable);
 
-          return ResponseEntity.ok(ApiResponse.success(PageResponse.of(contracts)));
+          return ResponseEntity.ok(ApiResponse.success(PageResponse.from(contracts)));
       }
 
       @Override
@@ -81,7 +81,7 @@ public class MyPageControllerImpl implements MyPageController {
           Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
           Page<MyPagePropertyDto> properties = myPageService.getMyProperties(userId, pageable);
 
-          return ResponseEntity.ok(ApiResponse.success(PageResponse.of(properties)));
+          return ResponseEntity.ok(ApiResponse.success(PageResponse.from(properties)));
       }
 
       @Override
@@ -92,7 +92,7 @@ public class MyPageControllerImpl implements MyPageController {
           Pageable pageable = PageRequest.of(page, size, Sort.by("analysisDate").descending());
           Page<MyPageRiskAnalysisDto> analyses = myPageService.getMyRiskAnalyses(userId, pageable);
 
-          return ResponseEntity.ok(ApiResponse.success(PageResponse.of(analyses)));
+          return ResponseEntity.ok(ApiResponse.success(PageResponse.from(analyses)));
       }
 
       private Long getUserIdFromUserDetails(UserDetails userDetails) {
