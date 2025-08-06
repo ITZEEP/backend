@@ -9,11 +9,15 @@
             CONCAT(h.addr1, ' ', h.addr2) AS address,
             h.residence_type AS buildingType,
             cc.contract_start_at AS contractDate,
-            cc.contract_file_url AS fileUrl,
-            COALESCE(cc.status, 'IN_PROGRESS') AS status
+            fc.file_url AS fileUrl,
+            CASE 
+                WHEN fc.final_contract_id IS NOT NULL THEN 'COMPLETED'
+                ELSE cc.status
+            END AS status
             h.lease_type AS leaseType
         FROM contract_chat cc
                  JOIN home h ON cc.home_id = h.home_id
+                 LEFT JOIN final_contract fc ON cc.contract_chat_id = fc.contract_chat_id
         WHERE (cc.owner_id = #{userId} OR cc.buyer_id = #{userId})
         ORDER BY cc.contract_start_at DESC
             LIMIT #{limit} OFFSET #{offset}
