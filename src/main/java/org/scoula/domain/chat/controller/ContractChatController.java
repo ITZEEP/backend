@@ -7,8 +7,8 @@ import java.util.Map;
 import org.scoula.domain.chat.document.ContractChatDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractDto;
 import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
+import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -53,7 +53,7 @@ public interface ContractChatController {
 
       @ApiOperation(value = "특약 대화 종료 및 내보내기", notes = "특약 대화 종료 버튼을 클릭했을 때 종료점을 설정하고 대화 내용을 내보냅니다.")
       @PostMapping("/{contractChatId}/end-point-export")
-      ResponseEntity<ApiResponse<String>> setEndPointAndExport(
+      ResponseEntity<ApiResponse<ClauseImproveResponseDto>> setEndPointAndExport(
               @PathVariable Long contractChatId,
               @RequestParam Long order,
               Authentication authentication);
