@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -212,5 +213,14 @@ public class SpecialContractMongoRepository {
       public SpecialContractDocument saveSpecialContractForNewRound(
               SpecialContractDocument document) {
           return mongoTemplate.save(document, "SPECIAL_CONTRACT");
+      }
+
+      public String updateSpecialContractForNewOrderAndRound(
+              Long contractChatId, Long round, Integer order, SpecialContractDocument.Clause clause) {
+          Query query =
+                  new Query(
+                          Criteria.where("contractChatId").is(contractChatId).and("round").is(round));
+          Update update = new Update().set("content." + String.valueOf(order), clause);
+          return mongoTemplate.updateFirst(query, update, SpecialContractDocument.class).getUpsertedId().toString();
       }
 }
