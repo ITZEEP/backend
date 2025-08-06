@@ -1,10 +1,12 @@
 package org.scoula.domain.mypage.controller;
 
 import org.scoula.domain.mypage.dto.*;
+import org.scoula.domain.mypage.exception.MyPageErrorCode;
 import org.scoula.domain.mypage.service.MyPageService;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
 import org.scoula.global.common.dto.PageResponse;
+import org.scoula.global.common.exception.BusinessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -99,6 +101,6 @@ public class MyPageControllerImpl implements MyPageController {
           if (userDetails instanceof CustomUserDetails) {
               return ((CustomUserDetails) userDetails).getUserId();
           }
-          throw new IllegalArgumentException("Invalid user details type");
+          throw new BusinessException(MyPageErrorCode.UNAUTHORIZED_ACCESS);
       }
 }

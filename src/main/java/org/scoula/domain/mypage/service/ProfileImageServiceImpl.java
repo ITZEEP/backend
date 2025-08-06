@@ -35,6 +35,9 @@ public class ProfileImageServiceImpl implements ProfileImageService {
       @Value("${aws.s3.bucket-name}")
       private String bucketName;
 
+      @Value("${aws.s3.region:ap-northeast-2}")
+      private String awsRegion;
+
       // 허용된 이미지 확장자
       private static final List<String> ALLOWED_EXTENSIONS =
               Arrays.asList(".jpg", ".jpeg", ".png", ".gif", ".webp");
@@ -250,9 +253,9 @@ public class ProfileImageServiceImpl implements ProfileImageService {
           }
 
           try {
-              // https://itjib-bucket.s3.ap-northeast-2.amazonaws.com/profile-images/11/uuid.jpg
+              // https://itjib-bucket.s3.{region}.amazonaws.com/profile-images/11/uuid.jpg
               // -> profile-images/11/uuid.jpg
-              String bucketUrl = "https://" + bucketName + ".s3.ap-northeast-2.amazonaws.com/";
+              String bucketUrl = "https://" + bucketName + ".s3." + awsRegion + ".amazonaws.com/";
               if (url.startsWith(bucketUrl)) {
                   return url.substring(bucketUrl.length());
               }

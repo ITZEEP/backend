@@ -9,8 +9,8 @@
             CONCAT(h.addr1, ' ', h.addr2) AS address,
             h.residence_type AS buildingType,
             cc.contract_start_at AS contractDate,
-            NULL AS fileUrl, -- TODO: 계약서 파일 URL 추가
-            'IN_PROGRESS' AS status, -- contract_chat에는 status 컬럼이 없음
+            cc.contract_file_url AS fileUrl,
+            COALESCE(cc.status, 'IN_PROGRESS') AS status
             h.lease_type AS leaseType
         FROM contract_chat cc
                  JOIN home h ON cc.home_id = h.home_id
@@ -84,7 +84,7 @@
             u.email,
             u.nickname,
             u.profile_img_url AS profileImageUrl,
-            true AS notificationEnabled
+            COALESCE(u.notification_enabled, true) AS notificationEnabled
         FROM user u
         WHERE u.user_id = #{userId}
     </select>
@@ -117,9 +117,9 @@
 
     <!-- 알림 설정 업데이트 -->
     <update id="updateNotificationSetting">
-        <!-- notification_enabled 컬럼이 없으므로 업데이트 하지 않음 -->
         UPDATE user
-        SET updated_at = NOW()
+        SET notification_enabled = #{enabled},
+            updated_at = NOW()
         WHERE user_id = #{userId}
     </update>
 
