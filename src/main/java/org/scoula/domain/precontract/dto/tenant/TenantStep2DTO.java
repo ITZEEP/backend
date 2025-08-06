@@ -1,5 +1,7 @@
 package org.scoula.domain.precontract.dto.tenant;
 
+import javax.validation.constraints.NotNull;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
@@ -14,18 +16,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TenantStep2DTO {
       @ApiModelProperty(value = "주요설비 보수 필요 여부", example = "false", allowableValues = "true,false")
+      @NotNull
       private Boolean facilityRepairNeeded;
 
       @ApiModelProperty(
               value = "입주 전 도배, 장판, 청소 필요 여부",
               example = "true",
               allowableValues = "true,false")
+      @NotNull
       private Boolean interiorCleaningNeeded;
 
       @ApiModelProperty(
               value = "벽걸이, tv, 에어컨 설치 계획",
               example = "true",
               allowableValues = "true,false")
+      @NotNull
       private Boolean applianceInstallationPlan;
 
       @ApiModelProperty(value = "주차 필요 여부", example = "false", allowableValues = "true,false")
