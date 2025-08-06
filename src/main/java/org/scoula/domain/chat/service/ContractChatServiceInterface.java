@@ -6,7 +6,6 @@ import java.util.Map;
 import org.scoula.domain.chat.document.ContractChatDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractDto;
 import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
 import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.global.common.exception.BusinessException;
@@ -185,16 +184,6 @@ public interface ContractChatServiceInterface {
       // 특약 추출 메서드
       Object submitUserSelection(Long contractChatId, Long userId, Map<Integer, Boolean> selections);
 
-      /**
-       * 특약 선택 결과를 처리하여 N이 선택된 특약들의 문서를 생성합니다.
-       *
-       * @param selectionDto 임대인과 임차인의 선택 결과
-       * @param userId 요청 사용자 ID
-       * @return 생성된 특약 order 목록
-       */
-      //      List<Long> createSpecialContractsFromSelections(SpecialContractSelectionDto
-      // selectionDto, Long userId);
-
       // 5. 서비스 구현체에 메서드 추가
       /**
        * 특약 문서 생성 (초기 껍데기)
@@ -206,7 +195,6 @@ public interface ContractChatServiceInterface {
        */
       SpecialContractFixDocument createSpecialContract(Long contractChatId, Long order);
 
-      SpecialContractUserViewDto getSpecialContractForUser(Long contractChatId, Long userId);
 
       /**
        * 특약 문서 조회
@@ -227,32 +215,6 @@ public interface ContractChatServiceInterface {
       SpecialContractFixDocument updateRecentData(Long contractChatId, Long order, String messages);
 
       /**
-       * 다음 라운드로 진행 (prevData의 특정 인덱스에 현재 recentData 저장)
-       *
-       * @param contractChatId 특약 대화 ID
-       * @param prevDataIndex prevData 배열에서 저장할 인덱스 (0 또는 1)
-       * @return 업데이트된 특약 문서
-       */
-      SpecialContractFixDocument proceedToNextRound(
-              Long contractChatId, Long order, int prevDataIndex);
-
-      /**
-       * 자동으로 다음 라운드로 진행 (현재 라운드에 따라 인덱스 자동 결정)
-       *
-       * @param contractChatId 특약 대화 ID
-       * @return 업데이트된 특약 문서
-       */
-      SpecialContractFixDocument proceedToNextRoundAuto(Long contractChatId, Long order);
-
-      /**
-       * AI 서버 전송용 DTO로 변환
-       *
-       * @param contractChatId 특약 대화 ID
-       * @return AI 서버 전송용 DTO
-       */
-      SpecialContractDto formatForAI(Long contractChatId, Long order);
-
-      /**
        * 특약 완료 처리
        *
        * @param contractChatId 특약 대화 ID
@@ -260,12 +222,6 @@ public interface ContractChatServiceInterface {
        */
       SpecialContractFixDocument markSpecialContractAsPassed(Long contractChatId, Long order);
 
-      /**
-       * 특약 문서 삭제
-       *
-       * @param contractChatId 특약 대화 ID
-       */
-      void deleteSpecialContract(Long contractChatId);
 
       /**
        * 특약 문서 존재 여부 확인
@@ -290,7 +246,12 @@ public interface ContractChatServiceInterface {
       List<SpecialContractFixDocument> getIncompleteSpecialContractsByChat(
               Long contractChatId, Long userId);
 
-      String saveOwnerSelectionToRedis(Long contractChatId, Map<Integer, Boolean> selections);
+      List<SpecialContractFixDocument> proceedAllIncompleteToNextRound(Long contractChatId);
 
-      Object saveTenantSelectionAndProcess(Long contractChatId, Map<Integer, Boolean> selections);
+      void createNextRoundSpecialContractDocument(
+              Long contractChatId, List<Long> rejectedOrders, List<Long> passedOrders);
+
+      SpecialContractUserViewDto getSpecialContractForUserByStatus(Long contractChatId, Long userId);
+
+      Map<String, Object> getAllRoundsSpecialContract(Long contractChatId, Long userId);
 }
