@@ -446,7 +446,6 @@ public class ContractChatControllerImpl implements ContractChatController {
               @PathVariable Long contractChatId,
               @RequestBody Map<Integer, Boolean> selections,
               Authentication authentication) {
-          //          try {
           Long userId = getUserIdFromAuthentication(authentication);
 
           if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
@@ -457,13 +456,6 @@ public class ContractChatControllerImpl implements ContractChatController {
           Object result = contractChatService.submitUserSelection(contractChatId, userId, selections);
 
           return ResponseEntity.ok(ApiResponse.success(result));
-
-          //          } catch (Exception e) {
-          //              log.error("특약 선택 제출 실패", e);
-          //              return ResponseEntity.internalServerError()
-          //                      .body(ApiResponse.error("INTERNAL_ERROR", "특약 선택 제출 중 오류가
-          // 발생했습니다."));
-          //          }
       }
 
       @Override
@@ -493,6 +485,31 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
+      @GetMapping("/special-contract/{contractChatId}/all-rounds")
+      public ResponseEntity<ApiResponse<Map<String, Object>>> getAllRoundsSpecialContract(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+
+              if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
+                  return ResponseEntity.badRequest()
+                          .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
+              }
+
+              Map<String, Object> result =
+                      contractChatService.getAllRoundsSpecialContract(contractChatId, userId);
+
+              return ResponseEntity.ok(ApiResponse.success(result, "전체 라운드 특약 문서 조회 성공"));
+          } catch (IllegalArgumentException e) {
+              log.error("전체 라운드 특약 문서 조회 실패 - IllegalArgumentException: {}", e.getMessage());
+              return ResponseEntity.badRequest().body(ApiResponse.error("NOT_FOUND", e.getMessage()));
+          } catch (Exception e) {
+              log.error("전체 라운드 특약 문서 조회 실패 - Exception", e);
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "전체 라운드 특약 문서 조회 중 오류가 발생했습니다."));
+          }
+      }
+
       @Override
       @GetMapping("/special-contract/{contractChatId}")
       public ResponseEntity<ApiResponse<SpecialContractUserViewDto>> getSpecialContractForUser(
@@ -506,7 +523,7 @@ public class ContractChatControllerImpl implements ContractChatController {
               }
 
               SpecialContractUserViewDto result =
-                      contractChatService.getSpecialContractForUser(contractChatId, userId);
+                      contractChatService.getSpecialContractForUserByStatus(contractChatId, userId);
 
               return ResponseEntity.ok(ApiResponse.success(result, "사용자별 특약 문서 조회 성공"));
           } catch (IllegalArgumentException e) {
@@ -516,32 +533,6 @@ public class ContractChatControllerImpl implements ContractChatController {
               log.error("특약 문서 조회 실패 - Exception", e);
               return ResponseEntity.internalServerError()
                       .body(ApiResponse.error("INTERNAL_ERROR", "특약 문서 조회 중 오류가 발생했습니다."));
-          }
-      }
-
-      @Override
-      @GetMapping("/special-contract/{contractChatId}/ai-format")
-      public ResponseEntity<ApiResponse<SpecialContractDto>> getSpecialContractForAI(
-              @PathVariable Long contractChatId,
-              @RequestParam Long order,
-              Authentication authentication) {
-          try {
-              Long userId = getUserIdFromAuthentication(authentication);
-
-              if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
-                  return ResponseEntity.badRequest()
-                          .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
-              }
-
-              SpecialContractDto result = contractChatService.formatForAI(contractChatId, order);
-
-              return ResponseEntity.ok(ApiResponse.success(result, "AI 전송용 데이터 조회 성공"));
-          } catch (IllegalArgumentException e) {
-              return ResponseEntity.badRequest()
-                      .body(ApiResponse.error("AI_FORMAT_FAILED", e.getMessage()));
-          } catch (Exception e) {
-              return ResponseEntity.internalServerError()
-                      .body(ApiResponse.error("INTERNAL_ERROR", "AI 전송용 데이터 조회 중 오류가 발생했습니다."));
           }
       }
 
@@ -572,42 +563,10 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("INTERNAL_ERROR", "특약 내용 업데이트 중 오류가 발생했습니다."));
           }
       }
-
-      @Override
-      @PostMapping("/special-contract/{contractChatId}/next-round")
-      public ResponseEntity<ApiResponse<SpecialContractFixDocument>> proceedToNextRound(
-              @PathVariable Long contractChatId,
-              @RequestParam Long order,
-              @RequestParam int prevDataIndex,
-              Authentication authentication) {
-          try {
-              Long userId = getUserIdFromAuthentication(authentication);
-
-              if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
-                  return ResponseEntity.badRequest()
-                          .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
-              }
-
-              SpecialContractFixDocument result =
-                      contractChatService.proceedToNextRound(contractChatId, order, prevDataIndex);
-
-              return ResponseEntity.ok(
-                      ApiResponse.success(result, "라운드 " + result.getRound() + "로 진행되었습니다."));
-          } catch (IllegalArgumentException | IllegalStateException e) {
-              return ResponseEntity.badRequest()
-                      .body(ApiResponse.error("ROUND_PROCEED_FAILED", e.getMessage()));
-          } catch (Exception e) {
-              return ResponseEntity.internalServerError()
-                      .body(ApiResponse.error("INTERNAL_ERROR", "라운드 진행 중 오류가 발생했습니다."));
-          }
-      }
-
       @Override
       @PostMapping("/special-contract/{contractChatId}/next-round-auto")
-      public ResponseEntity<ApiResponse<SpecialContractFixDocument>> proceedToNextRoundAuto(
-              @PathVariable Long contractChatId,
-              @RequestParam Long order,
-              Authentication authentication) {
+      public ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> proceedToNextRoundAuto(
+              @PathVariable Long contractChatId, Authentication authentication) {
           try {
               Long userId = getUserIdFromAuthentication(authentication);
 
@@ -616,11 +575,11 @@ public class ContractChatControllerImpl implements ContractChatController {
                           .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
               }
 
-              SpecialContractFixDocument result =
-                      contractChatService.proceedToNextRoundAuto(contractChatId, order);
+              List<SpecialContractFixDocument> results =
+                      contractChatService.proceedAllIncompleteToNextRound(contractChatId);
 
               return ResponseEntity.ok(
-                      ApiResponse.success(result, "라운드 " + result.getRound() + "로 자동 진행되었습니다."));
+                      ApiResponse.success(results, results.size() + "개의 특약이 다음 라운드로 진행되었습니다."));
           } catch (IllegalArgumentException | IllegalStateException e) {
               return ResponseEntity.badRequest()
                       .body(ApiResponse.error("AUTO_ROUND_PROCEED_FAILED", e.getMessage()));
@@ -654,31 +613,6 @@ public class ContractChatControllerImpl implements ContractChatController {
           } catch (Exception e) {
               return ResponseEntity.internalServerError()
                       .body(ApiResponse.error("INTERNAL_ERROR", "특약 완료 처리 중 오류가 발생했습니다."));
-          }
-      }
-
-      @Override
-      @DeleteMapping("/special-contract/{contractChatId}")
-      public ResponseEntity<ApiResponse<String>> deleteSpecialContract(
-              @PathVariable Long contractChatId, Authentication authentication) {
-          try {
-              Long userId = getUserIdFromAuthentication(authentication);
-
-              // 권한 검증
-              if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
-                  return ResponseEntity.badRequest()
-                          .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
-              }
-
-              contractChatService.deleteSpecialContract(contractChatId);
-
-              return ResponseEntity.ok(ApiResponse.success("삭제 완료", "특약 문서가 성공적으로 삭제되었습니다."));
-          } catch (IllegalArgumentException e) {
-              return ResponseEntity.badRequest()
-                      .body(ApiResponse.error("DELETE_FAILED", e.getMessage()));
-          } catch (Exception e) {
-              return ResponseEntity.internalServerError()
-                      .body(ApiResponse.error("INTERNAL_ERROR", "특약 문서 삭제 중 오류가 발생했습니다."));
           }
       }
 
