@@ -221,6 +221,9 @@ public class SpecialContractMongoRepository {
                   new Query(
                           Criteria.where("contractChatId").is(contractChatId).and("round").is(round));
           Update update = new Update().set("content." + String.valueOf(order), clause);
-          return mongoTemplate.updateFirst(query, update, SpecialContractDocument.class).getUpsertedId().toString();
+          return mongoTemplate
+                  .updateFirst(query, update, SpecialContractDocument.class)
+                  .getUpsertedId()
+                  .toString();
       }
 }
