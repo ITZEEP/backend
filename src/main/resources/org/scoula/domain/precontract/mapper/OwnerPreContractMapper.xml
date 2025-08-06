@@ -346,13 +346,13 @@
       iv.user_id AS userId,
       opc.rent_type AS rentType,
 
-      -- 계약 step1
-      opc.is_mortgaged AS isMortgaged,
+      -- 계약 조건 Step 1
+      opc.is_mortgaged AS mortgaged,
       opc.contract_duration AS contractDuration,
       opc.renewal_intent AS renewalIntent,
       opc.response_repairing_fixtures AS responseRepairingFixtures,
 
-      -- 계약 step2
+      -- 계약 조건 Step 2
       opc.has_condition_log AS hasConditionLog,
       opc.has_penalty AS hasPenalty,
       opc.has_priority_for_extension AS hasPriorityForExtension,
@@ -360,7 +360,13 @@
       opc.require_rent_guarantee_insurance AS requireRentGuaranteeInsurance,
       oj.allow_jeonse_right_registration AS allowJeonseRightRegistration,
 
-      -- 거주 step1 (월세)
+      -- 거주 조건 Step 1 (공통)
+      opc.insurance_burden AS insuranceBurden,
+      opc.has_notice AS hasNotice,
+      opc.owner_bank_name AS ownerBankName,
+      opc.owner_account_number AS ownerAccountNumber,
+
+      -- 거주 조건 Step 1 (월세)
       ow.payment_due_day AS paymentDueDate,
       ow.late_fee_interest_rate AS lateFeeInterestRate
 
