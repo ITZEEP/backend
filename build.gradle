@@ -159,6 +159,9 @@ dependencies {
 
     implementation 'javax.annotation:javax.annotation-api:1.3.2'
 
+    //FireBase 설정 추가
+    implementation 'com.google.firebase:firebase-admin:9.2.0'
+
 }
 
 test {
