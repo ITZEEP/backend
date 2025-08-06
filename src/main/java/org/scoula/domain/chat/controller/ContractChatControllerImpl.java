@@ -9,12 +9,13 @@ import java.util.Optional;
 import org.scoula.domain.chat.document.ContractChatDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractDto;
 import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
+import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.service.ContractChatServiceInterface;
 import org.scoula.domain.chat.vo.ContractChat;
+import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.domain.user.service.UserServiceInterface;
 import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.dto.ApiResponse;
@@ -39,16 +40,19 @@ public class ContractChatControllerImpl implements ContractChatController {
       private final UserServiceInterface userService;
       private final ContractChatMapper contractChatMapper;
       private final SimpMessagingTemplate messagingTemplate;
+      private final PreContractDataService preContractDataService;
 
       public ContractChatControllerImpl(
               ContractChatServiceInterface contractChatService,
               UserServiceInterface userService,
               ContractChatMapper contractChatMapper,
-              SimpMessagingTemplate messagingTemplate) {
+              SimpMessagingTemplate messagingTemplate,
+              PreContractDataService preContractDataService) {
           this.contractChatService = contractChatService;
           this.userService = userService;
           this.contractChatMapper = contractChatMapper;
           this.messagingTemplate = messagingTemplate;
+          this.preContractDataService = preContractDataService;
       }
 
       @Autowired private RedisTemplate<String, String> stringRedisTemplate;
@@ -243,7 +247,7 @@ public class ContractChatControllerImpl implements ContractChatController {
 
       @Override
       @PostMapping("/{contractChatId}/end-point-export")
-      public ResponseEntity<ApiResponse<String>> setEndPointAndExport(
+      public ResponseEntity<ApiResponse<ClauseImproveResponseDto>> setEndPointAndExport(
               @PathVariable Long contractChatId,
               @RequestParam Long order,
               Authentication authentication) {
@@ -272,16 +276,16 @@ public class ContractChatControllerImpl implements ContractChatController {
                   throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
               }
 
-              String formattedMessages =
+              boolean importClause =
                       contractChatService.setEndPointAndExport(contractChatId, userId, order);
+              //
+              //              log.info("메시지 내용:");
+              //              System.out.println(importClause);
+              //
+              //              ApiResponse<String> response =
+              //                      ApiResponse.success(importClause, "특약 대화가 성공적으로 내보내졌습니다.");
 
-              log.info("메시지 내용:");
-              System.out.println(formattedMessages);
-
-              ApiResponse<String> response =
-                      ApiResponse.success(formattedMessages, "특약 대화가 성공적으로 내보내졌습니다.");
-
-              return ResponseEntity.ok(response);
+              return ResponseEntity.ok(ApiResponse.success());
           } catch (Exception e) {
               log.error("특약 대화 내보내기 실패", e);
               return ResponseEntity.badRequest()
@@ -563,6 +567,7 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("INTERNAL_ERROR", "특약 내용 업데이트 중 오류가 발생했습니다."));
           }
       }
+
       @Override
       @PostMapping("/special-contract/{contractChatId}/next-round-auto")
       public ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> proceedToNextRoundAuto(
