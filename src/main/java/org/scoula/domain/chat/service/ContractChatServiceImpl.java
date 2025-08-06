@@ -11,8 +11,9 @@ import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.document.SpecialContractSelectionDocument;
 import org.scoula.domain.chat.dto.ContentDataDto;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractDto;
 import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
+import org.scoula.domain.chat.dto.ai.ClauseImproveRequestDto;
+import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.domain.chat.mapper.ChatRoomMapper;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
@@ -20,6 +21,7 @@ import org.scoula.domain.chat.repository.ContractChatMessageRepository;
 import org.scoula.domain.chat.repository.SpecialContractMongoRepository;
 import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
+import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final ContractChatMessageRepository contractChatMessageRepository;
       private final SimpMessagingTemplate messagingTemplate;
       @Lazy private final ChatServiceInterface chatService;
+      private final AiClauseImproveService aiClauseImproveService;
+      private final PreContractDataService preContractDataService;
 
       private final Map<String, Set<Long>> contractChatOnlineUsers = new ConcurrentHashMap<>();
       private final RedisTemplate<String, String> stringRedisTemplate;
@@ -163,7 +167,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       /** {@inheritDoc} */
       @Override
       @Transactional
-      public String setEndPointAndExport(Long contractChatId, Long userId, Long order) {
+      public boolean setEndPointAndExport(Long contractChatId, Long userId, Long order) {
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
@@ -233,9 +237,98 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String result = sb.toString();
 
-          updateRecentData(contractChatId, order, result);
+          SpecialContractFixDocument improveClauseRequest =
+                  updateRecentData(contractChatId, order, result);
+          ClauseImproveResponseDto improveClauseResponse = getAiClauseImprove(improveClauseRequest);
 
-          return result;
+          updateSpecialClause(contractChatId, improveClauseResponse);
+          return true;
+      }
+
+      private void updateSpecialClause(Long contractChatId, ClauseImproveResponseDto response) {
+
+          Long round = response.getData().getRound();
+          Integer order = response.getData().getOrder();
+          String content = response.getData().getContent();
+          String title = response.getData().getTitle();
+
+          SpecialContractDocument.Assessment assessment =
+                  SpecialContractDocument.Assessment.builder()
+                          .owner(
+                                  SpecialContractDocument.Evaluation.builder()
+                                          .level(
+                                                  response.getData()
+                                                          .getAssessment()
+                                                          .getOwner()
+                                                          .getLevel())
+                                          .reason(
+                                                  response.getData()
+                                                          .getAssessment()
+                                                          .getOwner()
+                                                          .getReason())
+                                          .build())
+                          .tenant(
+                                  SpecialContractDocument.Evaluation.builder()
+                                          .level(
+                                                  response.getData()
+                                                          .getAssessment()
+                                                          .getTenant()
+                                                          .getLevel())
+                                          .reason(
+                                                  response.getData()
+                                                          .getAssessment()
+                                                          .getTenant()
+                                                          .getReason())
+                                          .build())
+                          .build();
+
+          SpecialContractDocument.Clause clause =
+                  SpecialContractDocument.Clause.builder()
+                          .order(order)
+                          .title(title)
+                          .content(content)
+                          .assessment(assessment)
+                          .build();
+
+          String id = specialContractMongoRepository.updateSpecialContractForNewOrderAndRound(
+                  contractChatId, round, order, clause);
+      }
+
+      private ClauseImproveResponseDto getAiClauseImprove(SpecialContractFixDocument scfd) {
+
+          Long contractChatId = scfd.getContractChatId();
+          // 1. Owner 데이터 조회
+          ClauseImproveRequestDto.OwnerData ownerData =
+                  preContractDataService.fetchOwnerData(contractChatId);
+
+          // 2. Tenant 데이터 조회
+          ClauseImproveRequestDto.TenantData tenantData =
+                  preContractDataService.fetchTenantData(contractChatId);
+
+          // 3. OCR 데이터 조회
+          ClauseImproveRequestDto.OcrData ocrData =
+                  preContractDataService.fetchOcrData(contractChatId);
+
+          // 4. 이전 특약 데이터 설정 (테스트용)
+          List<ContentDataDto> prevClauses = scfd.getPrevData();
+
+          // 5. 최근 특약 데이터 설정 (테스트용)
+          ContentDataDto recentClause = scfd.getRecentData();
+
+          // 6. AI 특약 개선 요청
+          ClauseImproveRequestDto aiRequest =
+                  ClauseImproveRequestDto.builder()
+                          .contractChatId(contractChatId)
+                          .ocrData(ocrData)
+                          .round(scfd.getRound())
+                          .order(scfd.getOrder())
+                          .ownerData(ownerData)
+                          .tenantData(tenantData)
+                          .prevData(scfd.getPrevData())
+                          .recentData(scfd.getRecentData())
+                          .build();
+
+          return aiClauseImproveService.improveClause(aiRequest);
       }
 
       /** {@inheritDoc} */
@@ -738,9 +831,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
               return Map.of(
                       "message", "특약 협상이 시작됩니다.", "completed", true, "createdOrders", createdOrders);
-          }
-
-          else {
+          } else {
               if (rejectedOrders.isEmpty()) {
                   return Map.of("message", "모든 특약이 완료되었습니다!", "completed", true);
               }
@@ -1106,6 +1197,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           .build();
 
           document.setRecentData(updatedRecentData);
+
           return specialContractMongoRepository.updateSpecialContract(document);
       }
 
@@ -1125,7 +1217,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           document.setIsPassed(true);
           return specialContractMongoRepository.updateSpecialContract(document);
       }
-
 
       @Override
       public boolean existsSpecialContract(Long contractChatId) {
