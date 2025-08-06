@@ -1,4 +1,4 @@
-package org.scoula.domain.home.controller;
+package org.scoula.domain.health.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -7,8 +7,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.scoula.domain.home.dto.HealthResponse;
-import org.scoula.domain.home.dto.WelcomeResponse;
+import org.scoula.domain.health.dto.HealthResponse;
+import org.scoula.domain.health.dto.WelcomeResponse;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +18,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 @DisplayName("홈 컨트롤러 구현체 단위 테스트")
 class HomeControllerImplTest {
 
-      private HomeControllerImpl homeController;
+      private HealthControllerImpl homeController;
 
       @BeforeEach
       void setUp() {
-          homeController = new HomeControllerImpl();
+          homeController = new HealthControllerImpl();
 
           // 테스트용 설정값 주입
           ReflectionTestUtils.setField(homeController, "applicationName", "itzeep-backend-test");

@@ -1,4 +1,4 @@
-package org.scoula.domain.home.exception;
+package org.scoula.domain.health.exception;
 
 import org.scoula.global.common.exception.IErrorCode;
 import org.springframework.http.HttpStatus;

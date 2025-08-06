@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.home.mapper.HomeMapper">
+
+    <!-- 1. 홈 등록 -->
+    <insert id="insertHome" parameterType="map" useGeneratedKeys="true" keyProperty="home.homeId">
+        INSERT INTO home (
+            user_id, user_name,
+            addr1, addr2, residence_type, lease_type, deposit_price,
+            monthly_rent, maintenance_fee, supply_area, home_status,
+            view_cnt, like_cnt, chat_cnt, report_cnt,
+            room_cnt, created_at, updated_at
+        ) VALUES (
+                     #{userId}, #{userName},
+                     #{home.addr1}, #{home.addr2}, #{home.residenceType}, #{home.leaseType}, #{home.depositPrice},
+                     #{home.monthlyRent}, #{home.maintenanceFee}, #{home.supplyArea}, #{home.homeStatus},
+                     0, 0, 0, 0,
+                     #{home.roomCnt}, NOW(), NOW()
+                 )
+    </insert>
+
+    <!-- 2. 홈 디테일 등록 -->
+    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
+        <selectKey keyProperty="homeDetailId" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        INSERT INTO home_detail (
+        home_id,
+        build_date,
+        home_floor,
+        building_total_floors,
+        home_direction,
+        bathroom_count,
+        is_pet,
+        is_parking_available
+        )
+        VALUES (
+        #{homeId},
+        #{buildDate},
+        #{homeFloor},
+        #{buildingTotalFloors},
+        #{homeDirection},
+        #{bathroomCount},
+        #{isPet},
+        #{isParkingAvailable}
+        )
+    </insert>
+
+    <!-- 3. 옵션(시설) 등록 -->
+    <insert id="insertHomeFacilities" parameterType="map">
+        INSERT INTO home_facility (home_detail_id, item_id)
+        VALUES
+        <foreach collection="facilityItemIds" item="itemId" separator=",">
+            (#{homeDetailId}, #{itemId})
+        </foreach>
+    </insert>
+
+    <!-- 4. 이미지 등록 -->
+    <insert id="insertHomeImages" parameterType="map">
+        INSERT INTO home_image (home_id, image_url)
+        VALUES
+        <foreach collection="imageUrls" item="imageUrl" separator=",">
+            (#{homeId}, #{imageUrl})
+        </foreach>
+    </insert>
+
+    <!-- 5. 좋아요 등록 -->
+    <insert id="insertHomeLike" parameterType="map">
+        INSERT INTO home_like (user_id, home_id, liked_at)
+        VALUES (#{userId}, #{homeId}, NOW())
+    </insert>
+
+    <!-- 6. 관리비 항목 등록 -->
+    <insert id="insertHomeMaintenanceFees" parameterType="map">
+        INSERT INTO home_maintenance_fee (home_id, maintenance_id, fee)
+        VALUES
+        <foreach collection="maintenanceFees" item="feeItem" separator=",">
+            (#{homeId}, #{feeItem.maintenanceId}, #{feeItem.fee})
+        </foreach>
+    </insert>
+
+    <!-- 7. 신고 정보 등록 -->
+    <insert id="insertHomeReport" parameterType="org.scoula.domain.home.vo.HomeReportVO">
+        INSERT INTO home_report (
+            report_id, user_id, home_id, report_reason, report_at, report_status
+        ) VALUES (
+                     #{reportId},
+                     #{userId},
+                     #{homeId},
+                     #{reportReason},
+                     #{reportAt},
+                     #{reportStatus}
+                 )
+    </insert>
+
+    <!-- 전체 매물 조회 -->
+    <select id="findHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
+        SELECT *
+        FROM home
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 전체 매물 수 -->
+    <select id="countHomes" resultType="long">
+        SELECT COUNT(*)
+        FROM home
+    </select>
+
+    <!-- 단건 조회 -->
+    <select id="findHomeById" parameterType="long" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
+        SELECT *
+        FROM home
+        WHERE home_id = #{homeId}
+    </select>
+
+    <!-- 매물 수정 -->
+    <update id="updateHome" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
+        UPDATE home
+        SET
+            addr1 = #{addr1},
+            addr2 = #{addr2},
+            residence_type = #{residenceType},
+            lease_type = #{leaseType},
+            deposit_price = #{depositPrice},
+            monthly_rent = #{monthlyRent},
+            maintenance_fee = #{maintenanceFee},
+            supply_area = #{supplyArea},
+            updated_at = NOW()
+        WHERE home_id = #{homeId}
+    </update>
+
+    <!-- 매물 삭제 -->
+    <delete id="deleteHome" parameterType="long">
+        DELETE FROM home
+        WHERE home_id = #{homeId}
+    </delete>
+
+
+    <!-- 찜 제거 -->
+    <delete id="deleteLike">
+        DELETE FROM home_like
+        WHERE user_id = #{userId}
+          AND home_id = #{homeId}
+    </delete>
+
+    <!-- 찜한 매물 목록 조회 -->
+    <select id="findLikedHomes" parameterType="long" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
+        SELECT h.*
+        FROM home h
+                 JOIN home_like hl ON h.home_id = hl.home_id
+        WHERE hl.user_id = #{userId}
+        ORDER BY h.created_at DESC
+    </select>
+
+    <!-- 조회수 증가 -->
+    <update id="incrementViewCount" parameterType="long">
+        UPDATE home
+        SET view_cnt = view_cnt + 1
+        WHERE home_id = #{homeId}
+    </update>
+
+    <!-- 내가 등록한 매물 조회 -->
+    <select id="findMyHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
+        SELECT *
+        FROM home
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 내가 등록한 매물 수 -->
+    <select id="countMyHomes" parameterType="long" resultType="long">
+        SELECT COUNT(*)
+        FROM home
+        WHERE user_id = #{userId}
+    </select>
+
+</mapper>

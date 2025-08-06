@@ -5,7 +5,11 @@ import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -16,13 +20,9 @@ import lombok.*;
 public class SpecialContractDocument {
 
       @Id private String id;
-
       private Long contractChatId;
-
       private Long round;
-
       private Integer totalClauses;
-
       private List<Clause> clauses;
 
       @Getter
