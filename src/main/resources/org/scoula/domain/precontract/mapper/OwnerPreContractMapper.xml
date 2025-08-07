@@ -22,6 +22,9 @@
       <result property="contractDuration" column="contract_duration"/>
       <result property="renewalIntent" column="renewal_intent"/>
       <result property="responseRepairingFixtures" column="response_repairing_fixtures"/>
+      <result property="hasTaxArrears" column="has_tax_arrears" />
+      <result property="taxArrearsAmount" column="tax_arrears_amount" />
+      <result property="hasPriorFixedDate" column="has_prior_fixed_date" />
     </association>
 
     <!-- 계약 조건 Step 2 -->
@@ -122,6 +125,9 @@
       oc.contract_duration,
       oc.renewal_intent,
       oc.response_repairing_fixtures,
+      oc.has_tax_arrears,
+      oc.tax_arrears_amount,
+      oc.has_prior_fixed_date,
       oc.checked_at
     FROM owner_precontract_check oc
            JOIN identity_verification iv ON oc.identity_id = iv.identity_id
@@ -137,6 +143,9 @@
       contract_duration = #{dto.contractDuration},
       renewal_intent = #{dto.renewalIntent},
       response_repairing_fixtures = #{dto.responseRepairingFixtures},
+      has_tax_arrears = #{dto.hasTaxArrears},
+      tax_arrears_amount = #{dto.taxArrearsAmount},
+      has_prior_fixed_date = #{dto.hasPriorFixedDate},
       checked_at = now()
     WHERE contract_chat_id = #{contractChatId}
       AND EXISTS (
@@ -310,6 +319,9 @@
       opc.contract_duration,
       opc.renewal_intent,
       opc.response_repairing_fixtures,
+      opc.has_tax_arrears,
+      opc.tax_arrears_amount,
+      opc.has_prior_fixed_date,
 
       -- 계약 조건 Step 2
       opc.has_condition_log,
@@ -351,6 +363,9 @@
       opc.contract_duration AS contractDuration,
       opc.renewal_intent AS renewalIntent,
       opc.response_repairing_fixtures AS responseRepairingFixtures,
+      opc.has_tax_arrears AS hasTaxArrears,
+      opc.tax_arrears_amount AS taxArrearsAmount,
+      opc.has_prior_fixed_date AS hasPriorFixedDate,
 
       -- 계약 조건 Step 2
       opc.has_condition_log AS hasConditionLog,
