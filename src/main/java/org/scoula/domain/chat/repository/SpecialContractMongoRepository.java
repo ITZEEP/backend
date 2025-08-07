@@ -235,13 +235,16 @@ public class SpecialContractMongoRepository {
           return null;
       }
 
-    public FinalSpecialContractDocument saveFinalSpecialContract(FinalSpecialContractDocument document) {
-        return mongoTemplate.save(document, "FINAL_SPECIAL_CONTRACT");
-    }
+      public FinalSpecialContractDocument saveFinalSpecialContract(
+              FinalSpecialContractDocument document) {
+          return mongoTemplate.save(document, "FINAL_SPECIAL_CONTRACT");
+      }
 
-    public Optional<FinalSpecialContractDocument> findFinalContractByContractChatId(Long contractChatId) {
-        Query query = new Query(Criteria.where("contractChatId").is(contractChatId));
-        FinalSpecialContractDocument result = mongoTemplate.findOne(query, FinalSpecialContractDocument.class);
-        return Optional.ofNullable(result);
-    }
+      public Optional<FinalSpecialContractDocument> findFinalContractByContractChatId(
+              Long contractChatId) {
+          Query query = new Query(Criteria.where("contractChatId").is(contractChatId));
+          FinalSpecialContractDocument result =
+                  mongoTemplate.findOne(query, FinalSpecialContractDocument.class);
+          return Optional.ofNullable(result);
+      }
 }
