@@ -5,10 +5,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.scoula.domain.chat.document.ContractChatDocument;
-import org.scoula.domain.chat.document.SpecialContractDocument;
-import org.scoula.domain.chat.document.SpecialContractFixDocument;
-import org.scoula.domain.chat.document.SpecialContractSelectionDocument;
+import org.scoula.domain.chat.document.*;
 import org.scoula.domain.chat.dto.ContentDataDto;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
 import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
@@ -89,8 +86,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       @Transactional
       public void handleContractChatMessage(ContractChatMessageRequestDto dto) {
           if (dto.getContractChatId() == null
-                  || dto.getSenderId() == null
-                  || dto.getReceiverId() == null
                   || dto.getContent() == null) {
               throw new IllegalArgumentException("필수 파라미터가 누락되었습니다.");
           }
@@ -122,6 +117,22 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               throw e;
           }
       }
+    public void AiMessage(Long contractChatId, String content) {
+        final Long ai = Long.MAX_VALUE-1;
+
+        ContractChatDocument aiMessage = ContractChatDocument.builder()
+                .contractChatId(contractChatId.toString())
+                .senderId(ai)
+                .receiverId(null)
+                .content(content)
+                .sendTime(LocalDateTime.now().toString())
+                .build();
+
+        contractChatMessageRepository.saveMessage(aiMessage);
+        contractChatMapper.updateLastMessage(contractChatId, content);
+        messagingTemplate.convertAndSend(
+                "/topic/contract-chat/" + contractChatId, aiMessage);
+    }
 
       /** {@inheritDoc} */
       @Override
@@ -136,7 +147,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
-
+          contractChatMapper.clearTimePoints(contractChatId);
           String startTime = LocalDateTime.now().toString();
 
           contractChatMapper.updateStartTime(contractChatId, startTime);
@@ -233,7 +244,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
 
           stringRedisTemplate.delete(redisKey);
-          contractChatMapper.clearTimePoints(contractChatId);
 
           String result = sb.toString();
 
@@ -756,7 +766,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           if (document.isProcessed()) {
               return Map.of("message", "이미 처리된 선택입니다.", "completed", true);
           }
-
+          AiMessage(contractChatId,"특약 대화가 시작됩니다!");
           return processRoundResults(contractChatId, document, currentStatus, isOwner);
       }
 
@@ -1029,175 +1039,193 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return result;
       }
 
-    @Override
-    public SpecialContractUserViewDto getSpecialContractForUserByStatus(
-            Long contractChatId, Long userId) {
-        log.info("=== 상태별 특약 문서 조회 시작 ===");
-        log.info("contractChatId: {}, userId: {}", contractChatId, userId);
+      @Override
+      public SpecialContractUserViewDto getSpecialContractForUserByStatus(
+              Long contractChatId, Long userId) {
+          log.info("=== 상태별 특약 문서 조회 시작 ===");
+          log.info("contractChatId: {}, userId: {}", contractChatId, userId);
 
-        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-        if (contractChat == null) {
-            log.error("계약 채팅방을 찾을 수 없음 - contractChatId: {}", contractChatId);
-            throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다.");
-        }
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              log.error("계약 채팅방을 찾을 수 없음 - contractChatId: {}", contractChatId);
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다.");
+          }
 
-        boolean isOwner = userId.equals(contractChat.getOwnerId());
-        boolean isTenant = userId.equals(contractChat.getBuyerId());
+          boolean isOwner = userId.equals(contractChat.getOwnerId());
+          boolean isTenant = userId.equals(contractChat.getBuyerId());
 
-        if (!isOwner && !isTenant) {
-            log.error("접근 권한 없음 - contractChatId: {}, userId: {}", contractChatId, userId);
-            throw new IllegalArgumentException("해당 계약 채팅방에 접근 권한이 없습니다.");
-        }
+          if (!isOwner && !isTenant) {
+              log.error("접근 권한 없음 - contractChatId: {}, userId: {}", contractChatId, userId);
+              throw new IllegalArgumentException("해당 계약 채팅방에 접근 권한이 없습니다.");
+          }
 
-        ContractChat.ContractStatus currentStatus = contractChat.getStatus();
-        String userRole = isOwner ? "owner" : "tenant";
+          ContractChat.ContractStatus currentStatus = contractChat.getStatus();
+          String userRole = isOwner ? "owner" : "tenant";
 
-        if (currentStatus == ContractChat.ContractStatus.ROUND1 ||
-                currentStatus == ContractChat.ContractStatus.ROUND2 ||
-                currentStatus == ContractChat.ContractStatus.ROUND3) {
+          if (currentStatus == ContractChat.ContractStatus.ROUND1
+                  || currentStatus == ContractChat.ContractStatus.ROUND2
+                  || currentStatus == ContractChat.ContractStatus.ROUND3) {
 
-            log.info("ROUND1~3 상태 - 완료되지 않은 특약 문서만 조회: {}", currentStatus);
+              log.info("ROUND1~3 상태 - 완료되지 않은 특약 문서만 조회: {}", currentStatus);
 
-            List<SpecialContractFixDocument> incompleteFixDocs =
-                    getIncompleteSpecialContractsByChat(contractChatId, userId);
+              List<SpecialContractFixDocument> incompleteFixDocs =
+                      getIncompleteSpecialContractsByChat(contractChatId, userId);
 
-            if (incompleteFixDocs.isEmpty()) {
-                log.warn("완료되지 않은 특약 문서를 찾을 수 없음 - contractChatId: {}", contractChatId);
-                throw new IllegalArgumentException("완료되지 않은 특약 문서를 찾을 수 없습니다: " + contractChatId);
-            }
+              if (incompleteFixDocs.isEmpty()) {
+                  log.warn("완료되지 않은 특약 문서를 찾을 수 없음 - contractChatId: {}", contractChatId);
+                  throw new IllegalArgumentException("완료되지 않은 특약 문서를 찾을 수 없습니다: " + contractChatId);
+              }
 
-            Set<Integer> targetOrders = incompleteFixDocs.stream()
-                    .map(doc -> doc.getOrder().intValue())
-                    .collect(Collectors.toSet());
+              Set<Integer> targetOrders =
+                      incompleteFixDocs.stream()
+                              .map(doc -> doc.getOrder().intValue())
+                              .collect(Collectors.toSet());
 
-            Long currentRound = getCurrentRoundNumber(currentStatus);
-            SpecialContractDocument fullDocument = specialContractMongoRepository
-                    .findSpecialContractDocumentByContractChatIdAndRound(contractChatId, currentRound)
-                    .orElseThrow(() -> {
-                        log.warn("라운드 {}의 특약 문서를 찾을 수 없음 - contractChatId: {}",
-                                currentRound, contractChatId);
-                        return new IllegalArgumentException(
-                                "라운드 " + currentRound + "의 특약 문서를 찾을 수 없습니다: " + contractChatId);
-                    });
+              Long currentRound = getCurrentRoundNumber(currentStatus);
+              SpecialContractDocument fullDocument =
+                      specialContractMongoRepository
+                              .findSpecialContractDocumentByContractChatIdAndRound(
+                                      contractChatId, currentRound)
+                              .orElseThrow(
+                                      () -> {
+                                          log.warn(
+                                                  "라운드 {}의 특약 문서를 찾을 수 없음 - contractChatId: {}",
+                                                  currentRound,
+                                                  contractChatId);
+                                          return new IllegalArgumentException(
+                                                  "라운드 "
+                                                          + currentRound
+                                                          + "의 특약 문서를 찾을 수 없습니다: "
+                                                          + contractChatId);
+                                      });
 
-            List<SpecialContractUserViewDto.ClauseUserView> userClauses =
-                    fullDocument.getClauses().stream()
-                            .filter(clause -> targetOrders.contains(clause.getOrder()))
-                            .map(clause -> {
-                                SpecialContractDocument.Evaluation userEvaluation =
-                                        isOwner
-                                                ? clause.getAssessment().getOwner()
-                                                : clause.getAssessment().getTenant();
+              List<SpecialContractUserViewDto.ClauseUserView> userClauses =
+                      fullDocument.getClauses().stream()
+                              .filter(clause -> targetOrders.contains(clause.getOrder()))
+                              .map(
+                                      clause -> {
+                                          SpecialContractDocument.Evaluation userEvaluation =
+                                                  isOwner
+                                                          ? clause.getAssessment().getOwner()
+                                                          : clause.getAssessment().getTenant();
 
-                                log.debug("특약 {} 변환 - title: {}, level: {}",
-                                        clause.getOrder(), clause.getTitle(), userEvaluation.getLevel());
+                                          log.debug(
+                                                  "특약 {} 변환 - title: {}, level: {}",
+                                                  clause.getOrder(),
+                                                  clause.getTitle(),
+                                                  userEvaluation.getLevel());
 
-                                return SpecialContractUserViewDto.ClauseUserView.builder()
-                                        .id(clause.getOrder())
-                                        .title(clause.getTitle())
-                                        .content(clause.getContent())
-                                        .level(userEvaluation.getLevel())
-                                        .reason(userEvaluation.getReason())
-                                        .build();
-                            })
-                            .collect(Collectors.toList());
+                                          return SpecialContractUserViewDto.ClauseUserView.builder()
+                                                  .id(clause.getOrder())
+                                                  .title(clause.getTitle())
+                                                  .content(clause.getContent())
+                                                  .level(userEvaluation.getLevel())
+                                                  .reason(userEvaluation.getReason())
+                                                  .build();
+                                      })
+                              .collect(Collectors.toList());
 
-            SpecialContractUserViewDto result =
-                    SpecialContractUserViewDto.builder()
-                            .contractChatId(fullDocument.getContractChatId())
-                            .round(fullDocument.getRound())
-                            .totalClauses(userClauses.size())
-                            .userRole(userRole)
-                            .clauses(userClauses)
-                            .build();
+              SpecialContractUserViewDto result =
+                      SpecialContractUserViewDto.builder()
+                              .contractChatId(fullDocument.getContractChatId())
+                              .round(fullDocument.getRound())
+                              .totalClauses(userClauses.size())
+                              .userRole(userRole)
+                              .clauses(userClauses)
+                              .build();
 
-            log.info("완료되지 않은 특약 문서 조회 완료 - userRole: {}, clauses: {}, round: {}",
-                    userRole, userClauses.size(), fullDocument.getRound());
+              log.info(
+                      "완료되지 않은 특약 문서 조회 완료 - userRole: {}, clauses: {}, round: {}",
+                      userRole,
+                      userClauses.size(),
+                      fullDocument.getRound());
 
-            return result;
-        }
+              return result;
+          }
 
-        Long targetRound = determineTargetRound(currentStatus);
-        log.info("현재 상태: {}, 조회할 라운드: {}", currentStatus, targetRound);
+          Long targetRound = determineTargetRound(currentStatus);
+          log.info("현재 상태: {}, 조회할 라운드: {}", currentStatus, targetRound);
 
-        SpecialContractDocument document =
-                specialContractMongoRepository
-                        .findSpecialContractDocumentByContractChatIdAndRound(
-                                contractChatId, targetRound)
-                        .orElseThrow(
-                                () -> {
-                                    log.warn(
-                                            "라운드 {}의 특약 문서를 찾을 수 없음 - contractChatId: {}",
-                                            targetRound,
-                                            contractChatId);
-                                    return new IllegalArgumentException(
-                                            "라운드 "
-                                                    + targetRound
-                                                    + "의 특약 문서를 찾을 수 없습니다: "
-                                                    + contractChatId);
-                                });
+          SpecialContractDocument document =
+                  specialContractMongoRepository
+                          .findSpecialContractDocumentByContractChatIdAndRound(
+                                  contractChatId, targetRound)
+                          .orElseThrow(
+                                  () -> {
+                                      log.warn(
+                                              "라운드 {}의 특약 문서를 찾을 수 없음 - contractChatId: {}",
+                                              targetRound,
+                                              contractChatId);
+                                      return new IllegalArgumentException(
+                                              "라운드 "
+                                                      + targetRound
+                                                      + "의 특약 문서를 찾을 수 없습니다: "
+                                                      + contractChatId);
+                                  });
 
-        log.info(
-                "특약 문서 조회 완료 - round: {}, totalClauses: {}",
-                document.getRound(),
-                document.getTotalClauses());
+          log.info(
+                  "특약 문서 조회 완료 - round: {}, totalClauses: {}",
+                  document.getRound(),
+                  document.getTotalClauses());
 
-        log.info("사용자 역할 확인 완료 - userRole: {}", userRole);
+          log.info("사용자 역할 확인 완료 - userRole: {}", userRole);
 
-        List<SpecialContractUserViewDto.ClauseUserView> userClauses =
-                document.getClauses().stream()
-                        .map(
-                                clause -> {
-                                    SpecialContractDocument.Evaluation userEvaluation =
-                                            isOwner
-                                                    ? clause.getAssessment().getOwner()
-                                                    : clause.getAssessment().getTenant();
+          List<SpecialContractUserViewDto.ClauseUserView> userClauses =
+                  document.getClauses().stream()
+                          .map(
+                                  clause -> {
+                                      SpecialContractDocument.Evaluation userEvaluation =
+                                              isOwner
+                                                      ? clause.getAssessment().getOwner()
+                                                      : clause.getAssessment().getTenant();
 
-                                    log.debug(
-                                            "특약 {} 변환 - title: {}, level: {}",
-                                            clause.getOrder(),
-                                            clause.getTitle(),
-                                            userEvaluation.getLevel());
+                                      log.debug(
+                                              "특약 {} 변환 - title: {}, level: {}",
+                                              clause.getOrder(),
+                                              clause.getTitle(),
+                                              userEvaluation.getLevel());
 
-                                    return SpecialContractUserViewDto.ClauseUserView.builder()
-                                            .id(clause.getOrder())
-                                            .title(clause.getTitle())
-                                            .content(clause.getContent())
-                                            .level(userEvaluation.getLevel())
-                                            .reason(userEvaluation.getReason())
-                                            .build();
-                                })
-                        .collect(Collectors.toList());
+                                      return SpecialContractUserViewDto.ClauseUserView.builder()
+                                              .id(clause.getOrder())
+                                              .title(clause.getTitle())
+                                              .content(clause.getContent())
+                                              .level(userEvaluation.getLevel())
+                                              .reason(userEvaluation.getReason())
+                                              .build();
+                                  })
+                          .collect(Collectors.toList());
 
-        SpecialContractUserViewDto result =
-                SpecialContractUserViewDto.builder()
-                        .contractChatId(document.getContractChatId())
-                        .round(document.getRound())
-                        .totalClauses(document.getTotalClauses())
-                        .userRole(userRole)
-                        .clauses(userClauses)
-                        .build();
+          SpecialContractUserViewDto result =
+                  SpecialContractUserViewDto.builder()
+                          .contractChatId(document.getContractChatId())
+                          .round(document.getRound())
+                          .totalClauses(document.getTotalClauses())
+                          .userRole(userRole)
+                          .clauses(userClauses)
+                          .build();
 
-        log.info(
-                "상태별 특약 문서 조회 완료 - userRole: {}, clauses: {}, round: {}",
-                userRole,
-                userClauses.size(),
-                document.getRound());
+          log.info(
+                  "상태별 특약 문서 조회 완료 - userRole: {}, clauses: {}, round: {}",
+                  userRole,
+                  userClauses.size(),
+                  document.getRound());
 
-        return result;
-    }
-    private Long getCurrentRoundNumber(ContractChat.ContractStatus status) {
-        switch (status) {
-            case ROUND1:
-                return 2L;
-            case ROUND2:
-                return 3L;
-            case ROUND3:
-                return 4L;
-            default:
-                return 1L;
-        }
-    }
+          return result;
+      }
+
+      private Long getCurrentRoundNumber(ContractChat.ContractStatus status) {
+          switch (status) {
+              case ROUND1:
+                  return 2L;
+              case ROUND2:
+                  return 3L;
+              case ROUND3:
+                  return 4L;
+              default:
+                  return 1L;
+          }
+      }
+
       private Long determineTargetRound(ContractChat.ContractStatus status) {
           switch (status) {
               case STEP0:
@@ -1336,4 +1364,81 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           return rejectedOrders;
       }
+      @Override
+    @Transactional
+    public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
+          List<SpecialContractFixDocument> incompleteContracts =
+                specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, false);
+
+        if (!incompleteContracts.isEmpty()) {
+            throw new IllegalStateException("아직 완료되지 않은 특약이 " + incompleteContracts.size() + "개 있습니다.");
+        }
+
+        List<SpecialContractFixDocument> completedContracts =
+                specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, true);
+
+        if (completedContracts.isEmpty()) {
+            throw new IllegalStateException("완료된 특약이 없습니다.");
+        }
+
+        List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
+
+        for (SpecialContractFixDocument completedContract : completedContracts) {
+            Long order = completedContract.getOrder();
+
+            Optional<SpecialContractDocument> latestRoundDoc = findLatestRoundForOrder(contractChatId, order);
+
+            if (latestRoundDoc.isPresent()) {
+                SpecialContractDocument doc = latestRoundDoc.get();
+
+                doc.getClauses().stream()
+                        .filter(clause -> clause.getOrder().equals(order.intValue()))
+                        .findFirst()
+                        .ifPresent(clause -> {
+                            FinalSpecialContractDocument.FinalClause finalClause =
+                                    FinalSpecialContractDocument.FinalClause.builder()
+                                            .order(clause.getOrder())
+                                            .title(clause.getTitle())
+                                            .content(clause.getContent())
+                                            .sourceRound(doc.getRound())
+                                            .build();
+
+                            finalClauses.add(finalClause);
+                            log.info("특약 {}번 최종 저장 완료 - sourceRound: {}", order, doc.getRound());
+                        });
+            }
+        }
+
+        FinalSpecialContractDocument finalDocument = FinalSpecialContractDocument.builder()
+                .contractChatId(contractChatId)
+                .totalFinalClauses(finalClauses.size())
+                .finalClauses(finalClauses)
+                .build();
+
+        FinalSpecialContractDocument savedDocument =
+                specialContractMongoRepository.saveFinalSpecialContract(finalDocument);
+
+        log.info("최종 특약 저장 완료 - 총 {}개 조항", finalClauses.size());
+
+        return savedDocument;
+    }
+
+    private Optional<SpecialContractDocument> findLatestRoundForOrder(Long contractChatId, Long order) {
+        for (Long round = 4L; round >= 1L; round--) {
+            Optional<SpecialContractDocument> doc =
+                    specialContractMongoRepository.findSpecialContractDocumentByContractChatIdAndRound(contractChatId, round);
+
+            if (doc.isPresent()) {
+                boolean hasOrder = doc.get().getClauses().stream()
+                        .anyMatch(clause -> clause.getOrder().equals(order.intValue())
+                                && !clause.getTitle().isEmpty()
+                                && !clause.getContent().isEmpty());
+
+                if (hasOrder) {
+                    return doc;
+                }
+            }
+        }
+        return Optional.empty();
+    }
 }
