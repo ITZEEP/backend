@@ -95,6 +95,21 @@ public class SpecialContractMongoRepository {
           return Optional.ofNullable(result);
       }
 
+      public Optional<SpecialContractFixDocument> findByContractChatIdAndOrderAndRound(
+              Long contractChatId, Long order, Long round) {
+          Query query =
+                  new Query(
+                          Criteria.where("contractChatId")
+                                  .is(contractChatId)
+                                  .and("order")
+                                  .is(order)
+                                  .and("round")
+                                  .is(round));
+          SpecialContractFixDocument result =
+                  mongoTemplate.findOne(query, SpecialContractFixDocument.class);
+          return Optional.ofNullable(result);
+      }
+
       /** 특약 문서 삭제 */
       public void deleteSpecialContract(SpecialContractFixDocument document) {
           mongoTemplate.remove(document);
