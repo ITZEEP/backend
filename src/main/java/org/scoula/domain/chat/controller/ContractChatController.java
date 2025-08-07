@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.scoula.domain.chat.document.ContractChatDocument;
+import org.scoula.domain.chat.document.FinalSpecialContractDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
 import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
@@ -123,11 +124,6 @@ public interface ContractChatController {
               @RequestParam Long order,
               Authentication authentication);
 
-      @ApiOperation(value = "특약 문서 존재 여부 확인", notes = "특약 문서의 존재 여부를 확인합니다.")
-      @GetMapping("/special-contract/{contractChatId}/exists")
-      ResponseEntity<ApiResponse<Boolean>> checkSpecialContractExists(
-              @PathVariable Long contractChatId, Authentication authentication);
-
       @ApiOperation(value = "완료된 특약 문서 목록 조회", notes = "완료된 모든 특약 문서를 조회합니다.")
       @GetMapping("/special-contract/completed")
       ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> getCompletedSpecialContracts(
@@ -138,6 +134,13 @@ public interface ContractChatController {
       ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> getIncompleteSpecialContracts(
               @PathVariable Long contractChatId, Authentication authentication);
 
+      @ApiOperation(value = "특약 대화 시작 AI 메시지", notes = "선택된 특약 번호 대화를 시작한다는 메시지를 AI가 전송합니다.")
       @PostMapping("/special-contract/{contractChatId}/ai")
-      ResponseEntity<ApiResponse<String>> sendAiMessage(@PathVariable Long contractChatId, @RequestParam Long order);
+      ResponseEntity<ApiResponse<String>> sendAiMessage(
+              @PathVariable Long contractChatId, @RequestParam Long order);
+
+      @ApiOperation(value = "최종 계약서 조회", notes = "최종 선택된 계약서를 조회합니다.")
+      @GetMapping("/final-contract/{contractChatId}")
+      ResponseEntity<ApiResponse<FinalSpecialContractDocument>> getFinalSpecialContract(
+              @PathVariable Long contractChatId, Authentication authentication);
 }
