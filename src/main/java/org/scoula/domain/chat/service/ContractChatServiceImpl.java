@@ -133,22 +133,23 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           contractChatMapper.updateLastMessage(contractChatId, content);
           messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
       }
-    public void AiMessageBtn(Long contractChatId, String content) {
-        final Long ai = 9998L;
 
-        ContractChatDocument aiMessage =
-                ContractChatDocument.builder()
-                        .contractChatId(contractChatId.toString())
-                        .senderId(ai)
-                        .receiverId(null)
-                        .content(content)
-                        .sendTime(LocalDateTime.now().toString())
-                        .build();
+      public void AiMessageBtn(Long contractChatId, String content) {
+          final Long ai = 9998L;
 
-        contractChatMessageRepository.saveMessage(aiMessage);
-        contractChatMapper.updateLastMessage(contractChatId, content);
-        messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
-    }
+          ContractChatDocument aiMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(ai)
+                          .receiverId(null)
+                          .content(content)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(aiMessage);
+          contractChatMapper.updateLastMessage(contractChatId, content);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
+      }
 
       /** {@inheritDoc} */
       @Override
@@ -682,7 +683,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           for (SpecialContractFixDocument document : incompleteContracts) {
               try {
-                  int targetIndex = (int) (currentRound - 1);
+                  int targetIndex = (int) (document.getRound() - 1);
 
                   if (targetIndex >= 2) {
                       log.warn("특약 {}번: 최대 라운드 도달, 스킵", document.getOrder());
@@ -701,21 +702,22 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
                   document.setPrevData(updatedPrevData);
                   document.setRecentData(createEmptyContentData());
+                  document.setRound(document.getRound() + 1);
+                  log.info(
+                          "특약 {}번: round {} → {} 증가",
+                          document.getOrder(),
+                          currentRound,
+                          currentRound + 1);
 
                   SpecialContractFixDocument updated =
                           specialContractMongoRepository.updateSpecialContract(document);
                   updatedContracts.add(updated);
 
-                  log.info("특약 {}번 라운드 진행 완료", document.getOrder());
+                  log.info("특약 {}번 라운드 진행 완료: round={}", document.getOrder(), updated.getRound());
 
               } catch (Exception e) {
                   log.error("특약 {}번 라운드 진행 실패: {}", document.getOrder(), e.getMessage());
               }
-          }
-
-          if (!updatedContracts.isEmpty()) {
-              contractChatMapper.proceedToNextRound(contractChatId);
-              log.info("MySQL 라운드 상태 업데이트 완료");
           }
 
           log.info("=== 모든 미완료 특약 다음 라운드 진행 완료 ===");
@@ -741,13 +743,11 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
 
           ContractChat.ContractStatus currentStatus = contractChat.getStatus();
-          log.info("현재 계약 상태: {}", currentStatus);
 
           List<Integer> availableOrders = getAvailableOrders(contractChatId, currentStatus);
           if (!isValidSelection(selections, availableOrders)) {
               throw new IllegalArgumentException("현재 상태에서 선택할 수 없는 특약입니다. 선택 가능: " + availableOrders);
           }
-
           Optional<SpecialContractSelectionDocument> existingOpt =
                   specialContractMongoRepository.findSelectionByContractChatId(contractChatId);
 
@@ -786,6 +786,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           AiMessage(contractChatId, "특약 대화가 시작됩니다!");
           return processRoundResults(contractChatId, document, currentStatus, isOwner);
+
       }
 
       /** 현재 상태에 따른 선택 가능한 특약들 반환 */
@@ -877,6 +878,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               }
 
               contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.ROUND0);
+              resetSelectionDocument(contractChatId);
 
               return Map.of(
                       "message", "특약 협상이 시작됩니다.", "completed", true, "createdOrders", createdOrders);
@@ -1274,6 +1276,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               case STEP0:
               case STEP1:
               case STEP2:
+                  return 1L;
               case ROUND0:
                   return 1L;
               case ROUND1:
@@ -1556,32 +1559,48 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
       }
 
-    private boolean isClauseFilled(SpecialContractDocument document, Integer order) {
-        return document.getClauses().stream()
-                .filter(clause -> {
-                    Integer clauseOrder = clause.getOrder();
-                    boolean orderMatch = Objects.equals(clauseOrder, order);
-                    log.debug("Order 비교: clauseOrder={} (type={}), targetOrder={} (type={}), match={}",
-                            clauseOrder, clauseOrder != null ? clauseOrder.getClass().getSimpleName() : "null",
-                            order, order != null ? order.getClass().getSimpleName() : "null",
-                            orderMatch);
-                    return orderMatch;
-                })
-                .findFirst()
-                .map(clause -> {
-                    String title = clause.getTitle();
-                    String content = clause.getContent();
+      private boolean isClauseFilled(SpecialContractDocument document, Integer order) {
+          return document.getClauses().stream()
+                  .filter(clause -> Objects.equals(clause.getOrder(), order))
+                  .findFirst()
+                  .map(
+                          clause -> {
+                              String title = clause.getTitle();
+                              String content = clause.getContent();
 
-                    boolean titleFilled = title != null && !title.trim().isEmpty();
-                    boolean contentFilled = content != null && !content.trim().isEmpty();
-                    boolean isFilled = titleFilled && contentFilled;
-                    return isFilled;
-                })
-                .orElseGet(() -> {
-                    log.warn("⚠️  특약 {}번을 문서에서 찾을 수 없음!", order);
-                    return false;
-                });
-    }
+                              boolean titleFilled = title != null && !title.trim().isEmpty();
+                              boolean contentFilled = content != null && !content.trim().isEmpty();
+                              boolean isFilled = titleFilled && contentFilled;
+
+                              // 🔍 상세 디버그 로그
+                              log.info("🔍 특약 {}번 상세 체크:", order);
+                              log.info("  - title 원본: '{}'", title);
+                              log.info("  - title 길이: {}", title != null ? title.length() : "null");
+                              log.info(
+                                      "  - title trim 후: '{}'",
+                                      title != null ? title.trim() : "null");
+                              log.info("  - title filled: {}", titleFilled);
+
+                              log.info("  - content 원본: '{}'", content);
+                              log.info(
+                                      "  - content 길이: {}",
+                                      content != null ? content.length() : "null");
+                              log.info(
+                                      "  - content trim 후: '{}'",
+                                      content != null ? content.trim() : "null");
+                              log.info("  - content filled: {}", contentFilled);
+
+                              log.info("  - 최종 결과: {}", isFilled);
+
+                              return isFilled;
+                          })
+                  .orElseGet(
+                          () -> {
+                              log.warn("⚠️ 특약 {}번을 문서에서 찾을 수 없음!", order);
+                              return false;
+                          });
+      }
+
       private Long getNextRoundNumber(ContractChat.ContractStatus status) {
           switch (status) {
               case ROUND0:
