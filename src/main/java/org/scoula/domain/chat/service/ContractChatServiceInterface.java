@@ -257,4 +257,5 @@ public interface ContractChatServiceInterface {
       FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId);
 
       void AiMessage(Long contractChatId, String content);
+      void AiMessageBtn(Long contractChatId, String content);
 }

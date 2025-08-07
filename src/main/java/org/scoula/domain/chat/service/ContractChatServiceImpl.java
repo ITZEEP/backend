@@ -133,6 +133,22 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           contractChatMapper.updateLastMessage(contractChatId, content);
           messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
       }
+    public void AiMessageBtn(Long contractChatId, String content) {
+        final Long ai = 9998L;
+
+        ContractChatDocument aiMessage =
+                ContractChatDocument.builder()
+                        .contractChatId(contractChatId.toString())
+                        .senderId(ai)
+                        .receiverId(null)
+                        .content(content)
+                        .sendTime(LocalDateTime.now().toString())
+                        .build();
+
+        contractChatMessageRepository.saveMessage(aiMessage);
+        contractChatMapper.updateLastMessage(contractChatId, content);
+        messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
+    }
 
       /** {@inheritDoc} */
       @Override
@@ -1533,7 +1549,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   contractChatMapper.updateStatus(contractChatId, nextStatus);
                   log.info("라운드 자동 증가: {} → {}", currentStatus, nextStatus);
                   String aimsg = getRoundIncrementMessage(nextStatus);
-                  AiMessage(contractChatId, aimsg);
+                  AiMessageBtn(contractChatId, aimsg);
               }
           } else {
               log.info("아직 모든 특약이 꽉 차지 않아서 라운드 유지");
