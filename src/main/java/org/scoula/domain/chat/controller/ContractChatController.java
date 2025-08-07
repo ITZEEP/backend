@@ -139,5 +139,5 @@ public interface ContractChatController {
               @PathVariable Long contractChatId, Authentication authentication);
 
       @PostMapping("/special-contract/{contractChatId}/ai")
-      ResponseEntity<ApiResponse<String>> sendAiMessage(@PathVariable Long contractChatId, @RequestParam Long order)
+      ResponseEntity<ApiResponse<String>> sendAiMessage(@PathVariable Long contractChatId, @RequestParam Long order);
 }
