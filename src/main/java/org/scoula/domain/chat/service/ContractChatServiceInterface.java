@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.scoula.domain.chat.document.ContractChatDocument;
+import org.scoula.domain.chat.document.FinalSpecialContractDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
 import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
@@ -252,4 +253,5 @@ public interface ContractChatServiceInterface {
       SpecialContractUserViewDto getSpecialContractForUserByStatus(Long contractChatId, Long userId);
 
       Map<String, Object> getAllRoundsSpecialContract(Long contractChatId, Long userId);
+      FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId);
 }
