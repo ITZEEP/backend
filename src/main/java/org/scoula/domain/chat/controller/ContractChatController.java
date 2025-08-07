@@ -137,4 +137,7 @@ public interface ContractChatController {
       @GetMapping("/special-contract/{contractChatId}/incomplete")
       ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> getIncompleteSpecialContracts(
               @PathVariable Long contractChatId, Authentication authentication);
+
+      @PostMapping("/special-contract/{contractChatId}/ai")
+      ResponseEntity<ApiResponse<String>> sendAiMessage(@PathVariable Long contractChatId, @RequestParam Long order)
 }

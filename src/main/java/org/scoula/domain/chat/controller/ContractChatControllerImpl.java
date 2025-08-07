@@ -413,6 +413,7 @@ public class ContractChatControllerImpl implements ContractChatController {
               if (contractChat == null) {
                   throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
               }
+              String role=userId==contractChat.getOwnerId()?"임대인입니다":"임차인입니다";
 
               Map<String, Object> contractInfo =
                       Map.of(
@@ -429,7 +430,8 @@ public class ContractChatControllerImpl implements ContractChatController {
                               "lastMessage",
                               contractChat.getLastMessage(),
                               "status",
-                              contractChat.getStatus());
+                              contractChat.getStatus(),
+                              "role",role);
 
               return ResponseEntity.ok(ApiResponse.success(contractInfo, "계약 채팅방 정보 조회 성공"));
 
@@ -675,5 +677,12 @@ public class ContractChatControllerImpl implements ContractChatController {
               return ResponseEntity.internalServerError()
                       .body(ApiResponse.error("INTERNAL_ERROR", "미완료 특약 목록 조회 중 오류가 발생했습니다."));
           }
+      }
+      @Override
+      @PostMapping("/special-contract/{contractChatId}/ai")
+    public ResponseEntity<ApiResponse<String>> sendAiMessage(@PathVariable Long contractChatId, @RequestParam Long order){
+          String aiContent = order + "번호 특약에 대한 대화를 시작합니다!";
+          contractChatService.AiMessage(contractChatId, aiContent);
+          return ResponseEntity.ok(ApiResponse.success(aiContent));
       }
 }
