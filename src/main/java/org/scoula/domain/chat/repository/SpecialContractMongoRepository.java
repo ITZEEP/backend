@@ -3,6 +3,7 @@ package org.scoula.domain.chat.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.scoula.domain.chat.document.FinalSpecialContractDocument;
 import org.scoula.domain.chat.document.SpecialContractDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
 import org.scoula.domain.chat.document.SpecialContractSelectionDocument;
@@ -219,15 +220,28 @@ public class SpecialContractMongoRepository {
               Long contractChatId, Long round, Integer order, SpecialContractDocument.Clause clause) {
           Query query =
                   new Query(
-                          Criteria.where("contractChatId").is(contractChatId).and("round").is(round+1));
+                          Criteria.where("contractChatId")
+                                  .is(contractChatId)
+                                  .and("round")
+                                  .is(round + 1));
           Update update = new Update().set("clauses." + (order - 1), clause);
-          
-          com.mongodb.client.result.UpdateResult result = 
+
+          com.mongodb.client.result.UpdateResult result =
                   mongoTemplate.updateFirst(query, update, SpecialContractDocument.class);
-          
+
           if (result.getModifiedCount() > 0) {
               return contractChatId.toString();
           }
           return null;
       }
+
+    public FinalSpecialContractDocument saveFinalSpecialContract(FinalSpecialContractDocument document) {
+        return mongoTemplate.save(document, "FINAL_SPECIAL_CONTRACT");
+    }
+
+    public Optional<FinalSpecialContractDocument> findFinalContractByContractChatId(Long contractChatId) {
+        Query query = new Query(Criteria.where("contractChatId").is(contractChatId));
+        FinalSpecialContractDocument result = mongoTemplate.findOne(query, FinalSpecialContractDocument.class);
+        return Optional.ofNullable(result);
+    }
 }
