@@ -813,7 +813,14 @@ public class ChatServiceImpl implements ChatServiceInterface {
                           .build();
 
           handleChatMessage(acceptMessage);
-          String contractChatUrl = "http://localhost:5173/pre-contract/" + contractChatRoomId.toString()+"/owner?step=1"+"/n"+"http://localhost:5173/pre-contract/" + contractChatRoomId.toString()+"/buyer?step=1";
+          String contractChatUrl =
+                  "http://localhost:5173/pre-contract/"
+                          + contractChatRoomId.toString()
+                          + "/owner?step=1"
+                          + "/n"
+                          + "http://localhost:5173/pre-contract/"
+                          + contractChatRoomId.toString()
+                          + "/buyer?step=1";
 
           ChatMessageRequestDto linkMessage =
                   ChatMessageRequestDto.builder()
