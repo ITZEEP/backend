@@ -1,6 +1,8 @@
 package org.scoula.domain.home.dto.response;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 import org.scoula.domain.home.enums.LeaseType;
@@ -35,13 +37,19 @@ public class HomeResponseDto {
       private Float exclusiveArea;
 
       private String homeFloor;
+      private Integer buildingTotalFloors;
 
       private Integer roomCnt;
       private Integer bathroomCount;
       private String homeDirection;
 
-      private List<String> imageUrls;
+      private Boolean isPet;
+      private Boolean isParkingAvailable;
 
+      private LocalDate buildDate;
+      private LocalDate moveInDate;
+
+      private List<String> imageUrls;
       private List<String> options;
       private List<Long> facilityItemIds;
 
@@ -67,13 +75,21 @@ public class HomeResponseDto {
                   .maintenanceFee(vo.getMaintenanceFee())
                   .supplyArea(vo.getSupplyArea())
                   .exclusiveArea(vo.getExclusiveArea())
-                  .homeFloor(vo.getFloor() != null ? vo.getFloor().toString() : "")
+                  .homeFloor(vo.getHomeFloor() != null ? vo.getHomeFloor() : "")
+                  .buildingTotalFloors(vo.getBuildingTotalFloors())
                   .roomCnt(vo.getRoomCnt())
                   .bathroomCount(vo.getBathroomCount())
                   .homeDirection(vo.getHomeDirection() != null ? vo.getHomeDirection().name() : null)
-                  .imageUrls(vo.getImageUrls())
-                  .options(vo.getOptions())
-                  .facilityItemIds(vo.getFacilityItemIds())
+                  .isPet(vo.getIsPet())
+                  .isParkingAvailable(vo.getIsParkingAvailable())
+                  .buildDate(vo.getBuildDate() != null ? vo.getBuildDate().toLocalDate() : null)
+                  .moveInDate(vo.getMoveInDate())
+                  .imageUrls(vo.getImageUrls() != null ? vo.getImageUrls() : Collections.emptyList())
+                  .options(vo.getOptions() != null ? vo.getOptions() : Collections.emptyList())
+                  .facilityItemIds(
+                          vo.getFacilityItemIds() != null
+                                  ? vo.getFacilityItemIds()
+                                  : Collections.emptyList())
                   .createdAt(createdAtStr)
                   .build();
       }

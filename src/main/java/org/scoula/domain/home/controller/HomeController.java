@@ -46,7 +46,7 @@ public class HomeController {
       public ResponseEntity<ApiResponse<Void>> updateHome(
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @PathVariable Long homeId,
-              @Valid HomeUpdateRequestDto request) {
+              @Valid @ModelAttribute HomeUpdateRequestDto request) {
           homeService.updateHome(userDetails.getUserId(), homeId, request);
           return ResponseEntity.ok(ApiResponse.success());
       }
@@ -69,7 +69,6 @@ public class HomeController {
                       int size) {
 
           PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
-
           PageResponse<HomeResponseDto> response =
                   homeService.getMyHomeList(userDetails.getUserId(), pageRequest);
           return ResponseEntity.ok(response);
@@ -92,7 +91,6 @@ public class HomeController {
                       int size) {
 
           PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
-
           PageResponse<HomeResponseDto> response = homeService.getHomeList(pageRequest);
           return ResponseEntity.ok(response);
       }

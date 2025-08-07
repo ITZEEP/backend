@@ -33,8 +33,6 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       public PageResponse<HomeResponseDto> getHomeList(PageRequest pageRequest) {
-          int offset = pageRequest.getOffset();
-          int size = pageRequest.getSize();
           List<HomeRegisterVO> homes = homeMapper.findHomes(pageRequest);
           long totalCount = homeMapper.countHomes(pageRequest);
 
@@ -61,21 +59,18 @@ public class HomeServiceImpl implements HomeService {
       @Override
       @Transactional
       public Long createHome(Long userId, HomeCreateRequestDto request) {
-          // 1. VO 변환 및 설정
-          HomeRegisterVO vo = HomeRegisterVO.from(userId, request);
-          vo.setUserName(request.getUserName());
+          String userName = homeMapper.findUserNameById(userId);
 
-          // 2. 매물 등록 (home)
-          homeMapper.insertHome(userId, request.getUserName(), vo);
-          log.debug("username: {}", request.getUserName());
+          HomeRegisterVO vo = HomeRegisterVO.from(userId, request);
+          vo.setUserName(userName);
+
+          homeMapper.insertHome(userId, userName, vo);
           Long homeId = vo.getHomeId();
 
-          // 3. 상세 정보 등록 (home_detail)
           vo.setHomeId(homeId);
           homeMapper.insertHomeDetail(vo);
-          Long homeDetailId = vo.getHomeDetailId(); // selectKey로 설정됨
+          Long homeDetailId = vo.getHomeDetailId();
 
-          // 4. 옵션 등록 (home_facility)
           if (request.getFacilityItemIds() != null && !request.getFacilityItemIds().isEmpty()) {
               homeMapper.insertHomeFacilities(
                       Map.of(
@@ -85,7 +80,6 @@ public class HomeServiceImpl implements HomeService {
                               request.getFacilityItemIds()));
           }
 
-          // 5. 이미지 등록 (home_image)
           if (request.getImageFiles() != null && !request.getImageFiles().isEmpty()) {
               List<String> imageUrls =
                       request.getImageFiles().stream()
@@ -109,7 +103,8 @@ public class HomeServiceImpl implements HomeService {
           if (!existingHome.getUserId().equals(userId)) {
               throw new HomeRegisterException("매물 수정 권한이 없습니다.");
           }
-          HomeRegisterVO vo = HomeRegisterVO.from(homeId, request);
+
+          HomeRegisterVO vo = HomeRegisterVO.from(userId, request);
           homeMapper.updateHome(vo);
       }
 
@@ -176,9 +171,8 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       public PageResponse<HomeResponseDto> getMyHomeList(Long userId, PageRequest pageRequest) {
-          int offset = pageRequest.getOffset();
-          int size = pageRequest.getSize();
-          List<HomeRegisterVO> homes = homeMapper.findMyHomes(userId, offset, size);
+          List<HomeRegisterVO> homes =
+                  homeMapper.findMyHomes(userId, pageRequest.getOffset(), pageRequest.getSize());
           long totalCount = homeMapper.countMyHomes(userId);
 
           List<HomeResponseDto> content =

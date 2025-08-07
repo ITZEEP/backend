@@ -33,7 +33,7 @@ public class HomeUpdateRequestDto {
       private Float supplyArea;
       private Float exclusiveArea;
 
-      private String homefloor;
+      private String homeFloor;
       private LocalDate buildDate;
       private Integer buildingTotalFloors;
       private Boolean isPet;

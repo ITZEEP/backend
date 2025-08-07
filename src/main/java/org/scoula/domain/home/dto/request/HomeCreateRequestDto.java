@@ -3,8 +3,10 @@ package org.scoula.domain.home.dto.request;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.scoula.domain.home.enums.HomeDirection;
 import org.scoula.domain.home.enums.LeaseType;
 import org.scoula.domain.home.enums.ResidenceType;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.multipart.MultipartFile;
 
 import lombok.AllArgsConstructor;
@@ -28,25 +30,31 @@ public class HomeCreateRequestDto {
       private Integer depositPrice; // 보증금
       private Integer monthlyRent; // 월세
       private Integer maintenanceFee; // 관리비
+      private String itemName;
 
-      private Float supplyArea; // 전용면적
-      private Float exclusiveArea;
+      private Float supplyArea; // 공급면적
+      private Float exclusiveArea; // 전용면적
 
-      private String homefloor; // 층 정보 (예: 5층 / 15층)
+      private String homeFloor; // 층 정보 (예: "5층 / 15층" 등)
+
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
       private LocalDate buildDate;
+
       private Integer buildingTotalFloors;
       private Boolean isPet;
       private Boolean isParkingAvailable;
 
       private Integer roomCnt; // 방 개수
       private Integer bathroomCount; // 욕실 개수
-      private String homeDirection; // 남향, 북향 등
+      private HomeDirection homeDirection; // 남향, 북향 등
+
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
       private LocalDate moveInDate;
 
       private List<String> options; // 옵션 (가전 등)
       private List<Long> facilityItemIds; // 시설 ID 리스트
 
-      // 이미지 파일들을 직접 받기
+      // 이미지 파일들
       private List<MultipartFile> images;
       private List<MultipartFile> imageFiles;
 }

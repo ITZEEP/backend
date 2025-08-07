@@ -6,47 +6,50 @@
 <mapper namespace="org.scoula.domain.home.mapper.HomeMapper">
 
     <!-- 1. 홈 등록 -->
+    <select id="findUserNameById" parameterType="long" resultType="string">
+        SELECT name
+        FROM identity_verification
+        WHERE user_id = #{userId}
+    </select>
+
     <insert id="insertHome" parameterType="map" useGeneratedKeys="true" keyProperty="home.homeId">
         INSERT INTO home (
             user_id, user_name,
             addr1, addr2, residence_type, lease_type, deposit_price,
-            monthly_rent, maintenance_fee, supply_area, home_status,
+            monthly_rent, maintenance_fee, supply_area, exclusive_area, home_status,
             view_cnt, like_cnt, chat_cnt, report_cnt,
             room_cnt, created_at, updated_at
         ) VALUES (
                      #{userId}, #{userName},
                      #{home.addr1}, #{home.addr2}, #{home.residenceType}, #{home.leaseType}, #{home.depositPrice},
-                     #{home.monthlyRent}, #{home.maintenanceFee}, #{home.supplyArea}, #{home.homeStatus},
+                     #{home.monthlyRent}, #{home.maintenanceFee}, #{home.supplyArea}, #{home.exclusiveArea}, #{home.homeStatus},
                      0, 0, 0, 0,
                      #{home.roomCnt}, NOW(), NOW()
                  )
     </insert>
 
     <!-- 2. 홈 디테일 등록 -->
-    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
-        <selectKey keyProperty="homeDetailId" resultType="long" order="AFTER">
-            SELECT LAST_INSERT_ID()
-        </selectKey>
+    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO" useGeneratedKeys="true" keyProperty="homeDetailId">
         INSERT INTO home_detail (
-        home_id,
-        build_date,
-        home_floor,
-        building_total_floors,
-        home_direction,
-        bathroom_count,
-        is_pet,
-        is_parking_available
+            home_id,
+            build_date,
+            home_floor,
+            building_total_floors,
+            home_direction,
+            bathroom_count,
+            is_pet,
+            is_parking_available
         )
         VALUES (
-        #{homeId},
-        #{buildDate},
-        #{homeFloor},
-        #{buildingTotalFloors},
-        #{homeDirection},
-        #{bathroomCount},
-        #{isPet},
-        #{isParkingAvailable}
-        )
+                   #{homeId},
+                   #{buildDate},
+                   #{homeFloor},
+                   #{buildingTotalFloors},
+                   #{homeDirection},
+                   #{bathroomCount},
+                   #{isPet},
+                   #{isParkingAvailable}
+               )
     </insert>
 
     <!-- 3. 옵션(시설) 등록 -->
@@ -96,25 +99,26 @@
                  )
     </insert>
 
-    <!-- 전체 매물 조회 -->
+    <!-- 전체 매물 조회 (페이징) -->
     <select id="findHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT *
-        FROM home
-        ORDER BY created_at DESC
-        LIMIT #{offset}, #{size}
+        SELECT h.*, d.home_floor, d.bathroom_count, d.home_direction, d.build_date, d.building_total_floors, d.is_pet, d.is_parking_available
+        FROM home h
+                 LEFT JOIN home_detail d ON h.home_id = d.home_id
+        ORDER BY h.created_at DESC
+            LIMIT #{pageRequest.offset}, #{pageRequest.size}
     </select>
 
     <!-- 전체 매물 수 -->
     <select id="countHomes" resultType="long">
-        SELECT COUNT(*)
-        FROM home
+        SELECT COUNT(*) FROM home
     </select>
 
     <!-- 단건 조회 -->
     <select id="findHomeById" parameterType="long" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT *
-        FROM home
-        WHERE home_id = #{homeId}
+        SELECT h.*, d.home_floor, d.bathroom_count, d.home_direction, d.build_date, d.building_total_floors, d.is_pet, d.is_parking_available
+        FROM home h
+                 LEFT JOIN home_detail d ON h.home_id = d.home_id
+        WHERE h.home_id = #{homeId}
     </select>
 
     <!-- 매물 수정 -->
@@ -129,19 +133,33 @@
             monthly_rent = #{monthlyRent},
             maintenance_fee = #{maintenanceFee},
             supply_area = #{supplyArea},
+            exclusive_area = #{exclusiveArea},
+            room_cnt = #{roomCnt},
             updated_at = NOW()
+        WHERE home_id = #{homeId}
+    </update>
+
+    <!-- 홈 디테일 수정 -->
+    <update id="updateHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
+        UPDATE home_detail
+        SET
+            build_date = #{buildDate},
+            home_floor = #{homeFloor},
+            building_total_floors = #{buildingTotalFloors},
+            home_direction = #{homeDirection},
+            bathroom_count = #{bathroomCount},
+            is_pet = #{isPet},
+            is_parking_available = #{isParkingAvailable}
         WHERE home_id = #{homeId}
     </update>
 
     <!-- 매물 삭제 -->
     <delete id="deleteHome" parameterType="long">
-        DELETE FROM home
-        WHERE home_id = #{homeId}
+        DELETE FROM home WHERE home_id = #{homeId}
     </delete>
 
-
     <!-- 찜 제거 -->
-    <delete id="deleteLike">
+    <delete id="deleteLike" parameterType="map">
         DELETE FROM home_like
         WHERE user_id = #{userId}
           AND home_id = #{homeId}
@@ -165,18 +183,17 @@
 
     <!-- 내가 등록한 매물 조회 -->
     <select id="findMyHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT *
-        FROM home
-        WHERE user_id = #{userId}
-        ORDER BY created_at DESC
-        LIMIT #{offset}, #{size}
+        SELECT h.*, d.home_floor, d.bathroom_count, d.home_direction, d.build_date, d.building_total_floors, d.is_pet, d.is_parking_available
+        FROM home h
+                 LEFT JOIN home_detail d ON h.home_id = d.home_id
+        WHERE h.user_id = #{userId}
+        ORDER BY h.created_at DESC
+            LIMIT #{pageRequest.offset}, #{pageRequest.size}
     </select>
 
     <!-- 내가 등록한 매물 수 -->
     <select id="countMyHomes" parameterType="long" resultType="long">
-        SELECT COUNT(*)
-        FROM home
-        WHERE user_id = #{userId}
+        SELECT COUNT(*) FROM home WHERE user_id = #{userId}
     </select>
 
 </mapper>
