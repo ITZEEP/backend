@@ -228,7 +228,7 @@ public interface ContractChatServiceInterface {
        * @param contractChatId 특약 대화 ID
        * @return 존재 여부
        */
-      boolean existsSpecialContract(Long contractChatId);
+      //      boolean existsSpecialContract(Long contractChatId);
 
       /**
        * 완료된 특약 문서들 조회
@@ -253,5 +253,8 @@ public interface ContractChatServiceInterface {
       SpecialContractUserViewDto getSpecialContractForUserByStatus(Long contractChatId, Long userId);
 
       Map<String, Object> getAllRoundsSpecialContract(Long contractChatId, Long userId);
+
       FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId);
+
+      void AiMessage(Long contractChatId, String content);
 }
