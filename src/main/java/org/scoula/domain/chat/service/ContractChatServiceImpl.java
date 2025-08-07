@@ -1556,24 +1556,32 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
       }
 
-      private boolean isClauseFilled(SpecialContractDocument document, Integer order) {
-          return document.getClauses().stream()
-                  .filter(clause -> clause.getOrder().equals(order))
-                  .findFirst()
-                  .map(
-                          clause -> {
-                              boolean isFilled =
-                                      !clause.getTitle().isEmpty() && !clause.getContent().isEmpty();
-                              log.debug(
-                                      "특약 {}번 채움 상태: title='{}', content='{...}', filled={}",
-                                      order,
-                                      clause.getTitle(),
-                                      isFilled);
-                              return isFilled;
-                          })
-                  .orElse(false);
-      }
+    private boolean isClauseFilled(SpecialContractDocument document, Integer order) {
+        return document.getClauses().stream()
+                .filter(clause -> {
+                    Integer clauseOrder = clause.getOrder();
+                    boolean orderMatch = Objects.equals(clauseOrder, order);
+                    log.debug("Order 비교: clauseOrder={} (type={}), targetOrder={} (type={}), match={}",
+                            clauseOrder, clauseOrder != null ? clauseOrder.getClass().getSimpleName() : "null",
+                            order, order != null ? order.getClass().getSimpleName() : "null",
+                            orderMatch);
+                    return orderMatch;
+                })
+                .findFirst()
+                .map(clause -> {
+                    String title = clause.getTitle();
+                    String content = clause.getContent();
 
+                    boolean titleFilled = title != null && !title.trim().isEmpty();
+                    boolean contentFilled = content != null && !content.trim().isEmpty();
+                    boolean isFilled = titleFilled && contentFilled;
+                    return isFilled;
+                })
+                .orElseGet(() -> {
+                    log.warn("⚠️  특약 {}번을 문서에서 찾을 수 없음!", order);
+                    return false;
+                });
+    }
       private Long getNextRoundNumber(ContractChat.ContractStatus status) {
           switch (status) {
               case ROUND0:
