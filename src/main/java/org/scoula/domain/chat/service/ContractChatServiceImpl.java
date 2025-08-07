@@ -118,7 +118,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       }
 
       public void AiMessage(Long contractChatId, String content) {
-          final Long ai = Long.MAX_VALUE - 1;
+          final Long ai = 9999L;
 
           ContractChatDocument aiMessage =
                   ContractChatDocument.builder()
@@ -256,7 +256,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           return true;
       }
-
 
       private void updateSpecialClause(Long contractChatId, ClauseImproveResponseDto response) {
 
@@ -874,10 +873,14 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                       AiMessage(contractChatId, "🎉 모든 특약 협상이 완료되었습니다! 최종 특약서가 생성되었습니다.");
 
                       return Map.of(
-                              "message", "모든 특약이 완료되었습니다!",
-                              "completed", true,
-                              "finalContractId", finalContract.getId(),
-                              "totalFinalClauses", finalContract.getTotalFinalClauses());
+                              "message",
+                              "모든 특약이 완료되었습니다!",
+                              "completed",
+                              true,
+                              "finalContractId",
+                              finalContract.getId(),
+                              "totalFinalClauses",
+                              finalContract.getTotalFinalClauses());
                   } catch (Exception e) {
                       log.error("최종 특약 저장 실패", e);
                       return Map.of("message", "특약은 완료되었지만 최종 저장 중 오류가 발생했습니다.", "completed", true);
@@ -885,16 +888,15 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               }
 
               try {
-                  createNextRoundSpecialContractDocument(contractChatId, rejectedOrders, passedOrders);
+                  createNextRoundSpecialContractDocument(
+                          contractChatId, rejectedOrders, passedOrders);
               } catch (Exception e) {
                   log.error("새 라운드 SPECIAL_CONTRACT 문서 생성 실패", e);
               }
 
               resetSelectionDocument(contractChatId);
 
-              return Map.of(
-                      "message", "협상을 계속 진행해주세요.",
-                      "completed", true);
+              return Map.of("message", "협상을 계속 진행해주세요.", "completed", true);
           }
       }
 
@@ -1477,100 +1479,110 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           return Optional.empty();
       }
-    @Transactional
-    public void checkAndIncrementRoundIfComplete(Long contractChatId) {
-        log.info("=== 라운드 완료 체크 시작 ===");
 
-        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-        ContractChat.ContractStatus currentStatus = contractChat.getStatus();
+      @Transactional
+      public void checkAndIncrementRoundIfComplete(Long contractChatId) {
+          log.info("=== 라운드 완료 체크 시작 ===");
 
-        Long nextRoundNumber = getNextRoundNumber(currentStatus);
-        if (nextRoundNumber == null) {
-            log.info("더 이상 증가할 라운드가 없음: {}", currentStatus);
-            return;
-        }
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          ContractChat.ContractStatus currentStatus = contractChat.getStatus();
 
-        log.info("현재 상태: {}, 체크할 라운드: {}", currentStatus, nextRoundNumber);
+          Long nextRoundNumber = getNextRoundNumber(currentStatus);
+          if (nextRoundNumber == null) {
+              log.info("더 이상 증가할 라운드가 없음: {}", currentStatus);
+              return;
+          }
 
-        Optional<SpecialContractDocument> documentOpt =
-                specialContractMongoRepository.findSpecialContractDocumentByContractChatIdAndRound(
-                        contractChatId, nextRoundNumber);
+          log.info("현재 상태: {}, 체크할 라운드: {}", currentStatus, nextRoundNumber);
 
-        if (documentOpt.isEmpty()) {
-            log.warn("라운드 {}의 문서를 찾을 수 없음", nextRoundNumber);
-            return;
-        }
+          Optional<SpecialContractDocument> documentOpt =
+                  specialContractMongoRepository.findSpecialContractDocumentByContractChatIdAndRound(
+                          contractChatId, nextRoundNumber);
 
-        SpecialContractDocument document = documentOpt.get();
+          if (documentOpt.isEmpty()) {
+              log.warn("라운드 {}의 문서를 찾을 수 없음", nextRoundNumber);
+              return;
+          }
 
-        List<SpecialContractFixDocument> incompleteContracts =
-                specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, false);
+          SpecialContractDocument document = documentOpt.get();
 
-        if (incompleteContracts.isEmpty()) {
-            log.info("미완료 특약이 없어서 라운드 증가 체크 불필요");
-            return;
-        }
+          List<SpecialContractFixDocument> incompleteContracts =
+                  specialContractMongoRepository.findByContractChatIdAndIsPassed(
+                          contractChatId, false);
 
-        Set<Integer> incompleteOrders = incompleteContracts.stream()
-                .map(doc -> doc.getOrder().intValue())
-                .collect(Collectors.toSet());
+          if (incompleteContracts.isEmpty()) {
+              log.info("미완료 특약이 없어서 라운드 증가 체크 불필요");
+              return;
+          }
 
-        log.info("미완료 특약 번호들: {}", incompleteOrders);
+          Set<Integer> incompleteOrders =
+                  incompleteContracts.stream()
+                          .map(doc -> doc.getOrder().intValue())
+                          .collect(Collectors.toSet());
 
-        boolean allIncompleteClausesAreFilled = incompleteOrders.stream()
-                .allMatch(order -> isClauseFilled(document, order));
+          log.info("미완료 특약 번호들: {}", incompleteOrders);
 
-        log.info("모든 미완료 특약이 꽉 찼는지: {}", allIncompleteClausesAreFilled);
+          boolean allIncompleteClausesAreFilled =
+                  incompleteOrders.stream().allMatch(order -> isClauseFilled(document, order));
 
-        if (allIncompleteClausesAreFilled) {
-            ContractChat.ContractStatus nextStatus = getNextStatus(currentStatus);
-            if (nextStatus != null) {
-                contractChatMapper.updateStatus(contractChatId, nextStatus);
-                log.info("라운드 자동 증가: {} → {}", currentStatus, nextStatus);
-                String aimsg=getRoundIncrementMessage(nextStatus);
-                AiMessage(contractChatId, aimsg);
-            }
-        } else {
-            log.info("아직 모든 특약이 꽉 차지 않아서 라운드 유지");
-        }
-    }
+          log.info("모든 미완료 특약이 꽉 찼는지: {}", allIncompleteClausesAreFilled);
 
-    private boolean isClauseFilled(SpecialContractDocument document, Integer order) {
-        return document.getClauses().stream()
-                .filter(clause -> clause.getOrder().equals(order))
-                .findFirst()
-                .map(clause -> {
-                    boolean isFilled = !clause.getTitle().isEmpty() && !clause.getContent().isEmpty();
-                    log.debug("특약 {}번 채움 상태: title='{}', content='{...}', filled={}",
-                            order, clause.getTitle(), isFilled);
-                    return isFilled;
-                })
-                .orElse(false);
-    }
-    private Long getNextRoundNumber(ContractChat.ContractStatus status) {
-        switch (status) {
-            case ROUND0:
-                return 2L;
-            case ROUND1:
-                return 3L;
-            case ROUND2:
-                return 4L;
-            case ROUND3:
-                return null;
-            default:
-                return null;
-        }
-    }
-    private String getRoundIncrementMessage(ContractChat.ContractStatus status) {
-        switch (status) {
-            case ROUND1:
-                return "1차 수정이 완료되었습니다! 1차 협상 라운드가 시작됩니다.";
-            case ROUND2:
-                return "2차 수정이 완료되었습니다! 2차 협상 라운드가 시작됩니다.";
-            case ROUND3:
-                return "3차 수정이 완료되었습니다! 최종 협상 라운드가 시작됩니다.";
-            default:
-                return "새로운 협상 라운드가 시작됩니다.";
-        }
-    }
+          if (allIncompleteClausesAreFilled) {
+              ContractChat.ContractStatus nextStatus = getNextStatus(currentStatus);
+              if (nextStatus != null) {
+                  contractChatMapper.updateStatus(contractChatId, nextStatus);
+                  log.info("라운드 자동 증가: {} → {}", currentStatus, nextStatus);
+                  String aimsg = getRoundIncrementMessage(nextStatus);
+                  AiMessage(contractChatId, aimsg);
+              }
+          } else {
+              log.info("아직 모든 특약이 꽉 차지 않아서 라운드 유지");
+          }
+      }
+
+      private boolean isClauseFilled(SpecialContractDocument document, Integer order) {
+          return document.getClauses().stream()
+                  .filter(clause -> clause.getOrder().equals(order))
+                  .findFirst()
+                  .map(
+                          clause -> {
+                              boolean isFilled =
+                                      !clause.getTitle().isEmpty() && !clause.getContent().isEmpty();
+                              log.debug(
+                                      "특약 {}번 채움 상태: title='{}', content='{...}', filled={}",
+                                      order,
+                                      clause.getTitle(),
+                                      isFilled);
+                              return isFilled;
+                          })
+                  .orElse(false);
+      }
+
+      private Long getNextRoundNumber(ContractChat.ContractStatus status) {
+          switch (status) {
+              case ROUND0:
+                  return 2L;
+              case ROUND1:
+                  return 3L;
+              case ROUND2:
+                  return 4L;
+              case ROUND3:
+                  return null;
+              default:
+                  return null;
+          }
+      }
+
+      private String getRoundIncrementMessage(ContractChat.ContractStatus status) {
+          switch (status) {
+              case ROUND1:
+                  return "1차 수정이 완료되었습니다! 1차 협상 라운드가 시작됩니다.";
+              case ROUND2:
+                  return "2차 수정이 완료되었습니다! 2차 협상 라운드가 시작됩니다.";
+              case ROUND3:
+                  return "3차 수정이 완료되었습니다! 최종 협상 라운드가 시작됩니다.";
+              default:
+                  return "새로운 협상 라운드가 시작됩니다.";
+          }
+      }
 }
