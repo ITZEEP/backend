@@ -2,6 +2,7 @@ package org.scoula.domain.user.service;
 
 import java.util.Optional;
 
+import org.scoula.domain.mypage.service.ProfileImageService;
 import org.scoula.domain.user.mapper.SocialAccountMapper;
 import org.scoula.domain.user.mapper.UserMapper;
 import org.scoula.domain.user.vo.SocialAccount;
@@ -9,7 +10,6 @@ import org.scoula.domain.user.vo.User;
 import org.scoula.global.auth.util.PasswordUtil;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.CommonErrorCode;
-import org.scoula.global.file.service.S3ServiceInterface;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +32,7 @@ public class UserServiceImpl implements UserServiceInterface {
 
       private final UserMapper userMapper;
       private final SocialAccountMapper socialAccountMapper;
-      private final S3ServiceInterface s3Service;
+      private final ProfileImageService profileImageService;
 
       /** {@inheritDoc} */
       @Override
@@ -69,41 +69,10 @@ public class UserServiceImpl implements UserServiceInterface {
                   socialAccountMapper.selectBySocialIdAndSocialType(socialId, socialType);
 
           if (existingSocialAccount.isPresent()) {
-              // 기존 사용자 정보 업데이트
+              // 기존 사용자는 정보 업데이트 없이 그대로 반환
               Long userId = existingSocialAccount.get().getUserId();
               User user = findById(userId);
-
-              // 프로필 이미지를 S3에 업로드
-              String s3ProfileImageUrl = profileImageUrl;
-              if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
-                  try {
-                      String uploadedUrl =
-                              s3Service.uploadProfileImageFromUrl(profileImageUrl, userId);
-                      if (uploadedUrl != null) {
-                          s3ProfileImageUrl = uploadedUrl;
-                          log.info("기존 사용자 프로필 이미지 S3 업로드 성공: {}", s3ProfileImageUrl);
-                      } else {
-                          log.warn("프로필 이미지 S3 업로드 실패, 기본 이미지 URL 사용: {}", profileImageUrl);
-                      }
-                  } catch (Exception e) {
-                      log.error("프로필 이미지 업로드 중 오류 발생", e);
-                  }
-              }
-
-              // 사용자 정보 업데이트
-              User updateUser =
-                      User.builder()
-                              .userId(userId)
-                              .nickname(nickname)
-                              .profileImgUrl(s3ProfileImageUrl)
-                              .gender(gender)
-                              .build();
-              userMapper.update(updateUser);
-              log.info("사용자 정보 업데이트 - 닉네임: {}, 프로필: {}", nickname, s3ProfileImageUrl);
-
-              // 업데이트된 사용자 정보 다시 조회
-              user = findById(userId);
-              log.info("기존 사용자 정보 업데이트 완료 - ID: {}", user.getUserId());
+              log.info("기존 사용자 로그인 - ID: {}, 정보 업데이트 하지 않음", user.getUserId());
               return user;
           }
 
@@ -125,7 +94,8 @@ public class UserServiceImpl implements UserServiceInterface {
               if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
                   try {
                       String uploadedUrl =
-                              s3Service.uploadProfileImageFromUrl(profileImageUrl, user.getUserId());
+                              profileImageService.uploadProfileImageFromUrl(
+                                      profileImageUrl, user.getUserId());
                       if (uploadedUrl != null) {
                           s3ProfileImageUrl = uploadedUrl;
                           log.info("기존 사용자(이메일 연결) 프로필 이미지 S3 업로드 성공: {}", s3ProfileImageUrl);
@@ -175,7 +145,8 @@ public class UserServiceImpl implements UserServiceInterface {
           if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
               try {
                   String s3ProfileImageUrl =
-                          s3Service.uploadProfileImageFromUrl(profileImageUrl, newUser.getUserId());
+                          profileImageService.uploadProfileImageFromUrl(
+                                  profileImageUrl, newUser.getUserId());
 
                   if (s3ProfileImageUrl != null) {
                       log.info("프로필 이미지 S3 업로드 성공: {}", s3ProfileImageUrl);
