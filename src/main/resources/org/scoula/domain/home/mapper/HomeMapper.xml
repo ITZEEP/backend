@@ -5,51 +5,56 @@
 
 <mapper namespace="org.scoula.domain.home.mapper.HomeMapper">
 
-    <!-- 1. 홈 등록 -->
+    <!-- 1. 유저 이름 조회 -->
+    <select id="findUserNameById" parameterType="long" resultType="string">
+        SELECT name
+        FROM identity_verification
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 2. 홈 기본 정보 등록 -->
     <insert id="insertHome" parameterType="map" useGeneratedKeys="true" keyProperty="home.homeId">
         INSERT INTO home (
             user_id, user_name,
             addr1, addr2, residence_type, lease_type, deposit_price,
-            monthly_rent, maintenance_fee, supply_area, home_status,
+            monthly_rent, maintenance_fee, supply_area, exclusive_area, home_status,
             view_cnt, like_cnt, chat_cnt, report_cnt,
             room_cnt, created_at, updated_at
         ) VALUES (
                      #{userId}, #{userName},
                      #{home.addr1}, #{home.addr2}, #{home.residenceType}, #{home.leaseType}, #{home.depositPrice},
-                     #{home.monthlyRent}, #{home.maintenanceFee}, #{home.supplyArea}, #{home.homeStatus},
+                     #{home.monthlyRent}, #{home.maintenanceFee}, #{home.supplyArea}, #{home.exclusiveArea}, #{home.homeStatus},
                      0, 0, 0, 0,
                      #{home.roomCnt}, NOW(), NOW()
                  )
     </insert>
 
-    <!-- 2. 홈 디테일 등록 -->
-    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
-        <selectKey keyProperty="homeDetailId" resultType="long" order="AFTER">
-            SELECT LAST_INSERT_ID()
-        </selectKey>
+    <!-- 3. 홈 상세 정보 등록 -->
+    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO" useGeneratedKeys="true" keyProperty="homeDetailId">
         INSERT INTO home_detail (
-        home_id,
-        build_date,
-        home_floor,
-        building_total_floors,
-        home_direction,
-        bathroom_count,
-        is_pet,
-        is_parking_available
-        )
-        VALUES (
-        #{homeId},
-        #{buildDate},
-        #{homeFloor},
-        #{buildingTotalFloors},
-        #{homeDirection},
-        #{bathroomCount},
-        #{isPet},
-        #{isParkingAvailable}
-        )
+            home_id,
+            home_detail_id,
+            build_date,
+            home_floor,
+            building_total_floors,
+            home_direction,
+            bathroom_count,
+            is_pet,
+            is_parking_available
+        ) VALUES (
+                     #{homeId},
+                     #{homeDetailId},
+                     #{buildDate},
+                     #{homeFloor},
+                     #{buildingTotalFloors},
+                     #{homeDirection},
+                     #{bathroomCount},
+                     #{isPet},
+                     #{isParkingAvailable}
+                 )
     </insert>
 
-    <!-- 3. 옵션(시설) 등록 -->
+    <!-- 4. 옵션(시설) 등록 -->
     <insert id="insertHomeFacilities" parameterType="map">
         INSERT INTO home_facility (home_detail_id, item_id)
         VALUES
@@ -58,7 +63,7 @@
         </foreach>
     </insert>
 
-    <!-- 4. 이미지 등록 -->
+    <!-- 5. 이미지 등록 -->
     <insert id="insertHomeImages" parameterType="map">
         INSERT INTO home_image (home_id, image_url)
         VALUES
@@ -67,13 +72,13 @@
         </foreach>
     </insert>
 
-    <!-- 5. 좋아요 등록 -->
+    <!-- 6. 좋아요 등록 -->
     <insert id="insertHomeLike" parameterType="map">
         INSERT INTO home_like (user_id, home_id, liked_at)
         VALUES (#{userId}, #{homeId}, NOW())
     </insert>
 
-    <!-- 6. 관리비 항목 등록 -->
+    <!-- 7. 관리비 항목 등록 -->
     <insert id="insertHomeMaintenanceFees" parameterType="map">
         INSERT INTO home_maintenance_fee (home_id, maintenance_id, fee)
         VALUES
@@ -82,7 +87,7 @@
         </foreach>
     </insert>
 
-    <!-- 7. 신고 정보 등록 -->
+    <!-- 8. 신고 정보 등록 -->
     <insert id="insertHomeReport" parameterType="org.scoula.domain.home.vo.HomeReportVO">
         INSERT INTO home_report (
             report_id, user_id, home_id, report_reason, report_at, report_status
@@ -96,28 +101,78 @@
                  )
     </insert>
 
-    <!-- 전체 매물 조회 -->
+    <!-- 9. 전체 매물 조회 (페이징) -->
     <select id="findHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT *
-        FROM home
-        ORDER BY created_at DESC
-        LIMIT #{offset}, #{size}
+        SELECT
+            h.home_id AS homeId,
+            h.user_id AS userId,
+            h.user_name AS userName,
+            h.addr1,
+            h.addr2,
+            h.residence_type AS residenceType,
+            h.lease_type AS leaseType,
+            h.deposit_price AS depositPrice,
+            h.monthly_rent AS monthlyRent,
+            h.maintenance_fee AS maintenanceFee,
+            h.supply_area AS supplyArea,
+            h.exclusive_area AS exclusiveArea,
+            h.home_status AS homeStatus,
+            h.view_cnt AS viewCnt,
+            h.like_cnt AS likeCnt,
+            h.chat_cnt AS chatCnt,
+            h.report_cnt AS reportCnt,
+            h.room_cnt AS roomCnt,
+            h.created_at AS createdAt,
+            h.updated_at AS updatedAt,
+            d.home_detail_id AS homeDetailId,
+            d.build_date AS buildDate,
+            d.home_floor AS homeFloor,
+            d.building_total_floors AS buildingTotalFloors,
+            d.home_direction AS homeDirection,
+            d.bathroom_count AS bathroomCount,
+            d.is_pet AS isPet,
+            d.is_parking_available AS isParkingAvailable,
+            hi.image_url AS imageUrl
+        FROM home h
+                 LEFT JOIN home_detail d ON h.home_id = d.home_id
+                 LEFT JOIN (
+            SELECT home_id, MIN(image_url) AS image_url
+            FROM home_image
+            GROUP BY home_id
+        ) hi ON h.home_id = hi.home_id
+        ORDER BY h.created_at DESC
+            LIMIT #{offset}, #{size}
     </select>
 
-    <!-- 전체 매물 수 -->
+    <!-- 10. 전체 매물 수 조회 -->
     <select id="countHomes" resultType="long">
-        SELECT COUNT(*)
-        FROM home
+        SELECT COUNT(*) FROM home
     </select>
 
-    <!-- 단건 조회 -->
+    <!-- 11. 단건 매물 조회 (상세 포함, 이미지 별도 조회) -->
     <select id="findHomeById" parameterType="long" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT *
-        FROM home
-        WHERE home_id = #{homeId}
+        SELECT h.*,
+               d.home_floor,
+               d.bathroom_count,
+               d.home_direction,
+               d.build_date,
+               d.building_total_floors,
+               d.is_pet,
+               d.is_parking_available
+        FROM home h
+                 LEFT JOIN home_detail d ON h.home_id = d.home_id
+        WHERE h.home_id = #{homeId}
     </select>
 
-    <!-- 매물 수정 -->
+    <!-- 12. 매물 이미지 리스트 조회 -->
+    <select id="findHomeImagesByHomeId" parameterType="long" resultType="string">
+        SELECT image_url
+        FROM home_image
+        WHERE home_id = #{homeId}
+        ORDER BY image_id
+    </select>
+
+    <!-- 13. 매물 수정 -->
     <update id="updateHome" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
         UPDATE home
         SET
@@ -129,25 +184,39 @@
             monthly_rent = #{monthlyRent},
             maintenance_fee = #{maintenanceFee},
             supply_area = #{supplyArea},
+            exclusive_area = #{exclusiveArea},
+            room_cnt = #{roomCnt},
             updated_at = NOW()
         WHERE home_id = #{homeId}
     </update>
 
-    <!-- 매물 삭제 -->
-    <delete id="deleteHome" parameterType="long">
-        DELETE FROM home
+    <!-- 14. 홈 상세 수정 -->
+    <update id="updateHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
+        UPDATE home_detail
+        SET
+            build_date = #{buildDate},
+            home_floor = #{homeFloor},
+            building_total_floors = #{buildingTotalFloors},
+            home_direction = #{homeDirection},
+            bathroom_count = #{bathroomCount},
+            is_pet = #{isPet},
+            is_parking_available = #{isParkingAvailable}
         WHERE home_id = #{homeId}
+    </update>
+
+    <!-- 15. 매물 삭제 -->
+    <delete id="deleteHome" parameterType="long">
+        DELETE FROM home WHERE home_id = #{homeId}
     </delete>
 
-
-    <!-- 찜 제거 -->
-    <delete id="deleteLike">
+    <!-- 16. 찜 제거 -->
+    <delete id="deleteLike" parameterType="map">
         DELETE FROM home_like
         WHERE user_id = #{userId}
           AND home_id = #{homeId}
     </delete>
 
-    <!-- 찜한 매물 목록 조회 -->
+    <!-- 17. 찜한 매물 목록 조회 -->
     <select id="findLikedHomes" parameterType="long" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
         SELECT h.*
         FROM home h
@@ -156,27 +225,26 @@
         ORDER BY h.created_at DESC
     </select>
 
-    <!-- 조회수 증가 -->
+    <!-- 18. 조회수 증가 -->
     <update id="incrementViewCount" parameterType="long">
         UPDATE home
         SET view_cnt = view_cnt + 1
         WHERE home_id = #{homeId}
     </update>
 
-    <!-- 내가 등록한 매물 조회 -->
+    <!-- 19. 내가 등록한 매물 조회 (페이징) -->
     <select id="findMyHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT *
-        FROM home
-        WHERE user_id = #{userId}
-        ORDER BY created_at DESC
-        LIMIT #{offset}, #{size}
+        SELECT h.*, d.home_floor, d.bathroom_count, d.home_direction, d.build_date, d.building_total_floors, d.is_pet, d.is_parking_available
+        FROM home h
+                 LEFT JOIN home_detail d ON h.home_id = d.home_id
+        WHERE h.user_id = #{userId}
+        ORDER BY h.created_at DESC
+            LIMIT #{offset}, #{size}
     </select>
 
-    <!-- 내가 등록한 매물 수 -->
+    <!-- 20. 내가 등록한 매물 수 조회 -->
     <select id="countMyHomes" parameterType="long" resultType="long">
-        SELECT COUNT(*)
-        FROM home
-        WHERE user_id = #{userId}
+        SELECT COUNT(*) FROM home WHERE user_id = #{userId}
     </select>
 
 </mapper>

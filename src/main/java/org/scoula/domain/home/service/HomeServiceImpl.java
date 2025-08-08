@@ -13,6 +13,7 @@ import org.scoula.domain.home.exception.HomeRegisterException;
 import org.scoula.domain.home.mapper.HomeMapper;
 import org.scoula.domain.home.vo.HomeRegisterVO;
 import org.scoula.domain.home.vo.HomeReportVO;
+import org.scoula.global.auth.util.S3Uploader;
 import org.scoula.global.common.dto.PageRequest;
 import org.scoula.global.common.dto.PageResponse;
 import org.springframework.stereotype.Service;
@@ -28,12 +29,12 @@ import lombok.extern.log4j.Log4j2;
 public class HomeServiceImpl implements HomeService {
 
       private final HomeMapper homeMapper;
+      private final S3Uploader s3Uploader;
 
       @Override
       public PageResponse<HomeResponseDto> getHomeList(PageRequest pageRequest) {
-          int offset = pageRequest.getOffset();
-          int size = pageRequest.getSize();
-          List<HomeRegisterVO> homes = homeMapper.findHomes(pageRequest);
+          List<HomeRegisterVO> homes =
+                  homeMapper.findHomes(pageRequest.getOffset(), pageRequest.getSize());
           long totalCount = homeMapper.countHomes(pageRequest);
 
           List<HomeResponseDto> content =
@@ -53,27 +54,29 @@ public class HomeServiceImpl implements HomeService {
                   homeMapper
                           .findHomeById(homeId)
                           .orElseThrow(() -> new HomeRegisterException("매물을 찾을 수 없습니다."));
+
+          // 이미지 URL 리스트 별도 조회 후 세팅
+          List<String> imageUrls = homeMapper.findHomeImagesByHomeId(homeId);
+          home.setImageUrls(imageUrls);
+
           return HomeResponseDto.from(home);
       }
 
       @Override
       @Transactional
       public Long createHome(Long userId, HomeCreateRequestDto request) {
-          // 1. VO 변환 및 설정
-          HomeRegisterVO vo = HomeRegisterVO.from(userId, request);
-          vo.setUserName(request.getUserName());
+          String userName = homeMapper.findUserNameById(userId);
 
-          // 2. 매물 등록 (home)
-          homeMapper.insertHome(userId, request.getUserName(), vo);
-          log.debug("username: {}", request.getUserName());
+          HomeRegisterVO vo = HomeRegisterVO.from(userId, request);
+          vo.setUserName(userName);
+
+          homeMapper.insertHome(userId, userName, vo);
           Long homeId = vo.getHomeId();
 
-          // 3. 상세 정보 등록 (home_detail)
           vo.setHomeId(homeId);
           homeMapper.insertHomeDetail(vo);
-          Long homeDetailId = vo.getHomeDetailId(); // selectKey로 설정됨
+          Long homeDetailId = vo.getHomeDetailId();
 
-          // 4. 옵션 등록 (home_facility)
           if (request.getFacilityItemIds() != null && !request.getFacilityItemIds().isEmpty()) {
               homeMapper.insertHomeFacilities(
                       Map.of(
@@ -83,10 +86,13 @@ public class HomeServiceImpl implements HomeService {
                               request.getFacilityItemIds()));
           }
 
-          // 5. 이미지 등록 (home_image)
-          if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
-              homeMapper.insertHomeImages(
-                      Map.of("homeId", homeId, "imageUrls", request.getImageUrls()));
+          if (request.getImageFiles() != null && !request.getImageFiles().isEmpty()) {
+              List<String> imageUrls =
+                      request.getImageFiles().stream()
+                              .map(file -> s3Uploader.upload(file, "homes"))
+                              .collect(Collectors.toList());
+
+              homeMapper.insertHomeImages(Map.of("homeId", homeId, "imageUrls", imageUrls));
           }
 
           return homeId;
@@ -103,7 +109,8 @@ public class HomeServiceImpl implements HomeService {
           if (!existingHome.getUserId().equals(userId)) {
               throw new HomeRegisterException("매물 수정 권한이 없습니다.");
           }
-          HomeRegisterVO vo = HomeRegisterVO.from(homeId, request);
+
+          HomeRegisterVO vo = HomeRegisterVO.from(userId, request);
           homeMapper.updateHome(vo);
       }
 
@@ -170,9 +177,8 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       public PageResponse<HomeResponseDto> getMyHomeList(Long userId, PageRequest pageRequest) {
-          int offset = pageRequest.getOffset();
-          int size = pageRequest.getSize();
-          List<HomeRegisterVO> homes = homeMapper.findMyHomes(userId, offset, size);
+          List<HomeRegisterVO> homes =
+                  homeMapper.findMyHomes(userId, pageRequest.getOffset(), pageRequest.getSize());
           long totalCount = homeMapper.countMyHomes(userId);
 
           List<HomeResponseDto> content =
