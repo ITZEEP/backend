@@ -229,7 +229,6 @@ public class PreContractServiceImpl implements PreContractService {
               }
           }
 
-
           return null;
       }
 
