@@ -2,6 +2,7 @@ package org.scoula.domain.precontract.service;
 
 import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.dto.ai.ContractParseResponseDto;
+import org.scoula.domain.precontract.dto.common.IdentityVerificationInfoDTO;
 import org.scoula.domain.precontract.dto.owner.ContractDocumentDTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO;
 import org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO;
@@ -12,6 +13,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 /** 임대인 사전 계약 정보 설정 서비스 인터페이스 */
 public interface OwnerPreContractService {
+
+      Void requireVerification(Long contractChatId, Long userId, IdentityVerificationInfoDTO dto);
 
       /**
        * 계약 채팅이 생성될 때 호출되어, 임대인 사전 조사 기본 정보를 생성합니다.

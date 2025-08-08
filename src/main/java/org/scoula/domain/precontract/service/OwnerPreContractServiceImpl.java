@@ -12,17 +12,22 @@ import org.scoula.domain.precontract.document.OwnerMongoDocument;
 import org.scoula.domain.precontract.dto.ai.ClauseRecommendRequestDto;
 import org.scoula.domain.precontract.dto.ai.ClauseRecommendResponseDto;
 import org.scoula.domain.precontract.dto.ai.ContractParseResponseDto;
+import org.scoula.domain.precontract.dto.common.IdentityVerificationInfoDTO;
 import org.scoula.domain.precontract.dto.owner.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.OwnerPreContractErrorCode;
 import org.scoula.domain.precontract.mapper.OwnerPreContractMapper;
 import org.scoula.domain.precontract.repository.ContractDocumentMongoRepository;
 import org.scoula.domain.precontract.repository.OwnerMongoRepository;
+import org.scoula.domain.precontract.vo.IdentityVerificationInfoVO;
 import org.scoula.domain.precontract.vo.OwnerJeonseInfoVO;
 import org.scoula.domain.precontract.vo.OwnerWolseInfoVO;
 import org.scoula.domain.precontract.vo.RestoreCategoryVO;
+import org.scoula.domain.verification.dto.request.IdCardVerificationRequest;
+import org.scoula.domain.verification.service.IdCardVerificationService;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.util.LogSanitizerUtil;
+import org.scoula.global.security.util.AesCryptoUtil;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
@@ -38,7 +43,7 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 @Log4j2
 public class OwnerPreContractServiceImpl implements OwnerPreContractService {
-
+      private final IdCardVerificationService idCardVerificationService;
       private final OwnerPreContractMapper ownerMapper;
       private final OwnerMongoRepository mongoRepository;
       private final ContractDocumentMongoRepository contractDocumentMongoRepository;
@@ -46,6 +51,48 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       private final AiClauseRecommendService aiClauseRecommendService;
       private final MongoTemplate mongoTemplate;
       private final ObjectMapper objectMapper;
+      private final AesCryptoUtil aesCryptoUtil;
+
+      @Override
+      public Void requireVerification(
+              Long contractChatId, Long userId, IdentityVerificationInfoDTO dto) {
+          // 1. 진위 확인 요청 DTO 구성 (※ 실명 인증용이므로 평문 사용)
+          IdCardVerificationRequest request =
+                  IdCardVerificationRequest.builder()
+                          .name(dto.getName())
+                          .rrn1(dto.getSsnFront())
+                          .rrn2(dto.getSsnBack())
+                          .date(dto.getIssuedDate())
+                          .build();
+
+          // 2. 신분증 진위 확인
+          boolean result = idCardVerificationService.verifyIdCard(request);
+
+          if (!result) {
+              log.warn("신분증 진위 확인 실패");
+              throw new RuntimeException("신분증 검증 실패");
+          }
+
+          log.info("신분증 진위 확인 성공");
+
+
+          IdentityVerificationInfoVO vo =
+                  IdentityVerificationInfoVO.builder()
+                          .userId(userId)
+                          .name(dto.getName())
+                          .ssnFront(dto.getSsnFront())
+                          .ssnBack(dto.getSsnBack())
+                          .addr1(dto.getAddr1())
+                          .addr2(dto.getAddr2())
+                          .phoneNumber(dto.getPhoneNumber())
+                          .build();
+
+          // 4. DB 저장
+          ownerMapper.insertIdentityVerification(contractChatId, userId, vo);
+
+
+          return null;
+      }
 
       @Override
       @Transactional
