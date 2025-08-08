@@ -55,6 +55,34 @@
     <result property="restoreCategoryName" column="restore_category_name"/>
   </resultMap>
 
+  <!-- 본인 인증 성공 후 내용 주입 -->
+  <insert id="insertIdentityVerification" parameterType="map">
+    INSERT INTO identity_verification (
+      user_id,
+      contract_id,
+      name,
+      ssn_front,
+      ssn_back,
+      identity_verified_at,
+      contract_step,
+      addr1,
+      addr2,
+      phone_number
+    )
+    VALUES (
+             #{vo.userId},
+             #{contractChatId},
+             #{vo.name},
+             #{vo.ssnFront},
+             #{vo.ssnBack},
+            NOW(),
+            'START',
+             #{vo.addr1},
+             #{vo.addr2},
+             #{vo.phoneNumber}
+           )
+  </insert>
+  
   <!-- userId 확인 -->
   <select id="selectOwnerIdFromContractChat" resultType="Long">
     SELECT owner_id

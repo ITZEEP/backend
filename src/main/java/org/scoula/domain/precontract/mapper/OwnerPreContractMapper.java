@@ -14,6 +14,13 @@ import org.scoula.domain.precontract.vo.*;
 
 @Mapper
 public interface OwnerPreContractMapper {
+
+      // 본인 인증 성공 후 identity_verification 테이블에 내용 주입
+      int insertIdentityVerification(
+              @Param("contractChatId") Long contractChatId,
+              @Param("userId") Long userId,
+              @Param("vo") IdentityVerificationInfoVO vo);
+
       // userId 확인
       Optional<Long> selectContractOwnerId(@Param("contractChatId") Long contractChatId);
 
