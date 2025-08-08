@@ -21,6 +21,15 @@ public interface OwnerPreContractMapper {
               @Param("userId") Long userId,
               @Param("vo") IdentityVerificationInfoVO vo);
 
+      // 본인 인증 정보 조회
+      Optional<IdentityVerificationInfoVO> selectIdentityVerificationInfo(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
+
+      // 본인 인증 정보 업데이트
+      int updateIdentityVerification(
+              @Param("contractChatId") Long contractChatId,
+              @Param("vo") IdentityVerificationInfoVO vo);
+
       // userId 확인
       Optional<Long> selectContractOwnerId(@Param("contractChatId") Long contractChatId);
 
