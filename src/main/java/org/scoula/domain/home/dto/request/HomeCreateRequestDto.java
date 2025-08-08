@@ -3,7 +3,6 @@ package org.scoula.domain.home.dto.request;
 import java.time.LocalDate;
 import java.util.List;
 
-import org.scoula.domain.home.enums.HomeDirection;
 import org.scoula.domain.home.enums.LeaseType;
 import org.scoula.domain.home.enums.ResidenceType;
 import org.scoula.domain.home.vo.HomeRegisterVO;
@@ -47,7 +46,7 @@ public class HomeCreateRequestDto {
 
       private Integer roomCnt; // 방 개수
       private Integer bathroomCount; // 욕실 개수
-      private HomeDirection homeDirection; // 남향, 북향 등
+      private String homeDirection; // 남향, 북향 등
 
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
       private LocalDate moveInDate;

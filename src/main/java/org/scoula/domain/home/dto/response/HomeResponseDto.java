@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class HomeResponseDto {
       private Long homeId;
+      private Long homeDetailId;
       private Long userId;
       private String userName;
 
@@ -49,6 +50,10 @@ public class HomeResponseDto {
       private LocalDate buildDate;
       private LocalDate moveInDate;
 
+      private Integer viewCnt;
+      private Integer chatCnt;
+      private Integer likeCnt;
+
       private String imageUrl; // 대표 이미지 URL 하나
       private Long imageId;
 
@@ -74,6 +79,7 @@ public class HomeResponseDto {
                   .homeId(vo.getHomeId())
                   .userId(vo.getUserId())
                   .userName(vo.getUserName())
+                  .homeDetailId(vo.getHomeDetailId())
                   .addr1(vo.getAddr1())
                   .addr2(vo.getAddr2())
                   .residenceType(vo.getResidenceType())
@@ -86,6 +92,9 @@ public class HomeResponseDto {
                   .homeFloor(vo.getHomeFloor() != null ? vo.getHomeFloor() : "")
                   .buildingTotalFloors(vo.getBuildingTotalFloors())
                   .roomCnt(vo.getRoomCnt())
+                  .likeCnt(vo.getLikeCnt())
+                  .viewCnt(vo.getViewCnt())
+                  .chatCnt(vo.getChatCnt())
                   .bathroomCount(vo.getBathroomCount())
                   .homeDirection(vo.getHomeDirection() != null ? vo.getHomeDirection().name() : null)
                   .isPet(vo.getIsPet())

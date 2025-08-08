@@ -33,7 +33,8 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       public PageResponse<HomeResponseDto> getHomeList(PageRequest pageRequest) {
-          List<HomeRegisterVO> homes = homeMapper.findHomes(pageRequest);
+          List<HomeRegisterVO> homes =
+                  homeMapper.findHomes(pageRequest.getOffset(), pageRequest.getSize());
           long totalCount = homeMapper.countHomes(pageRequest);
 
           List<HomeResponseDto> content =

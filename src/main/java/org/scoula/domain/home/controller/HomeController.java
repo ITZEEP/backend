@@ -64,9 +64,12 @@ public class HomeController {
       public ResponseEntity<PageResponse<HomeResponseDto>> getMyHomes(
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue = "1")
-                      int page,
+                      String pageStr,
               @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue = "10")
-                      int size) {
+                      String sizeStr) {
+
+          int page = parseOrDefault(pageStr, 1);
+          int size = parseOrDefault(sizeStr, 10);
 
           PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
           PageResponse<HomeResponseDto> response =
@@ -86,9 +89,12 @@ public class HomeController {
       @GetMapping
       public ResponseEntity<PageResponse<HomeResponseDto>> getAllHomes(
               @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue = "1")
-                      int page,
+                      String pageStr,
               @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue = "10")
-                      int size) {
+                      String sizeStr) {
+
+          int page = parseOrDefault(pageStr, 1);
+          int size = parseOrDefault(sizeStr, 10);
 
           PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
           PageResponse<HomeResponseDto> response = homeService.getHomeList(pageRequest);
@@ -142,5 +148,16 @@ public class HomeController {
                           .build();
           homeService.reportHome(reportRequest);
           return ResponseEntity.ok(ApiResponse.success());
+      }
+
+      // 유틸 메서드: 숫자 변환 실패 시 기본값 반환
+      private int parseOrDefault(String str, int defaultValue) {
+          try {
+              int val = Integer.parseInt(str);
+              if (val < 1) return defaultValue; // 페이지 번호, 크기 음수 방지용
+              return val;
+          } catch (NumberFormatException e) {
+              return defaultValue;
+          }
       }
 }

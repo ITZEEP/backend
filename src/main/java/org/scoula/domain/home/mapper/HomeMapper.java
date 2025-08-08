@@ -17,7 +17,7 @@ public interface HomeMapper {
       String findUserNameById(@Param("userId") Long userId);
 
       /** 매물 전체 조회 (페이징 포함) */
-      List<HomeRegisterVO> findHomes(@Param("pageRequest") PageRequest pageRequest);
+      List<HomeRegisterVO> findHomes(@Param("offset") int offset, @Param("size") int size);
 
       /** 매물 총 개수 조회 */
       long countHomes(@Param("pageRequest") PageRequest pageRequest);
