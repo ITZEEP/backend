@@ -91,6 +91,12 @@ public class NotificationServiceImpl implements NotificationServiceInterface {
       public NotificationListResponseDto getNotifications(Long userId, int page, int size) {
           try {
               size = Math.min(size, 100);
+              if (page < 0) {
+                  page = 0;
+              }
+              if (size > 0 && page > Integer.MAX_VALUE / size) {
+                  page = Integer.MAX_VALUE / size;
+              }
               int offset = page * size;
 
               List<Notification> notifications =
@@ -125,7 +131,11 @@ public class NotificationServiceImpl implements NotificationServiceInterface {
           try {
               size = Math.min(size, 100);
               int offset = page * size;
-
+              if (page < 0) {
+                  page = 0;
+              } else if (page > Integer.MAX_VALUE / size) {
+                  page = Integer.MAX_VALUE / size;
+              }
               List<Notification> notifications =
                       notificationMapper.findByUserIdAndType(userId, type, size, offset);
               List<NotificationDto> notificationDtos =
@@ -145,9 +155,15 @@ public class NotificationServiceImpl implements NotificationServiceInterface {
                       .build();
 
           } catch (Exception e) {
-              log.error("타입별 알림 목록 조회 실패: userId={}, type={}", userId, type, e);
+              log.error("타입별 알림 목록 조회 실패: userId={}, type={}", userId, sanitizeForLog(type), e);
               return createEmptyResponse(page, size);
           }
+      }
+
+      private static String sanitizeForLog(String input) {
+          if (input == null) return null;
+          // Remove CR, LF, and other control characters
+          return input.replaceAll("[\\r\\n\\t\\f\\b]", "_");
       }
 
       /** {@inheritDoc} */
@@ -198,7 +214,7 @@ public class NotificationServiceImpl implements NotificationServiceInterface {
                   log.info("여러 알림 읽음 처리(자동 삭제) 완료: count={}", notiIds.size());
               }
           } catch (Exception e) {
-              log.error("여러 알림 읽음 처리(자동 삭제) 실패: notiIds={}", notiIds, e);
+              log.error("여러 알림 읽음 처리(자동 삭제) 실패: count={}", (notiIds != null ? notiIds.size() : 0), e);
               throw e;
           }
       }
@@ -237,7 +253,7 @@ public class NotificationServiceImpl implements NotificationServiceInterface {
                   log.info("여러 알림 삭제 완료: count={}", notiIds.size());
               }
           } catch (Exception e) {
-              log.error("여러 알림 삭제 실패: notiIds={}", notiIds, e);
+              log.error("여러 알림 삭제 실패: count={}", notiIds != null ? notiIds.size() : 0, e);
               throw e;
           }
       }

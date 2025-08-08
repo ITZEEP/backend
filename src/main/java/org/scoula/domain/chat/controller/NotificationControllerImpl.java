@@ -60,9 +60,15 @@ public class NotificationControllerImpl implements NotificationController {
               return ResponseEntity.ok(ApiResponse.success(response));
 
           } catch (Exception e) {
-              log.error("알림 목록 조회 실패: page={}, size={}, type={}", page, size, type, e);
+              log.error(
+                      "알림 목록 조회 실패: page={}, size={}, type={}", page, size, sanitizeForLog(type), e);
               return ResponseEntity.ok(ApiResponse.error("알림 목록을 불러올 수 없습니다."));
           }
+      }
+
+      private static String sanitizeForLog(String input) {
+          if (input == null) return null;
+          return input.replaceAll("[\\r\\n]", "");
       }
 
       @Override

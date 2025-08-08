@@ -233,12 +233,24 @@ public class SpecialContractMongoRepository {
 
       public String updateSpecialContractForNewOrderAndRound(
               Long contractChatId, Long round, Integer order, SpecialContractDocument.Clause clause) {
+          if (order == null || order <= 0) {
+              throw new IllegalArgumentException(
+                      "Order must be a positive integer. Provided: " + order);
+          }
+          long nextRound;
+          if (round == null) {
+              throw new IllegalArgumentException("round cannot be null");
+          }
+          if (round >= Long.MAX_VALUE) {
+              throw new IllegalArgumentException("round is too large and would overflow");
+          }
+          nextRound = round + 1;
           Query query =
                   new Query(
                           Criteria.where("contractChatId")
                                   .is(contractChatId)
                                   .and("round")
-                                  .is(round + 1));
+                                  .is(nextRound));
           Update update = new Update().set("clauses." + (order - 1), clause);
 
           com.mongodb.client.result.UpdateResult result =
