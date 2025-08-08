@@ -786,7 +786,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           AiMessage(contractChatId, "특약 대화가 시작됩니다!");
           return processRoundResults(contractChatId, document, currentStatus, isOwner);
-
       }
 
       /** 현재 상태에 따른 선택 가능한 특약들 반환 */
