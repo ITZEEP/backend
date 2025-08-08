@@ -101,8 +101,8 @@ public class HomeResponseDto {
                   .isParkingAvailable(vo.getIsParkingAvailable())
                   .buildDate(vo.getBuildDate() != null ? vo.getBuildDate().toLocalDate() : null)
                   .moveInDate(vo.getMoveInDate())
-                  .imageUrl(mainImageUrl)
-                  .imageId(vo.getImageId())
+                  .imageUrl(vo.getImageUrl()) // <-- findHomes 쿼리에서 가져온 단일 imageUrl 사용
+                  .imageId(vo.getImageId()) // <-- findHomes 쿼리에서 가져온 imageId 사용
                   .options(vo.getOptions() != null ? vo.getOptions() : Collections.emptyList())
                   .facilityItemIds(
                           vo.getFacilityItemIds() != null

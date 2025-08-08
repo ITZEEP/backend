@@ -132,11 +132,11 @@
             d.bathroom_count AS bathroomCount,
             d.is_pet AS isPet,
             d.is_parking_available AS isParkingAvailable,
+            hi.image_id AS imageId,
             hi.image_url AS imageUrl
-        FROM home h
-                 LEFT JOIN home_detail d ON h.home_id = d.home_id
-                 LEFT JOIN (
-            SELECT home_id, MIN(image_url) AS image_url
+        FROM home h  LEFT JOIN home_detail d ON h.home_id = d.home_id
+                     LEFT JOIN (
+            SELECT home_id, MIN(image_id) AS image_id, MIN(image_url) AS image_url
             FROM home_image
             GROUP BY home_id
         ) hi ON h.home_id = hi.home_id

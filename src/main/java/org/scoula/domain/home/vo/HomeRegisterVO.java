@@ -58,8 +58,8 @@ public class HomeRegisterVO {
 
       // 이미지
       private List<String> imageUrls;
-      private Long imageId;
-      private String imageUrl; // << String 타입으로 수정
+      private Long imageId; // << 이 필드를 추가했습니다.
+      private String imageUrl;
 
       // 관리비 항목
       private List<MaintenanceFeeItem> maintenanceItems;
