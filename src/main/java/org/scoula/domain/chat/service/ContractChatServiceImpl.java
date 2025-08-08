@@ -36,7 +36,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final SimpMessagingTemplate messagingTemplate;
       @Lazy private final ChatServiceInterface chatService;
 
-      // 🔧 계약 채팅 전용 온라인 상태 관리 (일반 채팅과 분리)
       private final Map<String, Set<Long>> contractChatOnlineUsers = new ConcurrentHashMap<>();
       private final RedisTemplate<String, String> stringRedisTemplate;
 
@@ -114,7 +113,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       /** {@inheritDoc} */
       @Override
-      public List<ContractChatDocument> getContractMessages(Long contractChatId, Long userId) {
+      public List<ContractChatDocument> getContractMessages(Long contractChatId) {
           return contractChatMessageRepository.getMessages(contractChatId);
       }
 

@@ -25,7 +25,13 @@ public class ContractChatMessageRepository {
 
       /** 메시지 저장 - 일반 채팅과 동일하게 ObjectId 자동 생성 */
       public ContractChatDocument saveMessage(ContractChatDocument message) {
-          Long contractChatId = Long.valueOf(message.getContractChatId());
+          Long contractChatId;
+          try {
+              contractChatId = Long.valueOf(message.getContractChatId());
+          } catch (NumberFormatException e) {
+              log.error("Invalid contractChatId format: {}", message.getContractChatId(), e);
+              return null;
+          }
           String collectionName = getCollectionName(contractChatId);
 
           return mongoTemplate.save(message, collectionName);

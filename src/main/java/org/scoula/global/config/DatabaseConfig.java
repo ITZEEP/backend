@@ -26,7 +26,9 @@ import lombok.RequiredArgsConstructor;
               "org.scoula.domain.user.mapper",
               "org.scoula.domain.fraud.mapper",
               "org.scoula.domain.precontract.mapper",
-              "org.scoula.domain.chat.mapper"
+              "org.scoula.domain.chat.mapper",
+              "org.scoula.domain.home.mapper",
+              "org.scoula.domain.mypage.mapper"
           })
 @RequiredArgsConstructor
 public class DatabaseConfig {
@@ -43,15 +45,24 @@ public class DatabaseConfig {
       @Value("${spring.datasource.password}")
       private String password;
 
+      @Value("${spring.datasource.hikari.maximum-pool-size:3}")
+      private int maximumPoolSize;
+
+      @Value("${spring.datasource.hikari.minimum-idle:1}")
+      private int minimumIdle;
+
       private final ApplicationContext applicationContext;
 
       @Bean
       public DataSource dataSource() {
           HikariConfig config = new HikariConfig();
+
           config.setDriverClassName(driver);
           config.setJdbcUrl(url);
           config.setUsername(username);
           config.setPassword(password);
+          config.setMaximumPoolSize(maximumPoolSize);
+          config.setMinimumIdle(minimumIdle);
 
           return new HikariDataSource(config);
       }

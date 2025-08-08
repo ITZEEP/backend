@@ -194,5 +194,50 @@
         )
     </select>
     
+    <!-- 매물 ID로 가장 최근의 위험도 체크 정보 조회 -->
+    <select id="selectLatestRiskCheckByHomeId" parameterType="long"
+            resultType="org.scoula.domain.fraud.vo.RiskCheckVO">
+        SELECT 
+            riskck_id AS riskckId,
+            user_id AS userId,
+            home_id AS homeId,
+            risk_type AS riskType,
+            checked_at AS checkedAt,
+            registry_file_url AS registryFileUrl,
+            building_file_url AS buildingFileUrl,
+            registry_file_date AS registryFileDate,
+            building_file_date AS buildingFileDate
+        FROM risk_check
+        WHERE home_id = #{homeId}
+        ORDER BY checked_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectRiskCheckById" parameterType="long"
+            resultType="org.scoula.domain.fraud.vo.RiskCheckVO">
+        SELECT 
+            riskck_id AS riskckId,
+            user_id AS userId,
+            home_id AS homeId,
+            risk_type AS riskType,
+            checked_at AS checkedAt,
+            registry_file_url AS registryFileUrl,
+            building_file_url AS buildingFileUrl,
+            registry_file_date AS registryFileDate,
+            building_file_date AS buildingFileDate
+        FROM risk_check
+        WHERE riskck_id = #{riskckId}
+    </select>
+
+    <select id="selectTodayRiskCheckId" resultType="long">
+        SELECT riskck_id
+        FROM risk_check
+        WHERE user_id = #{userId}
+          AND home_id = #{homeId}
+          AND checked_at &gt;= #{startOfDay}
+          AND checked_at &lt;= #{endOfDay}
+        ORDER BY checked_at DESC
+        LIMIT 1
+    </select>
     
 </mapper>

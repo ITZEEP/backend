@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.precontract.mapper.OwnerPreContractMapper">
+  <resultMap id="selectContractSub2" type="org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO">
+    <result property="hasConditionLog" column="has_condition_log"/>
+    <result property="hasPenalty" column="has_penalty"/>
+    <result property="hasPriorityForExtension" column="has_priority_for_extension"/>
+    <result property="hasAutoPriceAdjustment" column="has_auto_price_adjustment"/>
+    <result property="allowJeonseRightRegistration" column="allow_jeonse_right_registration"/>
+    <collection property="restoreCategories" resultMap="restoreCategoryMap"/>
+  </resultMap>
+
+  <!-- 임대인 계약 사전 조사 최종 확인 -->
+  <resultMap id="ownerPreContractSummaryResultMap" type="org.scoula.domain.precontract.dto.owner.OwnerPreContractDTO">
+
+    <!-- 계약 조건 Step 1 -->
+    <association property="contractStep1" javaType="org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO">
+      <result property="mortgaged" column="is_mortgaged"/>
+      <result property="contractDuration" column="contract_duration"/>
+      <result property="renewalIntent" column="renewal_intent"/>
+      <result property="responseRepairingFixtures" column="response_repairing_fixtures"/>
+    </association>
+
+    <!-- 계약 조건 Step 2 -->
+    <association property="contractStep2" javaType="org.scoula.domain.precontract.dto.owner.OwnerContractStep2DTO">
+      <result property="hasConditionLog" column="has_condition_log"/>
+      <result property="hasPenalty" column="has_penalty"/>
+      <result property="hasPriorityForExtension" column="has_priority_for_extension"/>
+      <result property="hasAutoPriceAdjustment" column="has_auto_price_adjustment"/>
+      <result property="allowJeonseRightRegistration" column="allow_jeonse_right_registration"/>
+      <collection property="restoreCategories" resultMap="restoreCategoryMap"/>
+    </association>
+
+    <!-- 거주 조건 Step 1 (공통 + 전세/월세) -->
+    <association property="livingStep1" javaType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO">
+      <!-- 공통 -->
+      <result property="requireRentGuaranteeInsurance" column="require_rent_guarantee_insurance"/>
+      <result property="insuranceBurden" column="insurance_burden"/>
+      <result property="hasNotice" column="has_notice"/>
+      <result property="ownerBankName" column="owner_bank_name"/>
+      <result property="ownerAccountNumber" column="owner_account_number"/>
+
+      <!-- 월세 전용 -->
+      <result property="paymentDueDate" column="payment_due_day"/>
+      <result property="lateFeeInterestRate" column="late_fee_interest_rate"/>
+    </association>
+
+  </resultMap>
+
+  <resultMap id="restoreCategoryMap" type="org.scoula.domain.precontract.vo.RestoreCategoryVO">
+    <id property="restoreCategoryId" column="restore_category_id"/>
+    <result property="restoreCategoryName" column="restore_category_name"/>
+  </resultMap>
+
+  <!-- userId 확인 -->
+  <select id="selectOwnerIdFromContractChat" resultType="Long">
+    SELECT owner_id
+    FROM contract_chat
+    WHERE contract_chat_id = #{contractChatId}
+  </select>
+
+  <select id="selectContractOwnerId" resultType="Long">
+    SELECT cc.owner_id
+    FROM owner_precontract_check opc
+           INNER JOIN contract_chat cc
+                      ON cc.contract_chat_id = opc.contract_chat_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+  </select>
+
+  <!-- 기본 세팅 -->
+  <!-- identity_verification 테이블에서 identity_id 가져오기 -->
+  <select id="selectIdentityId" resultType="Long">
+    SELECT iv.identity_id
+    FROM contract_chat cc
+           INNER JOIN identity_verification iv ON cc.owner_id = iv.user_id
+    WHERE cc.contract_chat_id = #{contractChatId}
+  </select>
+
+  <!-- rent_type (전/월세) 조회 -->
+  <select id="selectRentType" resultType="String">
+    SELECT h.lease_type
+    FROM contract_chat cc
+    INNER JOIN home h
+    ON cc.home_id = h.home_id
+    WHERE cc.contract_chat_id = #{contractChatId} AND cc.owner_id = #{userId}
+  </select>
+
+  <!-- 테이블 기본 세팅 -->
+  <insert id="insertOwnerPreContractSet">
+    INSERT INTO owner_precontract_check (contract_chat_id, identity_id, rent_type)
+    VALUES (#{contractChatId}, #{identityId}, #{rentType})
+  </insert>
+
+  <!-- 임대인 결제 전 전세 정보 등록 -->
+  <insert id="insertJeonseInfo">
+    INSERT INTO owner_jeonse_info (
+      contract_chat_id
+    )
+    VALUES (
+             #{vo.contractChatId}
+           )
+  </insert>
+
+  <!-- 임대인 결제 전 월세 정보 등록 -->
+  <insert id="insertWolseInfo">
+    INSERT INTO owner_wolse_info (
+      contract_chat_id
+    )
+    VALUES (
+             #{vo.contractChatId}
+           )
+  </insert>
+
+  <!-- 계약 정보 설정 Step 1 -->
+  <!-- 조회 -->
+  <select id="selectContractSub1" resultType="org.scoula.domain.precontract.dto.owner.OwnerContractStep1DTO">
+    SELECT
+      oc.is_mortgaged AS mortgaged,
+      oc.contract_duration,
+      oc.renewal_intent,
+      oc.response_repairing_fixtures,
+      oc.checked_at
+    FROM owner_precontract_check oc
+           JOIN identity_verification iv ON oc.identity_id = iv.identity_id
+    WHERE oc.contract_chat_id = #{contractChatId}
+      AND iv.user_id = #{userId}
+  </select>
+
+  <!-- 저장 -->
+  <update id="updateContractSub1">
+    UPDATE owner_precontract_check
+    SET
+      is_mortgaged = #{dto.mortgaged},
+      contract_duration = #{dto.contractDuration},
+      renewal_intent = #{dto.renewalIntent},
+      response_repairing_fixtures = #{dto.responseRepairingFixtures},
+      checked_at = now()
+    WHERE contract_chat_id = #{contractChatId}
+      AND EXISTS (
+          SELECT 1 FROM identity_verification iv
+            WHERE iv.identity_id = owner_precontract_check.identity_id
+              AND iv.user_id = #{userId}
+          )
+  </update>
+
+  <!-- 계약 정보 설정 Step 2 -->
+  <select id="selectContractSub2" resultMap="selectContractSub2">
+    SELECT
+      opc.contract_chat_id,
+      opc.has_condition_log,
+      opc.has_penalty,
+      opc.has_priority_for_extension,
+      opc.has_auto_price_adjustment,
+      opc.checked_at,
+      oji.allow_jeonse_right_registration,
+      rc.restore_category_id,
+      rc.restore_category_name
+    FROM owner_precontract_check opc
+           JOIN identity_verification iv ON opc.identity_id = iv.identity_id
+           LEFT JOIN owner_jeonse_info oji ON opc.contract_chat_id = oji.contract_chat_id
+           LEFT JOIN owner_restore_scope ors ON opc.contract_chat_id = ors.owner_precheck_id
+           LEFT JOIN restore_category rc ON ors.restore_category_id = rc.restore_category_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND iv.user_id = #{userId}
+  </select>
+
+  <select id="selectRestoreCategoryIdByName" resultType="long">
+    SELECT restore_category_id
+    FROM restore_category
+    WHERE restore_category_name = #{name}
+  </select>
+
+  <!-- 계약 조건 업데이트 -->
+  <update id="updateContractSub2">
+    UPDATE owner_precontract_check
+    SET
+      has_condition_log = #{dto.hasConditionLog},
+      has_penalty = #{dto.hasPenalty},
+      has_priority_for_extension = #{dto.hasPriorityForExtension},
+      has_auto_price_adjustment = #{dto.hasAutoPriceAdjustment},
+      checked_at = now()
+    WHERE contract_chat_id = #{contractChatId}
+      AND EXISTS (
+          SELECT 1 FROM identity_verification iv
+            WHERE iv.identity_id = owner_precontract_check.identity_id
+            AND iv.user_id = #{userId}
+          )
+  </update>
+
+  <!-- restore_scope 삽입 or 업데이트 -->
+  <insert id="upsertRestoreScope">
+    INSERT INTO owner_restore_scope (owner_precheck_id, restore_category_id)
+    VALUES (#{ownerPrecheckId}, #{restoreCategoryId})
+    ON DUPLICATE KEY UPDATE restore_category_id = VALUES(restore_category_id)
+  </insert>
+
+  <!-- 복구 범위 조회 -->
+  <select id="selectRestoreScope" resultType="org.scoula.domain.precontract.vo.RestoreCategoryVO">
+    SELECT rc.restore_category_id, rc.restore_category_name
+    FROM owner_restore_scope ors
+           JOIN restore_category rc ON ors.restore_category_id = rc.restore_category_id
+           JOIN owner_precontract_check opc ON ors.owner_precheck_id = opc.contract_chat_id
+           JOIN identity_verification iv ON opc.identity_id = iv.identity_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND iv.user_id = #{userId}
+  </select>
+
+  <!-- ownerPrecheckId 조회 -->
+  <select id="selectOwnerPrecheckId" resultType="long">
+    SELECT opc.contract_chat_id
+    FROM owner_precontract_check opc
+           JOIN identity_verification iv ON opc.identity_id = iv.identity_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND iv.user_id = #{userId}
+  </select>
+
+  <!-- 거주 정보 설정 Step 1 -->
+  <select id="selectLivingSub1" resultType="org.scoula.domain.precontract.dto.owner.OwnerLivingStep1DTO">
+    SELECT
+      opc.rent_type,
+      opc.require_rent_guarantee_insurance,
+      opc.insurance_burden,
+      opc.has_notice,
+      opc.checked_at,
+      opc.owner_bank_name,
+      opc.owner_account_number
+    FROM owner_precontract_check opc
+           JOIN owner_precontract_check c ON opc.contract_chat_id = c.contract_chat_id
+           JOIN identity_verification v ON c.identity_id = v.identity_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND v.user_id = #{userId}
+  </select>
+
+  <!-- 저장 -->
+  <update id="updateLivingSub1">
+    UPDATE owner_precontract_check
+    SET
+      require_rent_guarantee_insurance = #{dto.requireRentGuaranteeInsurance},
+      insurance_burden = #{dto.insuranceBurden},
+      has_notice = #{dto.hasNotice},
+      checked_at = now(),
+      owner_bank_name = #{dto.ownerBankName},
+      owner_account_number = #{dto.ownerAccountNumber}
+    WHERE contract_chat_id = #{contractChatId}
+      AND EXISTS (
+      SELECT 1 FROM identity_verification iv
+      WHERE iv.identity_id = owner_precontract_check.identity_id
+        AND iv.user_id = #{userId}
+    )
+  </update>
+
+  <!-- 전세 조건 조회 -->
+  <select id="selectLivingJeonse" resultType="org.scoula.domain.precontract.vo.OwnerJeonseInfoVO">
+    SELECT
+      j.owner_jeonse_rent_id AS ownerJeonseId,
+      j.contract_chat_id AS contractChatId,
+      j.allow_jeonse_right_registration AS allowJeonseRightRegistration
+    FROM owner_jeonse_info j
+           JOIN owner_precontract_check c ON j.contract_chat_id = c.contract_chat_id
+           JOIN identity_verification v ON c.identity_id = v.identity_id
+    WHERE j.contract_chat_id = #{contractChatId}
+      AND v.user_id = #{userId}
+  </select>
+
+  <!-- 전세 조건 저장 -->
+  <update id="updateLivingJeonse">
+    UPDATE owner_jeonse_info j
+      JOIN owner_precontract_check c ON j.contract_chat_id = c.contract_chat_id
+      JOIN identity_verification v ON c.identity_id = v.identity_id
+    SET
+      j.allow_jeonse_right_registration = #{allowJeonseRightRegistration}
+    WHERE j.contract_chat_id = #{contractChatId}
+      AND v.user_id = #{userId}
+  </update>
+
+  <!-- 월세 조건 조회 -->
+  <select id="selectLivingWolse" resultType="org.scoula.domain.precontract.vo.OwnerWolseInfoVO">
+    SELECT
+      w.contract_chat_id AS contractChatId,
+      w.payment_due_day AS paymentDueDate,
+      w.late_fee_interest_rate AS lateFeeInterestRate
+    FROM owner_wolse_info w
+           JOIN owner_precontract_check c ON w.contract_chat_id = c.contract_chat_id
+           JOIN identity_verification v ON c.identity_id = v.identity_id
+    WHERE w.contract_chat_id = #{contractChatId}
+      AND v.user_id = #{userId}
+  </select>
+
+  <!-- 월세 조건 저장 -->
+  <update id="updateLivingWolse">
+    UPDATE owner_wolse_info w
+      JOIN owner_precontract_check c ON w.contract_chat_id = c.contract_chat_id
+      JOIN identity_verification v ON c.identity_id = v.identity_id
+    SET
+      w.payment_due_day = #{paymentDueDate},
+      w.late_fee_interest_rate = #{lateFeeInterestRate}
+    WHERE w.contract_chat_id = #{contractChatId}
+      AND v.user_id = #{userId}
+  </update>
+
+  <!-- 최종 정보 조회 -->
+  <select id="selectOwnerPreContractSummary" resultMap="ownerPreContractSummaryResultMap">
+    SELECT
+      -- 계약 조건 Step 1
+      opc.contract_chat_id,
+      opc.is_mortgaged,
+      opc.contract_duration,
+      opc.renewal_intent,
+      opc.response_repairing_fixtures,
+
+      -- 계약 조건 Step 2
+      opc.has_condition_log,
+      opc.has_penalty,
+      opc.has_priority_for_extension,
+      opc.has_auto_price_adjustment,
+      opc.require_rent_guarantee_insurance,
+      oji.allow_jeonse_right_registration,
+
+      -- 거주 조건 Step 1 (공통)
+      opc.require_rent_guarantee_insurance,
+      opc.insurance_burden,
+      opc.has_notice,
+      opc.owner_bank_name,
+      opc.owner_account_number,
+
+      -- 거주 조건 Step 1 (월세)
+      owi.payment_due_day,
+      owi.late_fee_interest_rate
+
+    FROM owner_precontract_check opc
+           JOIN identity_verification iv ON opc.identity_id = iv.identity_id
+           LEFT JOIN owner_jeonse_info oji ON opc.contract_chat_id = oji.contract_chat_id
+           LEFT JOIN owner_wolse_info owi ON opc.contract_chat_id = owi.contract_chat_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND iv.user_id = #{userId}
+  </select>
+
+  <!-- 최종 정보 MongoDB로 저장 -->
+  <select id="selectMongo" resultType="org.scoula.domain.precontract.dto.owner.OwnerPreContractMongoDTO">
+    SELECT
+      opc.contract_chat_id AS contractChatId,
+      opc.identity_id AS identityId,
+      iv.user_id AS userId,
+      opc.rent_type AS rentType,
+
+      -- 계약 step1
+      opc.is_mortgaged AS isMortgaged,
+      opc.contract_duration AS contractDuration,
+      opc.renewal_intent AS renewalIntent,
+      opc.response_repairing_fixtures AS responseRepairingFixtures,
+
+      -- 계약 step2
+      opc.has_condition_log AS hasConditionLog,
+      opc.has_penalty AS hasPenalty,
+      opc.has_priority_for_extension AS hasPriorityForExtension,
+      opc.has_auto_price_adjustment AS hasAutoPriceAdjustment,
+      opc.require_rent_guarantee_insurance AS requireRentGuaranteeInsurance,
+      oj.allow_jeonse_right_registration AS allowJeonseRightRegistration,
+
+      -- 거주 step1 (월세)
+      ow.payment_due_day AS paymentDueDate,
+      ow.late_fee_interest_rate AS lateFeeInterestRate
+
+    FROM owner_precontract_check opc
+           JOIN identity_verification iv ON opc.identity_id = iv.identity_id
+           LEFT JOIN owner_jeonse_info oj ON opc.contract_chat_id = oj.contract_chat_id
+           LEFT JOIN owner_wolse_info ow ON opc.contract_chat_id = ow.contract_chat_id
+    WHERE opc.contract_chat_id = #{contractChatId}
+      AND iv.user_id = #{userId}
+  </select>
+
+</mapper>

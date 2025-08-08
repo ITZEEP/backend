@@ -25,10 +25,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 @RestController
-@Slf4j
+@Log4j2
 @RequestMapping("/api/chat")
 public class ChatControllerImpl implements ChatController {
 
