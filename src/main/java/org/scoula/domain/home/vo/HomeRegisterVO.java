@@ -47,17 +47,19 @@ public class HomeRegisterVO {
 
       // 상세 정보
       private Long homeDetailId;
-      private LocalDateTime buildDate; // VO에서는 LocalDateTime
+      private LocalDateTime buildDate;
       private Integer floor;
       private Integer buildingTotalFloors;
       private HomeDirection homeDirection;
       private Integer bathroomCount;
       private Boolean isPet;
-      private LocalDate moveInDate; // VO에서는 LocalDate
+      private LocalDate moveInDate;
       private Boolean isParkingAvailable;
 
-      // 사진
+      // 이미지
       private List<String> imageUrls;
+      private Long imageId;
+      private String imageUrl; // << String 타입으로 수정
 
       // 관리비 항목
       private List<MaintenanceFeeItem> maintenanceItems;
@@ -77,10 +79,8 @@ public class HomeRegisterVO {
 
       // 생성용 from (HomeCreateRequestDto)
       public static HomeRegisterVO from(Long userId, HomeCreateRequestDto dto) {
-          LocalDateTime parsedBuildDate = null;
-          if (dto.getBuildDate() != null) {
-              parsedBuildDate = dto.getBuildDate().atStartOfDay();
-          }
+          LocalDateTime parsedBuildDate =
+                  dto.getBuildDate() != null ? dto.getBuildDate().atStartOfDay() : null;
 
           return HomeRegisterVO.builder()
                   .userId(userId)
@@ -104,15 +104,15 @@ public class HomeRegisterVO {
                   .buildingTotalFloors(dto.getBuildingTotalFloors())
                   .isPet(dto.getIsPet())
                   .moveInDate(dto.getMoveInDate())
+                  .maintenanceItems(dto.getMaintenanceFeeItems())
+                  .imageUrls(dto.getImageUrls())
                   .build();
       }
 
       // 수정용 from (HomeUpdateRequestDto)
       public static HomeRegisterVO from(Long userId, HomeUpdateRequestDto dto) {
-          LocalDateTime parsedBuildDate = null;
-          if (dto.getBuildDate() != null) {
-              parsedBuildDate = dto.getBuildDate().atStartOfDay();
-          }
+          LocalDateTime parsedBuildDate =
+                  dto.getBuildDate() != null ? dto.getBuildDate().atStartOfDay() : null;
 
           return HomeRegisterVO.builder()
                   .homeId(dto.getHomeId())
@@ -127,7 +127,7 @@ public class HomeRegisterVO {
                   .maintenanceFee(dto.getMaintenanceFee())
                   .supplyArea(dto.getSupplyArea())
                   .exclusiveArea(dto.getExclusiveArea())
-                  .homeFloor(dto.getHomeFloor()) // 오타 fix: getHomefloor() -> getHomeFloor()
+                  .homeFloor(dto.getHomeFloor())
                   .roomCnt(dto.getRoomCnt())
                   .bathroomCount(dto.getBathroomCount())
                   .homeDirection(parseHomeDirection(dto.getHomeDirection()))
@@ -139,6 +139,7 @@ public class HomeRegisterVO {
                   .isPet(dto.getIsPet())
                   .moveInDate(dto.getMoveInDate())
                   .buildDate(parsedBuildDate)
+                  .maintenanceItems(dto.getMaintenanceFeeItems())
                   .build();
       }
 

@@ -53,6 +53,11 @@ public class HomeServiceImpl implements HomeService {
                   homeMapper
                           .findHomeById(homeId)
                           .orElseThrow(() -> new HomeRegisterException("매물을 찾을 수 없습니다."));
+
+          // 이미지 URL 리스트 별도 조회 후 세팅
+          List<String> imageUrls = homeMapper.findHomeImagesByHomeId(homeId);
+          home.setImageUrls(imageUrls);
+
           return HomeResponseDto.from(home);
       }
 

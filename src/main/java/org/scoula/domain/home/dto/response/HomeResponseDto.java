@@ -49,7 +49,9 @@ public class HomeResponseDto {
       private LocalDate buildDate;
       private LocalDate moveInDate;
 
-      private List<String> imageUrls;
+      private String imageUrl; // 대표 이미지 URL 하나
+      private Long imageId;
+
       private List<String> options;
       private List<Long> facilityItemIds;
 
@@ -61,6 +63,12 @@ public class HomeResponseDto {
               createdAtStr =
                       vo.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
           }
+
+          // 대표 이미지 URL: imageUrls 리스트 중 첫 번째, 없으면 null
+          String mainImageUrl =
+                  (vo.getImageUrls() != null && !vo.getImageUrls().isEmpty())
+                          ? vo.getImageUrls().get(0)
+                          : null;
 
           return HomeResponseDto.builder()
                   .homeId(vo.getHomeId())
@@ -84,7 +92,8 @@ public class HomeResponseDto {
                   .isParkingAvailable(vo.getIsParkingAvailable())
                   .buildDate(vo.getBuildDate() != null ? vo.getBuildDate().toLocalDate() : null)
                   .moveInDate(vo.getMoveInDate())
-                  .imageUrls(vo.getImageUrls() != null ? vo.getImageUrls() : Collections.emptyList())
+                  .imageUrl(mainImageUrl)
+                  .imageId(vo.getImageId())
                   .options(vo.getOptions() != null ? vo.getOptions() : Collections.emptyList())
                   .facilityItemIds(
                           vo.getFacilityItemIds() != null

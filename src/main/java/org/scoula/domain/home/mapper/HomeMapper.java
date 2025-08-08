@@ -25,6 +25,9 @@ public interface HomeMapper {
       /** 매물 단건 조회 */
       Optional<HomeRegisterVO> findHomeById(@Param("homeId") Long homeId);
 
+      /** 특정 매물 이미지 URL 리스트 조회 추가 */
+      List<String> findHomeImagesByHomeId(@Param("homeId") Long homeId);
+
       /** 매물 등록 */
       void insertHome(
               @Param("userId") Long userId,

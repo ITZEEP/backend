@@ -6,6 +6,7 @@ import java.util.List;
 import org.scoula.domain.home.enums.HomeDirection;
 import org.scoula.domain.home.enums.LeaseType;
 import org.scoula.domain.home.enums.ResidenceType;
+import org.scoula.domain.home.vo.HomeRegisterVO;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -54,7 +55,11 @@ public class HomeCreateRequestDto {
       private List<String> options; // 옵션 (가전 등)
       private List<Long> facilityItemIds; // 시설 ID 리스트
 
-      // 이미지 파일들
+      // ✅ 관리비 항목 리스트
+      private List<HomeRegisterVO.MaintenanceFeeItem> maintenanceFeeItems;
+
+      // ✅ 이미지 관련: 업로드용 파일과 저장용 URL 분리
       private List<MultipartFile> images;
       private List<MultipartFile> imageFiles;
+      private List<String> imageUrls; // DB 저장용
 }
