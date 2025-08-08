@@ -31,6 +31,8 @@ public class TenantMongoDTO {
       private Boolean facilityRepairNeeded;
       private Boolean interiorCleaningNeeded;
       private Boolean applianceInstallationPlan;
+      private Boolean hasParking;
+      private Integer parkingCount;
       private Boolean hasPet;
       private String petInfo;
       private Long petCount;

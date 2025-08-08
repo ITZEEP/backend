@@ -3,7 +3,7 @@ package org.scoula.domain.chat.service;
 import java.util.List;
 import java.util.Map;
 
-import org.scoula.domain.chat.dto.ChatMessageDocument;
+import org.scoula.domain.chat.document.ChatMessageDocument;
 import org.scoula.domain.chat.dto.ChatMessageRequestDto;
 import org.scoula.domain.chat.dto.ChatRoomInfoDto;
 import org.scoula.domain.chat.dto.ChatRoomWithUserInfoDto;

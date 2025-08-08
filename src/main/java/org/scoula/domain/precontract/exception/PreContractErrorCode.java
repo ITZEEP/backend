@@ -15,7 +15,8 @@ public enum PreContractErrorCode implements IErrorCode {
       TENANT_UPDATE("TENANT_4003", HttpStatus.BAD_REQUEST, "값이 저장되지 않았습니다. (update fail)"),
       TENANT_SELECT("TENANT_4004", HttpStatus.BAD_REQUEST, "조회 결과가 없습니다"),
       TENANT_INSERT("TENANT_4005", HttpStatus.BAD_REQUEST, "데이터베이스 저장 실패 (insert fail)"),
-      TENANT_USER("TENANT_4006", HttpStatus.BAD_REQUEST, "데이터베이스 유저와 현재 유저가 다릅니다");
+      TENANT_USER("TENANT_4006", HttpStatus.BAD_REQUEST, "데이터베이스 유저와 현재 유저가 다릅니다"),
+      TENANT_NULL("TENANT_4007", HttpStatus.BAD_REQUEST, "입력되지 않았습니다.");
 
       private final String code;
       private final HttpStatus httpStatus;

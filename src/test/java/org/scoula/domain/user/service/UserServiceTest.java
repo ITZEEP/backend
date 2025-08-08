@@ -17,12 +17,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.scoula.domain.mypage.service.ProfileImageService;
 import org.scoula.domain.user.mapper.SocialAccountMapper;
 import org.scoula.domain.user.mapper.UserMapper;
 import org.scoula.domain.user.vo.SocialAccount;
 import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.exception.BusinessException;
-import org.scoula.global.file.service.S3ServiceInterface;
 
 /**
  * UserService 단위 테스트
@@ -38,13 +38,13 @@ class UserServiceTest {
 
       @Mock private SocialAccountMapper socialAccountMapper;
 
-      @Mock private S3ServiceInterface s3Service;
+      @Mock private ProfileImageService profileImageService;
 
       private UserServiceImpl userService;
 
       @BeforeEach
       void setUp() {
-          userService = new UserServiceImpl(userMapper, socialAccountMapper, s3Service);
+          userService = new UserServiceImpl(userMapper, socialAccountMapper, profileImageService);
       }
 
       @Nested
@@ -88,7 +88,7 @@ class UserServiceTest {
                       .when(userMapper)
                       .insert(any(User.class));
 
-              when(s3Service.uploadProfileImageFromUrl(profileImageUrl, 1L))
+              when(profileImageService.uploadProfileImageFromUrl(profileImageUrl, 1L))
                       .thenReturn("https://s3.amazonaws.com/bucket/profile/1.jpg");
               when(userMapper.selectById(1L)).thenReturn(Optional.of(newUser));
 
@@ -105,7 +105,7 @@ class UserServiceTest {
 
               verify(userMapper).insert(any(User.class));
               verify(socialAccountMapper).insert(any(SocialAccount.class));
-              verify(s3Service).uploadProfileImageFromUrl(profileImageUrl, 1L);
+              verify(profileImageService).uploadProfileImageFromUrl(profileImageUrl, 1L);
           }
 
           @Test
@@ -140,7 +140,7 @@ class UserServiceTest {
               when(socialAccountMapper.selectBySocialIdAndSocialType(socialId, socialType))
                       .thenReturn(Optional.of(existingSocialAccount));
               when(userMapper.selectById(userId)).thenReturn(Optional.of(existingUser));
-              when(s3Service.uploadProfileImageFromUrl(profileImageUrl, userId))
+              when(profileImageService.uploadProfileImageFromUrl(profileImageUrl, userId))
                       .thenReturn("https://s3.amazonaws.com/bucket/profile/1-new.jpg");
 
               // when
@@ -153,7 +153,7 @@ class UserServiceTest {
               assertThat(result.getUserId()).isEqualTo(userId);
 
               verify(userMapper).update(any(User.class));
-              verify(s3Service).uploadProfileImageFromUrl(profileImageUrl, userId);
+              verify(profileImageService).uploadProfileImageFromUrl(profileImageUrl, userId);
               verify(userMapper, never()).insert(any(User.class));
               verify(socialAccountMapper, never()).insert(any(SocialAccount.class));
           }
@@ -181,7 +181,7 @@ class UserServiceTest {
                       .thenReturn(Optional.empty());
               when(userMapper.selectByEmail(email)).thenReturn(Optional.of(existingUser));
               when(userMapper.selectById(userId)).thenReturn(Optional.of(existingUser));
-              when(s3Service.uploadProfileImageFromUrl(profileImageUrl, userId))
+              when(profileImageService.uploadProfileImageFromUrl(profileImageUrl, userId))
                       .thenReturn("https://s3.amazonaws.com/bucket/profile/2.jpg");
 
               // when
@@ -278,7 +278,7 @@ class UserServiceTest {
                       .thenReturn(Optional.empty());
               when(userMapper.selectByEmail(anyString())).thenReturn(Optional.empty());
               when(userMapper.existsByNickname(anyString())).thenReturn(false);
-              when(s3Service.uploadProfileImageFromUrl(anyString(), anyLong()))
+              when(profileImageService.uploadProfileImageFromUrl(anyString(), anyLong()))
                       .thenThrow(new RuntimeException("S3 업로드 실패"));
 
               // when & then - Should not throw exception
