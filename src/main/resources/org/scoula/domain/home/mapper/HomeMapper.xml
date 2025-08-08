@@ -187,15 +187,28 @@
             d.*,
             hi.image_url,
             hf.maintenance_id,
-            mi.item_name,
-            hf.fee
+            hf.fee,
+            fi.item_name
         FROM home h
                  LEFT JOIN home_detail d ON h.home_id = d.home_id
                  LEFT JOIN home_image hi ON h.home_id = hi.home_id
                  LEFT JOIN home_maintenance_fee hf ON h.home_id = hf.home_id
-                 LEFT JOIN maintenance_item mi ON hf.maintenance_id = mi.maintenance_id
+                 LEFT JOIN home_facility hfl ON d.home_detail_id = hfl.home_detail_id  LEFT JOIN facility_item fi ON hfl.item_id = fi.item_id
         WHERE h.home_id = #{homeId}
-        ORDER BY hi.image_id, hf.maintenance_id
+        ORDER BY hi.image_id, hf.maintenance_id, fi.item_id
+    </select>
+
+    <select id="findHomeFacilities" parameterType="long" resultType="org.scoula.domain.home.dto.response.FacilityResponseDto">
+        SELECT
+            fi.item_id AS itemId,
+            fi.item_name AS itemName,
+            fc.category_id AS categoryId,
+            fc.category_type AS categoryType
+        FROM home_facility hf
+                 JOIN home_detail hd ON hf.home_detail_id = hd.home_detail_id
+                 JOIN facility_item fi ON hf.item_id = fi.item_id
+                 JOIN facility_category fc ON fi.category_id = fc.category_id
+        WHERE hd.home_id = #{homeId}
     </select>
 
     <select id="findHomeImagesByHomeId" parameterType="long" resultType="string">

@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.scoula.domain.home.dto.request.HomeCreateRequestDto;
 import org.scoula.domain.home.dto.request.HomeReportRequestDto;
 import org.scoula.domain.home.dto.request.HomeUpdateRequestDto;
+import org.scoula.domain.home.dto.response.FacilityResponseDto;
 import org.scoula.domain.home.dto.response.HomeResponseDto;
 import org.scoula.domain.home.dto.response.MaintenanceFeeItemResponseDto;
 import org.scoula.domain.home.exception.HomeRegisterException;
@@ -40,7 +41,10 @@ public class HomeServiceImpl implements HomeService {
 
           List<HomeResponseDto> content =
                   homes.stream()
-                          .map(home -> HomeResponseDto.from(home, null))
+                          .map(
+                                  home ->
+                                          HomeResponseDto.from(
+                                                  home, null, null)) // 두 번째, 세 번째 인자에 null 전달
                           .collect(Collectors.toList());
 
           return PageResponse.<HomeResponseDto>builder()
@@ -61,7 +65,9 @@ public class HomeServiceImpl implements HomeService {
           List<MaintenanceFeeItemResponseDto> maintenanceItems =
                   homeMapper.findHomeMaintenanceItemsByHomeId(homeId);
 
-          return HomeResponseDto.from(home, maintenanceItems);
+          List<FacilityResponseDto> facilities = homeMapper.findHomeFacilities(homeId); // 시설 정보 조회
+
+          return HomeResponseDto.from(home, maintenanceItems, facilities); // 세 인자 모두 전달
       }
 
       @Override
@@ -157,7 +163,7 @@ public class HomeServiceImpl implements HomeService {
       @Override
       public List<HomeResponseDto> getLikedHomes(Long userId) {
           return homeMapper.findLikedHomes(userId).stream()
-                  .map(home -> HomeResponseDto.from(home, null))
+                  .map(home -> HomeResponseDto.from(home, null, null))
                   .collect(Collectors.toList());
       }
 

@@ -63,9 +63,16 @@ public class HomeResponseDto {
       private String createdAt;
 
       private List<MaintenanceFeeItemResponseDto> maintenanceFeeItems;
+      private List<FacilityResponseDto> facilities; // 시설 정보 필드 추가
 
+      // (기존) MaintenanceFeeItemResponseDto 클래스는 별도 파일로 분리
+      // (기존) HomeRegisterVO$MaintenanceFeeItem
+
+      // 세 가지 인자를 받는 from 메서드 추가
       public static HomeResponseDto from(
-              HomeRegisterVO vo, List<MaintenanceFeeItemResponseDto> maintenanceItems) {
+              HomeRegisterVO vo,
+              List<MaintenanceFeeItemResponseDto> maintenanceItems,
+              List<FacilityResponseDto> facilities) {
           String createdAtStr = null;
           if (vo.getCreatedAt() != null) {
               createdAtStr =
@@ -107,6 +114,7 @@ public class HomeResponseDto {
                                   : Collections.emptyList())
                   .createdAt(createdAtStr)
                   .maintenanceFeeItems(maintenanceItems)
+                  .facilities(facilities) // 시설 정보 필드 설정
                   .build();
       }
 }

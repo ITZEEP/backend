@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.scoula.domain.home.dto.response.FacilityResponseDto;
 import org.scoula.domain.home.dto.response.MaintenanceFeeItemResponseDto;
 import org.scoula.domain.home.vo.HomeRegisterVO;
 import org.scoula.domain.home.vo.HomeReportVO;
@@ -25,6 +26,11 @@ public interface HomeMapper {
 
       /** 매물 단건 조회 */
       Optional<HomeRegisterVO> findHomeById(@Param("homeId") Long homeId);
+
+      List<FacilityResponseDto> findHomeFacilities(@Param("homeId") Long homeId);
+
+      List<MaintenanceFeeItemResponseDto> findHomeMaintenanceItemsByHomeId(
+              @Param("homeId") Long homeId);
 
       /** 특정 매물 이미지 URL 리스트 조회 추가 */
       List<String> findHomeImagesByHomeId(@Param("homeId") Long homeId);
@@ -75,7 +81,4 @@ public interface HomeMapper {
 
       /** 신고 정보 등록 */
       void insertHomeReport(@Param("report") HomeReportVO report);
-
-      List<MaintenanceFeeItemResponseDto> findHomeMaintenanceItemsByHomeId(
-              @Param("homeId") Long homeId);
 }
