@@ -1,5 +1,7 @@
 package org.scoula.domain.precontract.service;
 
+import java.util.Optional;
+
 import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
@@ -40,12 +42,10 @@ public class PreContractServiceImpl implements PreContractService {
           }
 
           // 1. risk_check에 riskId가 있는지 확인하기
-          tenantMapper
-                  .selectRiskId(contractChatId, userId)
-                  .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_SELECT));
+          Optional<Long> riskId = tenantMapper.selectRiskId(contractChatId, userId);
 
           // 2. iF : 있다면 -> true 값 보내기 / 없다면 -> false 값 보내기
-          return true; // 사기 위험도 값 받기 (프론트에서 다른 api 호출)
+          return riskId.isPresent(); // 사기 위험도 값 받기 (프론트에서 다른 api 호출)
       }
 
       // =============== 본인인증 하기 ==================
@@ -110,7 +110,7 @@ public class PreContractServiceImpl implements PreContractService {
           boolean istParkingAvailable = tenantMapper.selectIsParking(userId, contractChatId);
 
           TenantInitRespDTO dto = TenantInitRespDTO.toResp(rentType, isPet, istParkingAvailable);
-          System.out.println("넘어온 riskId: " + riskId); // 9가 맞는지 확인
+
           return dto;
       }
 
@@ -142,12 +142,18 @@ public class PreContractServiceImpl implements PreContractService {
           if (rentType == RentType.JEONSE) {
               // dto -> vo
               TenantJeonseInfoVO vo = TenantJeonseInfoVO.toVO(step1DTO);
+              if (vo.getJeonseLoanPlan() == null || vo.getJeonseInsurancePlan() == null) {
+                  throw new BusinessException(PreContractErrorCode.TENANT_NULL);
+              }
               // mappser
               int result = tenantMapper.updateJeonseInfo(vo, contractChatId);
               if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
           } else if (rentType == RentType.WOLSE) {
               // dto -> vo
               TenantWolseInfoVO vo = TenantWolseInfoVO.toVO(step1DTO);
+              if (vo.getWolseLoanPlan() == null || vo.getWolseInsurancePlan() == null) {
+                  throw new BusinessException(PreContractErrorCode.TENANT_NULL);
+              }
               // mapper
               int result = tenantMapper.updateWolseInfo(vo, contractChatId);
               if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_INSERT);
@@ -208,6 +214,20 @@ public class PreContractServiceImpl implements PreContractService {
 
           int result = tenantMapper.updateStep2(vo, userId, contractChatId);
           if (result != 1) throw new BusinessException(PreContractErrorCode.TENANT_UPDATE);
+
+          if (Boolean.TRUE.equals(vo.getHasParking())) {
+              if (step2DTO.getHasParking() == null || step2DTO.getParkingCount() < 1) {
+                  throw new BusinessException(PreContractErrorCode.TENANT_NULL);
+              }
+          }
+          // 반려동물 관련 추가 처리
+          if (Boolean.TRUE.equals(vo.getHasPet())) {
+              if (step2DTO.getHasPet() == null
+                      || step2DTO.getPetInfo() == null
+                      || step2DTO.getPetCount() < 1) {
+                  throw new BusinessException(PreContractErrorCode.TENANT_NULL);
+              }
+          }
 
           return null;
       }
