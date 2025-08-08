@@ -41,7 +41,7 @@ public class AiFraudAnalyzerService {
 
       private final RestTemplate restTemplate;
 
-      @Value("${ai.fraud.analyzer.url:http://localhost:8000}")
+      @Value("${ai.server.url:http://localhost:8000}")
       private String aiServerUrl;
 
       /** FastAPI 서버에 사기 위험도 분석 요청 */
