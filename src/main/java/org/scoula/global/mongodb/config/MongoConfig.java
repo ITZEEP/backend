@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.config.AbstractMongoClientConfiguration;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -30,6 +31,7 @@ import lombok.extern.log4j.Log4j2;
               "org.scoula.domain.precontract.repository"
           })
 @Log4j2
+@EnableTransactionManagement
 public class MongoConfig extends AbstractMongoClientConfiguration {
 
       @Value("${mongodb.host:localhost}")

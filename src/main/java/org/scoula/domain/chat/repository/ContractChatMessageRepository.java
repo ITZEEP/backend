@@ -2,7 +2,7 @@ package org.scoula.domain.chat.repository;
 
 import java.util.List;
 
-import org.scoula.domain.chat.dto.ContractChatDocument;
+import org.scoula.domain.chat.document.ContractChatDocument;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;

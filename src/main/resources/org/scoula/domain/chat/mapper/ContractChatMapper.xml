@@ -11,22 +11,12 @@
         <result property="lastMessage" column="last_message"/>
         <result property="startPoint" column="start_point"/>
         <result property="endPoint" column="end_point"/>
+        <result property="status" column="status"/>
     </resultMap>
     <insert id="createContractChat" parameterType="org.scoula.domain.chat.vo.ContractChat"
             useGeneratedKeys="true" keyProperty="contractChatId">
-        INSERT INTO contract_chat (
-            home_id,
-            owner_id,
-            buyer_id,
-            contract_start_at,
-            last_message
-        ) VALUES (
-                     #{homeId},
-                     #{ownerId},
-                     #{buyerId},
-                     #{contractStartAt},
-                     #{lastMessage}
-                 )
+        INSERT INTO contract_chat (home_id, owner_id, buyer_id, contract_start_at, last_message, status)
+        VALUES (#{homeId}, #{ownerId}, #{buyerId}, #{contractStartAt}, #{lastMessage}, #{status})
     </insert>
 
     <select id="findByContractChatId" parameterType="long" resultMap="contractChatResultMap">
@@ -64,6 +54,31 @@
     <update id="clearTimePoints">
         UPDATE contract_chat
         SET start_point = NULL, end_point = NULL
+        WHERE contract_chat_id = #{contractChatId}
+    </update>
+    <update id="updateStatus">
+        UPDATE contract_chat
+        SET status = #{status}
+        WHERE contract_chat_id = #{contractChatId}
+    </update>
+
+    <!-- 상태 조회 -->
+    <select id="getStatus" parameterType="long"
+            resultType="org.scoula.domain.chat.vo.ContractChat$ContractStatus">
+        SELECT status
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
+    <!-- 다음 라운드로 진행 -->
+    <update id="proceedToNextRound">
+        UPDATE contract_chat
+        SET status = CASE
+                         WHEN status = 'ROUND0' THEN 'ROUND1'
+                         WHEN status = 'ROUND1' THEN 'ROUND2'
+                         WHEN status = 'ROUND2' THEN 'ROUND3'
+                         ELSE status
+            END
         WHERE contract_chat_id = #{contractChatId}
     </update>
 </mapper>

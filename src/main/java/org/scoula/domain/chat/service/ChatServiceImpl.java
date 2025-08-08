@@ -7,8 +7,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.scoula.domain.chat.BadWordFilter;
+import org.scoula.domain.chat.document.ChatMessageDocument;
 import org.scoula.domain.chat.dto.*;
 import org.scoula.domain.chat.exception.ChatErrorCode;
+import org.scoula.domain.chat.fcm.FCMService;
 import org.scoula.domain.chat.mapper.ChatRoomMapper;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.repository.ChatMessageMongoRepository;
@@ -38,6 +40,8 @@ public class ChatServiceImpl implements ChatServiceInterface {
       private final S3ServiceInterface s3Service;
       private final UserServiceInterface userService;
       private final BadWordFilter badWordFilter;
+      private final FCMService fcmService;
+      private final NotificationServiceInterface notificationService;
 
       // 온라인 사용자 추적을 위한 Set
       private final Set<Long> onlineUsers = ConcurrentHashMap.newKeySet();
@@ -161,13 +165,116 @@ public class ChatServiceImpl implements ChatServiceInterface {
               messagingTemplate.convertAndSend(ownerTopic, ownerUpdateDto);
               messagingTemplate.convertAndSend(buyerTopic, buyerUpdateDto);
 
-              // 🔧 디버깅 로그 추가
-              log.info(
-                      "📨 메시지 전송 완료 - 채팅방: {}, 소유자 읽지않음: {}, 구매자 읽지않음: {}",
-                      dto.getChatRoomId(),
-                      ownerUnreadCount,
-                      buyerUnreadCount);
+              if (!"START".equals(dto.getType())) {
+                  try {
+                      User sender = userService.findById(dto.getSenderId());
+                      String senderName = sender != null ? sender.getNickname() : "알 수 없는 사용자";
 
+                      Map<String, String> baseNotificationData = new HashMap<>();
+                      baseNotificationData.put("chatRoomId", dto.getChatRoomId().toString());
+                      baseNotificationData.put("senderId", dto.getSenderId().toString());
+                      baseNotificationData.put("senderName", senderName);
+                      baseNotificationData.put("type", "chat_message");
+                      baseNotificationData.put(
+                              "timestamp", String.valueOf(System.currentTimeMillis()));
+
+                      String notificationBody;
+                      String notificationTitle;
+
+                      switch (dto.getType()) {
+                          case "TEXT":
+                              notificationBody = dto.getContent();
+                              notificationTitle = senderName + "님의 새 메시지";
+                              break;
+                          case "FILE":
+                              notificationBody =
+                                      "[파일] "
+                                              + (dto.getContent() != null
+                                                      ? dto.getContent()
+                                                      : "파일을 보냈습니다");
+                              notificationTitle = senderName + "님이 파일을 보냈습니다";
+                              break;
+                          case "CONTRACT_REQUEST":
+                              notificationBody = "계약을 요청했습니다";
+                              notificationTitle = senderName + "님의 계약 요청";
+                              break;
+                          case "CONTRACT_REJECT":
+                              notificationBody = "계약 요청을 거절했습니다";
+                              notificationTitle = senderName + "님의 계약 거절";
+                              break;
+                          default:
+                              notificationBody =
+                                      dto.getContent() != null ? dto.getContent() : "새 메시지";
+                              notificationTitle = senderName + "님의 새 메시지";
+                              break;
+                      }
+
+                      // 메시지 수신자 결정 (발신자가 아닌 사용자)
+                      Long receiverId =
+                              dto.getSenderId().equals(chatRoom.getOwnerId())
+                                      ? chatRoom.getBuyerId()
+                                      : chatRoom.getOwnerId();
+
+                      receiverInThisChatRoom =
+                              isUserInCurrentChatRoom(receiverId, dto.getChatRoomId());
+
+                      log.info("=== 알림 생성 체크 ===");
+                      log.info(
+                              "발신자: {}, 수신자: {}, 수신자 접속 여부: {}",
+                              dto.getSenderId(),
+                              receiverId,
+                              receiverInThisChatRoom);
+                      log.info("채팅방 소유자: {}, 구매자: {}", chatRoom.getOwnerId(), chatRoom.getBuyerId());
+
+                      // 수신자가 현재 채팅방에 접속하지 않은 경우에만 알림 생성
+                      if (!receiverInThisChatRoom) {
+                          int receiverUnreadCount =
+                                  receiverId.equals(chatRoom.getOwnerId())
+                                          ? ownerUnreadCount
+                                          : buyerUnreadCount;
+
+                          Map<String, String> receiverNotificationData =
+                                  new HashMap<>(baseNotificationData);
+                          receiverNotificationData.put(
+                                  "unreadCount", String.valueOf(receiverUnreadCount));
+                          receiverNotificationData.put("userId", receiverId.toString());
+
+                          log.info(
+                                  "알림 생성 시작: receiverId={}, notificationData={}",
+                                  receiverId,
+                                  receiverNotificationData);
+
+                          notificationService.createChatNotification(
+                                  receiverId,
+                                  senderName,
+                                  notificationBody,
+                                  dto.getChatRoomId(),
+                                  receiverNotificationData);
+
+                          log.info(
+                                  "수신자 알림 처리 완료: receiverId={}, senderId={}, unreadCount={}",
+                                  receiverId,
+                                  dto.getSenderId(),
+                                  receiverUnreadCount);
+                      } else {
+                          log.info(
+                                  "수신자가 현재 채팅방에 접속 중이므로 알림 생성 안함: receiverId={}, chatRoomId={}",
+                                  receiverId,
+                                  dto.getChatRoomId());
+                      }
+
+                  } catch (Exception notificationException) {
+                      log.error(
+                              "통합 알림 처리 실패 - 채팅방: {}, 발신자: {}, 수신자들: [소유자={}, 구매자={}]",
+                              dto.getChatRoomId(),
+                              dto.getSenderId(),
+                              chatRoom.getOwnerId(),
+                              chatRoom.getBuyerId(),
+                              notificationException);
+                  }
+              } else {
+                  log.info("START 메시지는 알림 제외: chatRoomId={}", dto.getChatRoomId());
+              }
           } catch (Exception e) {
               log.error("메시지 전송 실패", e);
               throw new BusinessException(ChatErrorCode.MESSAGE_SEND_FAILED, e.getMessage());
@@ -184,7 +291,7 @@ public class ChatServiceImpl implements ChatServiceInterface {
       // 사용자가 채팅방에 입장했을 때 호출
       public void setUserCurrentChatRoom(Long userId, Long chatRoomId) {
           userCurrentChatRoom.put(userId, chatRoomId);
-          addOnlineUser(userId); // 채팅방 입장시 온라인으로 설정
+          addOnlineUser(userId);
           markChatRoomAsRead(chatRoomId, userId);
       }
 
@@ -692,6 +799,7 @@ public class ChatServiceImpl implements ChatServiceInterface {
           contractChat.setBuyerId(originalChatRoom.getBuyerId());
           contractChat.setContractStartAt(LocalDateTime.now());
           contractChat.setLastMessage("계약 채팅방이 생성되었습니다.");
+          contractChat.setStatus(ContractChat.ContractStatus.STEP0);
 
           contractChatMapper.createContractChat(contractChat);
           Long contractChatRoomId = contractChat.getContractChatId();
@@ -705,7 +813,14 @@ public class ChatServiceImpl implements ChatServiceInterface {
                           .build();
 
           handleChatMessage(acceptMessage);
-          String contractChatUrl = "/contract-chat/" + contractChatRoomId.toString();
+          String contractChatUrl =
+                  "http://localhost:5173/pre-contract/"
+                          + contractChatRoomId.toString()
+                          + "/owner?step=1"
+                          + "/n"
+                          + "http://localhost:5173/pre-contract/"
+                          + contractChatRoomId.toString()
+                          + "/buyer?step=1";
 
           ChatMessageRequestDto linkMessage =
                   ChatMessageRequestDto.builder()

@@ -65,6 +65,10 @@ src/main/resources/log4jdbc.log4j2.properties
 
 !**/*password*.java
 
+### Firebase ###
+**/firebase-service-account.json
+firebase-adminsdk-*.json
+
 ### Logs ###
 logs/
 *.log

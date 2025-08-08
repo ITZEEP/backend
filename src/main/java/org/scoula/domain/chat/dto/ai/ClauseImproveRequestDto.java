@@ -2,6 +2,8 @@ package org.scoula.domain.chat.dto.ai;
 
 import java.util.List;
 
+import org.scoula.domain.chat.dto.ContentDataDto;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,12 +18,12 @@ import lombok.Setter;
 public class ClauseImproveRequestDto {
       private Long contractChatId;
       private OcrData ocrData;
-      private Integer round;
-      private Integer order;
+      private Long round;
+      private Long order;
       private OwnerData ownerData;
       private TenantData tenantData;
-      private List<PrevClause> prevData;
-      private RecentClause recentData;
+      private List<ContentDataDto> prevData;
+      private ContentDataDto recentData;
 
       @Getter
       @Setter

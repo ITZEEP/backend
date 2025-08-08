@@ -25,4 +25,12 @@ public interface ContractChatMapper {
               @Param("contractChatId") Long contractChatId, @Param("endTime") String endTime);
 
       void clearTimePoints(@Param("contractChatId") Long contractChatId);
+
+      void updateStatus(
+              @Param("contractChatId") Long contractChatId,
+              @Param("status") ContractChat.ContractStatus status);
+
+      ContractChat.ContractStatus getStatus(@Param("contractChatId") Long contractChatId);
+
+      void proceedToNextRound(@Param("contractChatId") Long contractChatId);
 }

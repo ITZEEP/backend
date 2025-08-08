@@ -469,11 +469,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           ClauseRecommendRequestDto.OwnerData ownerRequestData = buildOwnerData(ownerData);
           ClauseRecommendRequestDto.TenantData tenantData = buildTenantData(ownerData);
 
-          return ClauseRecommendRequestDto.builder()
-                  .ocrData(ocrData)
-                  .ownerData(ownerRequestData)
-                  .tenantData(tenantData)
-                  .build();
+          return null;
       }
 
       private ClauseRecommendRequestDto.OcrData buildOcrData(

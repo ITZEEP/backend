@@ -119,13 +119,7 @@ public class PreContractDataServiceImpl implements PreContractDataService {
           if (contractDocument == null) {
               log.info("OCR 데이터가 없습니다. null 값으로 반환 - contractChatId: {}", contractChatId);
               // OCR 데이터가 없는 경우 기본값 반환
-              return ClauseImproveRequestDto.OcrData.builder()
-                      .extractedAt(null)
-                      .fileName(null)
-                      .rawText(null)
-                      .source(null)
-                      .specialTerms(new ArrayList<>())
-                      .build();
+              return null;
           }
 
           ClauseImproveRequestDto.OcrData ocrData =
