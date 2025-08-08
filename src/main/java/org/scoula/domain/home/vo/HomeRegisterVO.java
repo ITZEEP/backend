@@ -75,6 +75,7 @@ public class HomeRegisterVO {
       public static class MaintenanceFeeItem {
           private Long maintenanceId;
           private Integer fee;
+          private String itemName;
       }
 
       // 생성용 from (HomeCreateRequestDto)

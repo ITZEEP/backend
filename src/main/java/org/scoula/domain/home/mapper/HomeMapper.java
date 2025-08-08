@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.scoula.domain.home.dto.response.MaintenanceFeeItemResponseDto;
 import org.scoula.domain.home.vo.HomeRegisterVO;
 import org.scoula.domain.home.vo.HomeReportVO;
 import org.scoula.global.common.dto.PageRequest;
@@ -74,4 +75,7 @@ public interface HomeMapper {
 
       /** 신고 정보 등록 */
       void insertHomeReport(@Param("report") HomeReportVO report);
+
+      List<MaintenanceFeeItemResponseDto> findHomeMaintenanceItemsByHomeId(
+              @Param("homeId") Long homeId);
 }
