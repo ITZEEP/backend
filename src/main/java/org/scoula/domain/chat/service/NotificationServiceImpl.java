@@ -130,12 +130,12 @@ public class NotificationServiceImpl implements NotificationServiceInterface {
               Long userId, String type, int page, int size) {
           try {
               size = Math.min(size, 100);
-              int offset = page * size;
               if (page < 0) {
                   page = 0;
-              } else if (page > Integer.MAX_VALUE / size) {
+              } else if (size > 0 && page > Integer.MAX_VALUE / size) {
                   page = Integer.MAX_VALUE / size;
               }
+              int offset = page * size;
               List<Notification> notifications =
                       notificationMapper.findByUserIdAndType(userId, type, size, offset);
               List<NotificationDto> notificationDtos =
