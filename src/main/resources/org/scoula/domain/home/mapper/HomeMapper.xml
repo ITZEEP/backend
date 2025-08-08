@@ -116,12 +116,12 @@
             h.maintenance_fee AS maintenanceFee,
             h.supply_area AS supplyArea,
             h.exclusive_area AS exclusiveArea,
+            h.room_cnt AS roomCnt,
             h.home_status AS homeStatus,
             h.view_cnt AS viewCnt,
             h.like_cnt AS likeCnt,
             h.chat_cnt AS chatCnt,
             h.report_cnt AS reportCnt,
-            h.room_cnt AS roomCnt,
             h.created_at AS createdAt,
             h.updated_at AS updatedAt,
             d.home_detail_id AS homeDetailId,
@@ -144,7 +144,6 @@
             LIMIT #{offset}, #{size}
     </select>
 
-    <!-- 10. 전체 매물 수 조회 -->
     <select id="countHomes" resultType="long">
         SELECT COUNT(*) FROM home
     </select>
@@ -233,18 +232,18 @@
     </update>
 
     <!-- 19. 내가 등록한 매물 조회 (페이징) -->
-    <select id="findMyHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT h.*, d.home_floor, d.bathroom_count, d.home_direction, d.build_date, d.building_total_floors, d.is_pet, d.is_parking_available
-        FROM home h
-                 LEFT JOIN home_detail d ON h.home_id = d.home_id
-        WHERE h.user_id = #{userId}
-        ORDER BY h.created_at DESC
-            LIMIT #{offset}, #{size}
-    </select>
+<!--    <select id="findMyHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">-->
+<!--        SELECT h.*, d.home_floor, d.bathroom_count, d.home_direction, d.build_date, d.building_total_floors, d.is_pet, d.is_parking_available-->
+<!--        FROM home h-->
+<!--                 LEFT JOIN home_detail d ON h.home_id = d.home_id-->
+<!--        WHERE h.user_id = #{userId}-->
+<!--        ORDER BY h.created_at DESC-->
+<!--            LIMIT #{offset}, #{size}-->
+<!--    </select>-->
 
     <!-- 20. 내가 등록한 매물 수 조회 -->
-    <select id="countMyHomes" parameterType="long" resultType="long">
-        SELECT COUNT(*) FROM home WHERE user_id = #{userId}
-    </select>
+<!--    <select id="countMyHomes" parameterType="long" resultType="long">-->
+<!--        SELECT COUNT(*) FROM home WHERE user_id = #{userId}-->
+<!--    </select>-->
 
 </mapper>

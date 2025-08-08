@@ -53,10 +53,11 @@ public interface HomeMapper {
       void incrementViewCount(@Param("homeId") Long homeId);
 
       /** 내가 등록한 매물 리스트 & 개수 */
-      List<HomeRegisterVO> findMyHomes(
-              @Param("userId") Long userId, @Param("offset") int offset, @Param("size") int size);
-
-      long countMyHomes(@Param("userId") Long userId);
+      //      List<HomeRegisterVO> findMyHomes(
+      //              @Param("userId") Long userId, @Param("offset") int offset, @Param("size") int
+      // size);
+      //
+      //      long countMyHomes(@Param("userId") Long userId);
 
       /** 상세 정보 등록 */
       void insertHomeDetail(HomeRegisterVO vo);

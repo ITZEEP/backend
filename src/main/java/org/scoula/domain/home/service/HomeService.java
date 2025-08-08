@@ -29,7 +29,7 @@ public interface HomeService {
 
       void increaseViewCount(Long homeId);
 
-      PageResponse<HomeResponseDto> getMyHomeList(Long userId, PageRequest pageRequest);
+      //      PageResponse<HomeResponseDto> getMyHomeList(Long userId, PageRequest pageRequest);
 
       void reportHome(HomeReportRequestDto requestDto);
 }

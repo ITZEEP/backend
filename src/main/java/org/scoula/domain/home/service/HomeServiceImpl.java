@@ -175,20 +175,22 @@ public class HomeServiceImpl implements HomeService {
           homeMapper.insertHomeReport(vo);
       }
 
-      @Override
-      public PageResponse<HomeResponseDto> getMyHomeList(Long userId, PageRequest pageRequest) {
-          List<HomeRegisterVO> homes =
-                  homeMapper.findMyHomes(userId, pageRequest.getOffset(), pageRequest.getSize());
-          long totalCount = homeMapper.countMyHomes(userId);
-
-          List<HomeResponseDto> content =
-                  homes.stream().map(HomeResponseDto::from).collect(Collectors.toList());
-
-          return PageResponse.<HomeResponseDto>builder()
-                  .content(content)
-                  .page(pageRequest.getPage())
-                  .size(pageRequest.getSize())
-                  .totalElements(totalCount)
-                  .build();
-      }
+      //      @Override
+      //      public PageResponse<HomeResponseDto> getMyHomeList(Long userId, PageRequest pageRequest)
+      // {
+      //          List<HomeRegisterVO> homes =
+      //                  homeMapper.findMyHomes(userId, pageRequest.getOffset(),
+      // pageRequest.getSize());
+      //          long totalCount = homeMapper.countMyHomes(userId);
+      //
+      //          List<HomeResponseDto> content =
+      //                  homes.stream().map(HomeResponseDto::from).collect(Collectors.toList());
+      //
+      //          return PageResponse.<HomeResponseDto>builder()
+      //                  .content(content)
+      //                  .page(pageRequest.getPage())
+      //                  .size(pageRequest.getSize())
+      //                  .totalElements(totalCount)
+      //                  .build();
+      //      }
 }
