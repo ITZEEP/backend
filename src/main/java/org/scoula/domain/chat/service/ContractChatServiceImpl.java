@@ -632,6 +632,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           .orElseThrow(
                                   () -> new IllegalArgumentException("현재 라운드의 특약 문서를 찾을 수 없습니다"));
 
+
           Long newRound = currentRound + 1;
           log.info("새 라운드: {} → {}", currentRound, newRound);
 
@@ -649,7 +650,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   log.info("이전 라운드에서 이미 완료된 특약 {}번 추가", completed.getOrder());
               }
           }
-
           log.info("최종 통과된 특약들 (이전 완료 포함): {}", allPassedOrders);
 
           List<SpecialContractDocument.Clause> newClauses = new ArrayList<>();
@@ -1581,20 +1581,18 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return rejectedOrders;
       }
 
+
     @Override
     @Transactional
     public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
-        // 현재 상태 확인
         ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
         ContractChat.ContractStatus currentStatus = contractChat.getStatus();
 
-        // 3회차 완료된 경우 vs 모든 특약 완료된 경우 구분
         boolean isThirdRoundComplete = (currentStatus == ContractChat.ContractStatus.ROUND3);
 
         List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
 
         if (isThirdRoundComplete) {
-            // 3회차까지 완료된 경우: 가장 최신 라운드(4라운드)에서 내용이 있는 모든 특약 저장
             log.info("=== 3회차 수정 완료 - 4라운드 데이터에서 최종 특약 생성 ===");
 
             Optional<SpecialContractDocument> round4DocOpt =
@@ -1604,7 +1602,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                 SpecialContractDocument round4Doc = round4DocOpt.get();
 
                 for (SpecialContractDocument.Clause clause : round4Doc.getClauses()) {
-                    // 내용이 있는 특약만 저장 (완료 여부 무관)
                     if (clause.getTitle() != null && !clause.getTitle().trim().isEmpty() &&
                             clause.getContent() != null && !clause.getContent().trim().isEmpty()) {
 
@@ -1621,7 +1618,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                 }
             }
         } else {
-            // 모든 특약이 완료된 경우: 기존 로직 유지
             log.info("=== 모든 특약 완료 - 완료된 특약들만 최종 저장 ===");
 
             List<SpecialContractFixDocument> incompleteContracts =
@@ -1670,7 +1666,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
             }
         }
 
-        // 최종 문서 생성
         FinalSpecialContractDocument finalDocument =
                 FinalSpecialContractDocument.builder()
                         .contractChatId(contractChatId)

@@ -59,23 +59,25 @@ public class HomeController {
           return ResponseEntity.ok(ApiResponse.success(response));
       }
 
-      @ApiOperation(value = "내가 등록한 매물 목록 조회", notes = "사용자가 등록한 매물 목록을 페이지네이션하여 조회합니다.")
-      @GetMapping("/my")
-      public ResponseEntity<PageResponse<HomeResponseDto>> getMyHomes(
-              @AuthenticationPrincipal CustomUserDetails userDetails,
-              @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue = "1")
-                      String pageStr,
-              @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue = "10")
-                      String sizeStr) {
-
-          int page = parseOrDefault(pageStr, 1);
-          int size = parseOrDefault(sizeStr, 10);
-
-          PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
-          PageResponse<HomeResponseDto> response =
-                  homeService.getMyHomeList(userDetails.getUserId(), pageRequest);
-          return ResponseEntity.ok(response);
-      }
+      //      @ApiOperation(value = "내가 등록한 매물 목록 조회", notes = "사용자가 등록한 매물 목록을 페이지네이션하여 조회합니다.")
+      //      @GetMapping("/my")
+      //      public ResponseEntity<PageResponse<HomeResponseDto>> getMyHomes(
+      //              @AuthenticationPrincipal CustomUserDetails userDetails,
+      //              @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue =
+      // "1")
+      //                      String pageStr,
+      //              @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue =
+      // "10")
+      //                      String sizeStr) {
+      //
+      //          int page = parseOrDefault(pageStr, 1);
+      //          int size = parseOrDefault(sizeStr, 10);
+      //
+      //          PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
+      //          PageResponse<HomeResponseDto> response =
+      //                  homeService.getMyHomeList(userDetails.getUserId(), pageRequest);
+      //          return ResponseEntity.ok(response);
+      //      }
 
       @ApiOperation(value = "매물 삭제", notes = "매물 ID에 해당하는 매물을 삭제합니다.")
       @DeleteMapping("/{homeId}")

@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.scoula.domain.home.dto.response.FacilityResponseDto;
+import org.scoula.domain.home.dto.response.MaintenanceFeeItemResponseDto;
 import org.scoula.domain.home.vo.HomeRegisterVO;
 import org.scoula.domain.home.vo.HomeReportVO;
 import org.scoula.global.common.dto.PageRequest;
@@ -24,6 +26,11 @@ public interface HomeMapper {
 
       /** 매물 단건 조회 */
       Optional<HomeRegisterVO> findHomeById(@Param("homeId") Long homeId);
+
+      List<FacilityResponseDto> findHomeFacilities(@Param("homeId") Long homeId);
+
+      List<MaintenanceFeeItemResponseDto> findHomeMaintenanceItemsByHomeId(
+              @Param("homeId") Long homeId);
 
       /** 특정 매물 이미지 URL 리스트 조회 추가 */
       List<String> findHomeImagesByHomeId(@Param("homeId") Long homeId);
@@ -53,10 +60,11 @@ public interface HomeMapper {
       void incrementViewCount(@Param("homeId") Long homeId);
 
       /** 내가 등록한 매물 리스트 & 개수 */
-      List<HomeRegisterVO> findMyHomes(
-              @Param("userId") Long userId, @Param("offset") int offset, @Param("size") int size);
-
-      long countMyHomes(@Param("userId") Long userId);
+      //      List<HomeRegisterVO> findMyHomes(
+      //              @Param("userId") Long userId, @Param("offset") int offset, @Param("size") int
+      // size);
+      //
+      //      long countMyHomes(@Param("userId") Long userId);
 
       /** 상세 정보 등록 */
       void insertHomeDetail(HomeRegisterVO vo);
