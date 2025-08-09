@@ -19,14 +19,38 @@ import lombok.Setter;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ContractParseResponseDto {
 
-      @JsonProperty("filename")
-      private String filename;
+      @JsonProperty("success")
+      private boolean success;
 
-      @JsonProperty("document_type")
-      private String documentType;
+      @JsonProperty("message")
+      private String message;
 
-      @JsonProperty("parsed_data")
-      private ParsedData parsedData;
+      @JsonProperty("data")
+      private ContractData data;
+
+      @JsonProperty("error")
+      private String error;
+
+      @JsonProperty("timestamp")
+      private String timestamp;
+
+      @Getter
+      @Setter
+      @Builder
+      @NoArgsConstructor
+      @AllArgsConstructor
+      @JsonIgnoreProperties(ignoreUnknown = true)
+      public static class ContractData {
+
+          @JsonProperty("filename")
+          private String filename;
+
+          @JsonProperty("document_type")
+          private String documentType;
+
+          @JsonProperty("parsed_data")
+          private ParsedData parsedData;
+      }
 
       @Getter
       @Setter

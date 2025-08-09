@@ -310,9 +310,11 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
               log.info(
                       "계약서 특약 OCR 완료 - 특약 수: {}",
                       aiResponse != null
-                                      && aiResponse.getParsedData() != null
-                                      && aiResponse.getParsedData().getSpecialTerms() != null
-                              ? aiResponse.getParsedData().getSpecialTerms().size()
+                                      && aiResponse.getData() != null
+                                      && aiResponse.getData().getParsedData() != null
+                                      && aiResponse.getData().getParsedData().getSpecialTerms()
+                                              != null
+                              ? aiResponse.getData().getParsedData().getSpecialTerms().size()
                               : 0);
 
               return aiResponse;
