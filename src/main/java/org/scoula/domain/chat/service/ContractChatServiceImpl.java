@@ -1581,72 +1581,112 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return rejectedOrders;
       }
 
-      @Override
-      @Transactional
-      public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
-          List<SpecialContractFixDocument> incompleteContracts =
-                  specialContractMongoRepository.findByContractChatIdAndIsPassed(
-                          contractChatId, false);
+    @Override
+    @Transactional
+    public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
+        // 현재 상태 확인
+        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+        ContractChat.ContractStatus currentStatus = contractChat.getStatus();
 
-          if (!incompleteContracts.isEmpty()) {
-              throw new IllegalStateException(
-                      "아직 완료되지 않은 특약이 " + incompleteContracts.size() + "개 있습니다.");
-          }
+        // 3회차 완료된 경우 vs 모든 특약 완료된 경우 구분
+        boolean isThirdRoundComplete = (currentStatus == ContractChat.ContractStatus.ROUND3);
 
-          List<SpecialContractFixDocument> completedContracts =
-                  specialContractMongoRepository.findByContractChatIdAndIsPassed(
-                          contractChatId, true);
+        List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
 
-          if (completedContracts.isEmpty()) {
-              throw new IllegalStateException("완료된 특약이 없습니다.");
-          }
+        if (isThirdRoundComplete) {
+            // 3회차까지 완료된 경우: 가장 최신 라운드(4라운드)에서 내용이 있는 모든 특약 저장
+            log.info("=== 3회차 수정 완료 - 4라운드 데이터에서 최종 특약 생성 ===");
 
-          List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
+            Optional<SpecialContractDocument> round4DocOpt =
+                    specialContractMongoRepository.findSpecialContractDocumentByContractChatIdAndRound(contractChatId, 4L);
 
-          for (SpecialContractFixDocument completedContract : completedContracts) {
-              Long order = completedContract.getOrder();
+            if (round4DocOpt.isPresent()) {
+                SpecialContractDocument round4Doc = round4DocOpt.get();
 
-              Optional<SpecialContractDocument> latestRoundDoc =
-                      findLatestRoundForOrder(contractChatId, order);
+                for (SpecialContractDocument.Clause clause : round4Doc.getClauses()) {
+                    // 내용이 있는 특약만 저장 (완료 여부 무관)
+                    if (clause.getTitle() != null && !clause.getTitle().trim().isEmpty() &&
+                            clause.getContent() != null && !clause.getContent().trim().isEmpty()) {
 
-              if (latestRoundDoc.isPresent()) {
-                  SpecialContractDocument doc = latestRoundDoc.get();
+                        FinalSpecialContractDocument.FinalClause finalClause =
+                                FinalSpecialContractDocument.FinalClause.builder()
+                                        .order(clause.getOrder())
+                                        .title(clause.getTitle())
+                                        .content(clause.getContent())
+                                        .build();
 
-                  doc.getClauses().stream()
-                          .filter(clause -> clause.getOrder().equals(order.intValue()))
-                          .findFirst()
-                          .ifPresent(
-                                  clause -> {
-                                      FinalSpecialContractDocument.FinalClause finalClause =
-                                              FinalSpecialContractDocument.FinalClause.builder()
-                                                      .order(clause.getOrder())
-                                                      .title(clause.getTitle())
-                                                      .content(clause.getContent())
-                                                      .build();
+                        finalClauses.add(finalClause);
+                        log.info("4라운드에서 특약 {}번 최종 저장: {}", clause.getOrder(), clause.getTitle());
+                    }
+                }
+            }
+        } else {
+            // 모든 특약이 완료된 경우: 기존 로직 유지
+            log.info("=== 모든 특약 완료 - 완료된 특약들만 최종 저장 ===");
 
-                                      finalClauses.add(finalClause);
-                                      log.info(
-                                              "특약 {}번 최종 저장 완료 - sourceRound: {}",
-                                              order,
-                                              doc.getRound());
-                                  });
-              }
-          }
+            List<SpecialContractFixDocument> incompleteContracts =
+                    specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, false);
 
-          FinalSpecialContractDocument finalDocument =
-                  FinalSpecialContractDocument.builder()
-                          .contractChatId(contractChatId)
-                          .totalFinalClauses(finalClauses.size())
-                          .finalClauses(finalClauses)
-                          .build();
+            if (!incompleteContracts.isEmpty()) {
+                throw new IllegalStateException(
+                        "아직 완료되지 않은 특약이 " + incompleteContracts.size() + "개 있습니다.");
+            }
 
-          FinalSpecialContractDocument savedDocument =
-                  specialContractMongoRepository.saveFinalSpecialContract(finalDocument);
+            List<SpecialContractFixDocument> completedContracts =
+                    specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, true);
 
-          log.info("최종 특약 저장 완료 - 총 {}개 조항", finalClauses.size());
+            if (completedContracts.isEmpty()) {
+                throw new IllegalStateException("완료된 특약이 없습니다.");
+            }
 
-          return savedDocument;
-      }
+            for (SpecialContractFixDocument completedContract : completedContracts) {
+                Long order = completedContract.getOrder();
+
+                Optional<SpecialContractDocument> latestRoundDoc =
+                        findLatestRoundForOrder(contractChatId, order);
+
+                if (latestRoundDoc.isPresent()) {
+                    SpecialContractDocument doc = latestRoundDoc.get();
+
+                    doc.getClauses().stream()
+                            .filter(clause -> clause.getOrder().equals(order.intValue()))
+                            .findFirst()
+                            .ifPresent(
+                                    clause -> {
+                                        FinalSpecialContractDocument.FinalClause finalClause =
+                                                FinalSpecialContractDocument.FinalClause.builder()
+                                                        .order(clause.getOrder())
+                                                        .title(clause.getTitle())
+                                                        .content(clause.getContent())
+                                                        .build();
+
+                                        finalClauses.add(finalClause);
+                                        log.info(
+                                                "특약 {}번 최종 저장 완료 - sourceRound: {}",
+                                                order,
+                                                doc.getRound());
+                                    });
+                }
+            }
+        }
+
+        // 최종 문서 생성
+        FinalSpecialContractDocument finalDocument =
+                FinalSpecialContractDocument.builder()
+                        .contractChatId(contractChatId)
+                        .totalFinalClauses(finalClauses.size())
+                        .finalClauses(finalClauses)
+                        .build();
+
+        FinalSpecialContractDocument savedDocument =
+                specialContractMongoRepository.saveFinalSpecialContract(finalDocument);
+
+        log.info("최종 특약 저장 완료 - 총 {}개 조항 (방식: {})",
+                finalClauses.size(),
+                isThirdRoundComplete ? "3회차 완료" : "모든 특약 완료");
+
+        return savedDocument;
+    }
 
       private Optional<SpecialContractDocument> findLatestRoundForOrder(
               Long contractChatId, Long order) {
