@@ -99,24 +99,24 @@
                           ELSE h.lease_type END,
                       ' - ',
                       CASE
-                          WHEN h.deposit_price >= 10000 THEN
-                              CONCAT(FORMAT(h.deposit_price DIV 10000, 0), '억',
-                                     CASE WHEN h.deposit_price % 10000 > 0
-                                      THEN CONCAT(' ', FORMAT(h.deposit_price % 10000, 0), '만원')
+                          WHEN h.deposit_price >= 100000000 THEN
+                              CONCAT(FORMAT(h.deposit_price DIV 100000000, 0), '억',
+                                     CASE WHEN (h.deposit_price % 100000000) >= 10000
+                                              THEN CONCAT(' ', FORMAT((h.deposit_price % 100000000) DIV 10000, 0), '만원')
                                           ELSE '원' END)
                           ELSE
-                              CONCAT(FORMAT(h.deposit_price, 0), '만원')
+                              CONCAT(FORMAT(h.deposit_price DIV 10000, 0), '만원')
                           END,
                       CASE WHEN h.monthly_rent > 0 THEN
                                CONCAT(' / ',
                                       CASE
-                                          WHEN h.monthly_rent >= 10000 THEN
-                                              CONCAT(FORMAT(h.monthly_rent DIV 10000, 0), '억',
-                                                     CASE WHEN h.monthly_rent % 10000 > 0
-                                                 THEN CONCAT(' ', FORMAT(h.monthly_rent % 10000, 0), '만원')
+                                          WHEN h.monthly_rent >= 100000000 THEN
+                                              CONCAT(FORMAT(h.monthly_rent DIV 100000000, 0), '억',
+                                                     CASE WHEN (h.monthly_rent % 100000000) >= 10000
+                                                              THEN CONCAT(' ', FORMAT((h.monthly_rent % 100000000) DIV 10000, 0), '만원')
                                                           ELSE '원' END)
                                           ELSE
-                                              CONCAT(FORMAT(h.monthly_rent, 0), '만원')
+                                              CONCAT(FORMAT(h.monthly_rent DIV 10000, 0), '만원')
                                           END)
                            ELSE '' END) AS property_title,
                (SELECT hi.image_url
