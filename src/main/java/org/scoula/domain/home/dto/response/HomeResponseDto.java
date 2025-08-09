@@ -54,7 +54,7 @@ public class HomeResponseDto {
       private Integer chatCnt;
       private Integer likeCnt;
 
-      private String imageUrl; // 대표 이미지 URL 하나
+      private String imageUrl;
       private Long imageId;
 
       private List<String> options;
@@ -62,18 +62,22 @@ public class HomeResponseDto {
 
       private String createdAt;
 
-      public static HomeResponseDto from(HomeRegisterVO vo) {
+      private List<MaintenanceFeeItemResponseDto> maintenanceFeeItems;
+      private List<FacilityResponseDto> facilities; // 시설 정보 필드 추가
+
+      // (기존) MaintenanceFeeItemResponseDto 클래스는 별도 파일로 분리
+      // (기존) HomeRegisterVO$MaintenanceFeeItem
+
+      // 세 가지 인자를 받는 from 메서드 추가
+      public static HomeResponseDto from(
+              HomeRegisterVO vo,
+              List<MaintenanceFeeItemResponseDto> maintenanceItems,
+              List<FacilityResponseDto> facilities) {
           String createdAtStr = null;
           if (vo.getCreatedAt() != null) {
               createdAtStr =
                       vo.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
           }
-
-          // 대표 이미지 URL: imageUrls 리스트 중 첫 번째, 없으면 null
-          String mainImageUrl =
-                  (vo.getImageUrls() != null && !vo.getImageUrls().isEmpty())
-                          ? vo.getImageUrls().get(0)
-                          : null;
 
           return HomeResponseDto.builder()
                   .homeId(vo.getHomeId())
@@ -101,7 +105,7 @@ public class HomeResponseDto {
                   .isParkingAvailable(vo.getIsParkingAvailable())
                   .buildDate(vo.getBuildDate() != null ? vo.getBuildDate().toLocalDate() : null)
                   .moveInDate(vo.getMoveInDate())
-                  .imageUrl(mainImageUrl)
+                  .imageUrl(vo.getImageUrl())
                   .imageId(vo.getImageId())
                   .options(vo.getOptions() != null ? vo.getOptions() : Collections.emptyList())
                   .facilityItemIds(
@@ -109,6 +113,8 @@ public class HomeResponseDto {
                                   ? vo.getFacilityItemIds()
                                   : Collections.emptyList())
                   .createdAt(createdAtStr)
+                  .maintenanceFeeItems(maintenanceItems)
+                  .facilities(facilities) // 시설 정보 필드 설정
                   .build();
       }
 }

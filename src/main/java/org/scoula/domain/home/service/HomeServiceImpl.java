@@ -8,7 +8,9 @@ import java.util.stream.Collectors;
 import org.scoula.domain.home.dto.request.HomeCreateRequestDto;
 import org.scoula.domain.home.dto.request.HomeReportRequestDto;
 import org.scoula.domain.home.dto.request.HomeUpdateRequestDto;
+import org.scoula.domain.home.dto.response.FacilityResponseDto;
 import org.scoula.domain.home.dto.response.HomeResponseDto;
+import org.scoula.domain.home.dto.response.MaintenanceFeeItemResponseDto;
 import org.scoula.domain.home.exception.HomeRegisterException;
 import org.scoula.domain.home.mapper.HomeMapper;
 import org.scoula.domain.home.vo.HomeRegisterVO;
@@ -38,7 +40,12 @@ public class HomeServiceImpl implements HomeService {
           long totalCount = homeMapper.countHomes(pageRequest);
 
           List<HomeResponseDto> content =
-                  homes.stream().map(HomeResponseDto::from).collect(Collectors.toList());
+                  homes.stream()
+                          .map(
+                                  home ->
+                                          HomeResponseDto.from(
+                                                  home, null, null)) // 두 번째, 세 번째 인자에 null 전달
+                          .collect(Collectors.toList());
 
           return PageResponse.<HomeResponseDto>builder()
                   .content(content)
@@ -55,11 +62,27 @@ public class HomeServiceImpl implements HomeService {
                           .findHomeById(homeId)
                           .orElseThrow(() -> new HomeRegisterException("매물을 찾을 수 없습니다."));
 
-          // 이미지 URL 리스트 별도 조회 후 세팅
-          List<String> imageUrls = homeMapper.findHomeImagesByHomeId(homeId);
-          home.setImageUrls(imageUrls);
+          List<MaintenanceFeeItemResponseDto> maintenanceItems =
+                  homeMapper.findHomeMaintenanceItemsByHomeId(homeId);
 
-          return HomeResponseDto.from(home);
+          List<FacilityResponseDto> facilities = homeMapper.findHomeFacilities(homeId); // 시설 정보 조회
+
+          return HomeResponseDto.from(home, maintenanceItems, facilities); // 세 인자 모두 전달
+      }
+
+      @Override
+      @Transactional
+      public void deleteHome(Long userId, Long homeId) {
+          HomeRegisterVO existingHome =
+                  homeMapper
+                          .findHomeById(homeId)
+                          .orElseThrow(() -> new HomeRegisterException("매물을 찾을 수 없습니다."));
+
+          if (!existingHome.getUserId().equals(userId)) {
+              throw new HomeRegisterException("매물 삭제 권한이 없습니다.");
+          }
+
+          homeMapper.deleteHome(homeId);
       }
 
       @Override
@@ -95,6 +118,17 @@ public class HomeServiceImpl implements HomeService {
               homeMapper.insertHomeImages(Map.of("homeId", homeId, "imageUrls", imageUrls));
           }
 
+          if (request.getMaintenanceFeeItems() != null
+                  && !request.getMaintenanceFeeItems().isEmpty()) {
+              homeMapper.insertHomeMaintenanceFees(
+                      homeId,
+                      request.getMaintenanceFeeItems().stream()
+                              .collect(
+                                      Collectors.toMap(
+                                              HomeRegisterVO.MaintenanceFeeItem::getMaintenanceId,
+                                              HomeRegisterVO.MaintenanceFeeItem::getFee)));
+          }
+
           return homeId;
       }
 
@@ -116,21 +150,6 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       @Transactional
-      public void deleteHome(Long userId, Long homeId) {
-          HomeRegisterVO existingHome =
-                  homeMapper
-                          .findHomeById(homeId)
-                          .orElseThrow(() -> new HomeRegisterException("매물을 찾을 수 없습니다."));
-
-          if (!existingHome.getUserId().equals(userId)) {
-              throw new HomeRegisterException("매물 삭제 권한이 없습니다.");
-          }
-
-          homeMapper.deleteHome(homeId);
-      }
-
-      @Override
-      @Transactional
       public void addLike(Long userId, Long homeId) {
           homeMapper.insertHomeLike(userId, homeId);
       }
@@ -144,7 +163,7 @@ public class HomeServiceImpl implements HomeService {
       @Override
       public List<HomeResponseDto> getLikedHomes(Long userId) {
           return homeMapper.findLikedHomes(userId).stream()
-                  .map(HomeResponseDto::from)
+                  .map(home -> HomeResponseDto.from(home, null, null))
                   .collect(Collectors.toList());
       }
 
@@ -173,22 +192,5 @@ public class HomeServiceImpl implements HomeService {
                           .build();
 
           homeMapper.insertHomeReport(vo);
-      }
-
-      @Override
-      public PageResponse<HomeResponseDto> getMyHomeList(Long userId, PageRequest pageRequest) {
-          List<HomeRegisterVO> homes =
-                  homeMapper.findMyHomes(userId, pageRequest.getOffset(), pageRequest.getSize());
-          long totalCount = homeMapper.countMyHomes(userId);
-
-          List<HomeResponseDto> content =
-                  homes.stream().map(HomeResponseDto::from).collect(Collectors.toList());
-
-          return PageResponse.<HomeResponseDto>builder()
-                  .content(content)
-                  .page(pageRequest.getPage())
-                  .size(pageRequest.getSize())
-                  .totalElements(totalCount)
-                  .build();
       }
 }
