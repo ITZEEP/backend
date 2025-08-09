@@ -13,14 +13,20 @@ import org.scoula.global.common.dto.PageRequest;
 @Mapper
 public interface HomeMapper {
 
+      /** 사용자 이름 조회 (identity_verification 테이블에서) */
+      String findUserNameById(@Param("userId") Long userId);
+
       /** 매물 전체 조회 (페이징 포함) */
-      List<HomeRegisterVO> findHomes(@Param("pageRequest") PageRequest pageRequest);
+      List<HomeRegisterVO> findHomes(@Param("offset") int offset, @Param("size") int size);
 
       /** 매물 총 개수 조회 */
       long countHomes(@Param("pageRequest") PageRequest pageRequest);
 
       /** 매물 단건 조회 */
       Optional<HomeRegisterVO> findHomeById(@Param("homeId") Long homeId);
+
+      /** 특정 매물 이미지 URL 리스트 조회 추가 */
+      List<String> findHomeImagesByHomeId(@Param("homeId") Long homeId);
 
       /** 매물 등록 */
       void insertHome(
@@ -52,19 +58,19 @@ public interface HomeMapper {
 
       long countMyHomes(@Param("userId") Long userId);
 
-      // 상세 정보 등록 (home_detail)
+      /** 상세 정보 등록 */
       void insertHomeDetail(HomeRegisterVO vo);
 
-      // 옵션 정보 등록 (home_facility)
+      /** 옵션 정보 등록 */
       void insertHomeFacilities(Map<String, Object> param);
 
-      // 이미지 등록 (home_image)
+      /** 이미지 등록 */
       void insertHomeImages(Map<String, Object> param);
 
-      // 관리비 항목 등록 (home_maintenance_fee)
+      /** 관리비 항목 등록 */
       void insertHomeMaintenanceFees(
               @Param("homeId") Long homeId, @Param("fees") Map<Long, Integer> fees);
 
-      // 신고 정보 등록 (home_report)
+      /** 신고 정보 등록 */
       void insertHomeReport(@Param("report") HomeReportVO report);
 }

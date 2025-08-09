@@ -2,7 +2,6 @@ package org.scoula.global.auth.config;
 
 import java.util.List;
 
-import org.mybatis.spring.annotation.MapperScan;
 import org.scoula.global.auth.filter.AuthenticationErrorFilter;
 import org.scoula.global.auth.filter.JwtAuthenticationFilter;
 import org.scoula.global.auth.filter.JwtUsernamePasswordAuthenticationFilter;
@@ -37,7 +36,6 @@ import lombok.extern.log4j.Log4j2;
 @Configuration
 @EnableWebSecurity
 @Log4j2
-@MapperScan(basePackages = {"org.scoula.domain.user.mapper"})
 @ComponentScan(basePackages = {"org.scoula.global.auth"})
 @RequiredArgsConstructor
 public class SecurityConfig {

@@ -26,6 +26,10 @@ class OwnerPreContractCheckVO {
       private ContractDuration contractDuration;
       private YesNoEnum renewalIntent;
       private ResponsibilityParty responseRepairingFixtures;
+      private Boolean hasTaxArrears;
+      private int taxArrearsAmount;
+      private Boolean hasPriorFixedDate;
+
       private List<RestoreCategoryVO> restoreCategories;
       private Boolean hasConditionLog;
       private Boolean hasPenalty;

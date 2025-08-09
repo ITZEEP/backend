@@ -22,6 +22,9 @@
       <result property="contractDuration" column="contract_duration"/>
       <result property="renewalIntent" column="renewal_intent"/>
       <result property="responseRepairingFixtures" column="response_repairing_fixtures"/>
+      <result property="hasTaxArrears" column="has_tax_arrears" />
+      <result property="taxArrearsAmount" column="tax_arrears_amount" />
+      <result property="hasPriorFixedDate" column="has_prior_fixed_date" />
     </association>
 
     <!-- 계약 조건 Step 2 -->
@@ -55,6 +58,69 @@
     <result property="restoreCategoryName" column="restore_category_name"/>
   </resultMap>
 
+  <!-- 본인 인증 성공 후 내용 주입 -->
+  <insert id="insertIdentityVerification" parameterType="map">
+    INSERT INTO identity_verification (
+      user_id,
+      contract_id,
+      name,
+      ssn_front,
+      ssn_back,
+      identity_verified_at,
+      contract_step,
+      addr1,
+      addr2,
+      phone_number
+    )
+    VALUES (
+             #{vo.userId},
+             #{contractChatId},
+             #{vo.name},
+             #{vo.ssnFront},
+             #{vo.ssnBack},
+            NOW(),
+            'START',
+             #{vo.addr1},
+             #{vo.addr2},
+             #{vo.phoneNumber}
+           )
+  </insert>
+  
+  <!-- 본인 인증 정보 업데이트 -->
+  <update id="updateIdentityVerification" parameterType="map">
+    UPDATE identity_verification
+    SET 
+      name = #{vo.name},
+      ssn_front = #{vo.ssnFront},
+      ssn_back = #{vo.ssnBack},
+      identity_verified_at = NOW(),
+      addr1 = #{vo.addr1},
+      addr2 = #{vo.addr2},
+      phone_number = #{vo.phoneNumber}
+    WHERE contract_id = #{contractChatId}
+      AND user_id = #{vo.userId}
+      AND contract_step = 'START'
+  </update>
+  
+  <!-- 본인 인증 정보 조회 -->
+  <select id="selectIdentityVerificationInfo" resultType="org.scoula.domain.precontract.vo.IdentityVerificationInfoVO">
+    SELECT 
+      identity_id,
+      user_id,
+      contract_id,
+      name,
+      ssn_front,
+      ssn_back,
+      addr1,
+      addr2,
+      phone_number,
+      identity_verified_at,
+      contract_step
+    FROM identity_verification
+    WHERE contract_id = #{contractChatId}
+      AND user_id = #{userId}
+  </select>
+  
   <!-- userId 확인 -->
   <select id="selectOwnerIdFromContractChat" resultType="Long">
     SELECT owner_id
@@ -122,6 +188,9 @@
       oc.contract_duration,
       oc.renewal_intent,
       oc.response_repairing_fixtures,
+      oc.has_tax_arrears,
+      oc.tax_arrears_amount,
+      oc.has_prior_fixed_date,
       oc.checked_at
     FROM owner_precontract_check oc
            JOIN identity_verification iv ON oc.identity_id = iv.identity_id
@@ -137,6 +206,9 @@
       contract_duration = #{dto.contractDuration},
       renewal_intent = #{dto.renewalIntent},
       response_repairing_fixtures = #{dto.responseRepairingFixtures},
+      has_tax_arrears = #{dto.hasTaxArrears},
+      tax_arrears_amount = #{dto.taxArrearsAmount},
+      has_prior_fixed_date = #{dto.hasPriorFixedDate},
       checked_at = now()
     WHERE contract_chat_id = #{contractChatId}
       AND EXISTS (
@@ -310,6 +382,9 @@
       opc.contract_duration,
       opc.renewal_intent,
       opc.response_repairing_fixtures,
+      opc.has_tax_arrears,
+      opc.tax_arrears_amount,
+      opc.has_prior_fixed_date,
 
       -- 계약 조건 Step 2
       opc.has_condition_log,
@@ -346,13 +421,16 @@
       iv.user_id AS userId,
       opc.rent_type AS rentType,
 
-      -- 계약 step1
-      opc.is_mortgaged AS isMortgaged,
+      -- 계약 조건 Step 1
+      opc.is_mortgaged AS mortgaged,
       opc.contract_duration AS contractDuration,
       opc.renewal_intent AS renewalIntent,
       opc.response_repairing_fixtures AS responseRepairingFixtures,
+      opc.has_tax_arrears AS hasTaxArrears,
+      opc.tax_arrears_amount AS taxArrearsAmount,
+      opc.has_prior_fixed_date AS hasPriorFixedDate,
 
-      -- 계약 step2
+      -- 계약 조건 Step 2
       opc.has_condition_log AS hasConditionLog,
       opc.has_penalty AS hasPenalty,
       opc.has_priority_for_extension AS hasPriorityForExtension,
@@ -360,7 +438,13 @@
       opc.require_rent_guarantee_insurance AS requireRentGuaranteeInsurance,
       oj.allow_jeonse_right_registration AS allowJeonseRightRegistration,
 
-      -- 거주 step1 (월세)
+      -- 거주 조건 Step 1 (공통)
+      opc.insurance_burden AS insuranceBurden,
+      opc.has_notice AS hasNotice,
+      opc.owner_bank_name AS ownerBankName,
+      opc.owner_account_number AS ownerAccountNumber,
+
+      -- 거주 조건 Step 1 (월세)
       ow.payment_due_day AS paymentDueDate,
       ow.late_fee_interest_rate AS lateFeeInterestRate
 

@@ -47,6 +47,7 @@ public class OwnerPreContractMongoDTO {
       private String ownerAccountNumber;
       private Integer paymentDueDate;
       private Double lateFeeInterestRate;
+      private String checkedAt;
 
       // nested 필드
       private OwnerContractStep1DTO contractStep1;
