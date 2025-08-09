@@ -4,6 +4,7 @@ import javax.validation.Valid;
 
 import org.scoula.domain.home.dto.HomeIdentityVerificationDTO;
 import org.scoula.global.common.dto.ApiResponse;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.annotations.Api;
@@ -18,7 +19,7 @@ public interface HomeIdentityVerificationController {
       @PostMapping("/{homeId}/identity-verification")
       ApiResponse<Void> verifyIdentity(
               @ApiParam(value = "매물 ID", required = true) @PathVariable Long homeId,
-              @ApiParam(value = "사용자 ID", required = true) @RequestHeader("User-Id") Long userId,
+              Authentication authentication,
               @ApiParam(value = "본인 인증 정보", required = true) @Valid @RequestBody
                       HomeIdentityVerificationDTO dto);
 
