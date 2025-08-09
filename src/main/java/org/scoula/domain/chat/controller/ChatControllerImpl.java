@@ -111,7 +111,8 @@ public class ChatControllerImpl implements ChatController {
           }
 
           if (chatService.existsChatRoom(ownerId, buyerId, propertyId)) {
-              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ALREADY_EXISTS);
+              Long existingRoomId = chatService.findExistingChatRoom(ownerId, buyerId, propertyId);
+              return ResponseEntity.ok(ApiResponse.success(existingRoomId));
           }
 
           Long roomId = chatService.createChatRoom(ownerId, buyerId, propertyId);
