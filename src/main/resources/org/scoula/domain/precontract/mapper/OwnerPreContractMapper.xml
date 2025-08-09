@@ -58,6 +58,69 @@
     <result property="restoreCategoryName" column="restore_category_name"/>
   </resultMap>
 
+  <!-- 본인 인증 성공 후 내용 주입 -->
+  <insert id="insertIdentityVerification" parameterType="map">
+    INSERT INTO identity_verification (
+      user_id,
+      contract_id,
+      name,
+      ssn_front,
+      ssn_back,
+      identity_verified_at,
+      contract_step,
+      addr1,
+      addr2,
+      phone_number
+    )
+    VALUES (
+             #{vo.userId},
+             #{contractChatId},
+             #{vo.name},
+             #{vo.ssnFront},
+             #{vo.ssnBack},
+            NOW(),
+            'START',
+             #{vo.addr1},
+             #{vo.addr2},
+             #{vo.phoneNumber}
+           )
+  </insert>
+  
+  <!-- 본인 인증 정보 업데이트 -->
+  <update id="updateIdentityVerification" parameterType="map">
+    UPDATE identity_verification
+    SET 
+      name = #{vo.name},
+      ssn_front = #{vo.ssnFront},
+      ssn_back = #{vo.ssnBack},
+      identity_verified_at = NOW(),
+      addr1 = #{vo.addr1},
+      addr2 = #{vo.addr2},
+      phone_number = #{vo.phoneNumber}
+    WHERE contract_id = #{contractChatId}
+      AND user_id = #{vo.userId}
+      AND contract_step = 'START'
+  </update>
+  
+  <!-- 본인 인증 정보 조회 -->
+  <select id="selectIdentityVerificationInfo" resultType="org.scoula.domain.precontract.vo.IdentityVerificationInfoVO">
+    SELECT 
+      identity_id,
+      user_id,
+      contract_id,
+      name,
+      ssn_front,
+      ssn_back,
+      addr1,
+      addr2,
+      phone_number,
+      identity_verified_at,
+      contract_step
+    FROM identity_verification
+    WHERE contract_id = #{contractChatId}
+      AND user_id = #{userId}
+  </select>
+  
   <!-- userId 확인 -->
   <select id="selectOwnerIdFromContractChat" resultType="Long">
     SELECT owner_id
