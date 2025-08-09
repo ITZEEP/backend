@@ -133,22 +133,23 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           contractChatMapper.updateLastMessage(contractChatId, content);
           messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
       }
-    public void AiMessageNext(Long contractChatId, String content) {
-        final Long ai = 9997L;
 
-        ContractChatDocument aiMessage =
-                ContractChatDocument.builder()
-                        .contractChatId(contractChatId.toString())
-                        .senderId(ai)
-                        .receiverId(null)
-                        .content(content)
-                        .sendTime(LocalDateTime.now().toString())
-                        .build();
+      public void AiMessageNext(Long contractChatId, String content) {
+          final Long ai = 9997L;
 
-        contractChatMessageRepository.saveMessage(aiMessage);
-        contractChatMapper.updateLastMessage(contractChatId, content);
-        messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
-    }
+          ContractChatDocument aiMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(ai)
+                          .receiverId(null)
+                          .content(content)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(aiMessage);
+          contractChatMapper.updateLastMessage(contractChatId, content);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
+      }
 
       public void AiMessageBtn(Long contractChatId, String content) {
           final Long ai = 9998L;
@@ -280,14 +281,11 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String result = sb.toString();
 
+          SpecialContractFixDocument improveClauseRequest =
+                  updateRecentData(contractChatId, order, result);
+          ClauseImproveResponseDto improveClauseResponse = getAiClauseImprove(improveClauseRequest);
 
-
-              SpecialContractFixDocument improveClauseRequest =
-                      updateRecentData(contractChatId, order, result);
-              ClauseImproveResponseDto improveClauseResponse =
-                      getAiClauseImprove(improveClauseRequest);
-
-              updateSpecialClause(contractChatId, improveClauseResponse);
+          updateSpecialClause(contractChatId, improveClauseResponse);
 
           checkAndIncrementRoundIfComplete(contractChatId);
           return true;

@@ -48,7 +48,6 @@ public class HomeRegisterVO {
       // 상세 정보
       private Long homeDetailId;
       private LocalDateTime buildDate;
-      private Integer floor;
       private Integer buildingTotalFloors;
       private HomeDirection homeDirection;
       private Integer bathroomCount;
@@ -58,7 +57,7 @@ public class HomeRegisterVO {
 
       // 이미지
       private List<String> imageUrls;
-      private Long imageId; // << 이 필드를 추가했습니다.
+      private Long imageId;
       private String imageUrl;
 
       // 관리비 항목
@@ -85,7 +84,6 @@ public class HomeRegisterVO {
 
           return HomeRegisterVO.builder()
                   .userId(userId)
-                  .userName(dto.getUserName())
                   .addr1(dto.getAddr1())
                   .addr2(dto.getAddr2())
                   .residenceType(dto.getResidenceType())
@@ -94,19 +92,17 @@ public class HomeRegisterVO {
                   .monthlyRent(dto.getMonthlyRent())
                   .maintenanceFee(dto.getMaintenanceFee())
                   .supplyArea(dto.getSupplyArea() != null ? dto.getSupplyArea() : 0f)
-                  .exclusiveArea(dto.getExclusiveArea())
+                  .exclusiveArea(dto.getExclusiveArea() != null ? dto.getSupplyArea() : 0f)
                   .homeFloor(dto.getHomeFloor())
                   .roomCnt(dto.getRoomCnt())
                   .bathroomCount(dto.getBathroomCount())
                   .facilityItemIds(dto.getFacilityItemIds())
                   .buildDate(parsedBuildDate)
-                  .options(dto.getOptions())
                   .isParkingAvailable(dto.getIsParkingAvailable())
                   .buildingTotalFloors(dto.getBuildingTotalFloors())
                   .isPet(dto.getIsPet())
                   .moveInDate(dto.getMoveInDate())
                   .maintenanceItems(dto.getMaintenanceFeeItems())
-                  .imageUrls(dto.getImageUrls())
                   .build();
       }
 
@@ -118,7 +114,6 @@ public class HomeRegisterVO {
           return HomeRegisterVO.builder()
                   .homeId(dto.getHomeId())
                   .userId(userId)
-                  .userName(dto.getUserName())
                   .addr1(dto.getAddr1())
                   .addr2(dto.getAddr2())
                   .residenceType(dto.getResidenceType())

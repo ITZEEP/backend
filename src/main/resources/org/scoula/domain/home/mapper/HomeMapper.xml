@@ -27,10 +27,9 @@
                  )
     </insert>
 
-    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO" useGeneratedKeys="true" keyProperty="homeDetailId">
+    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
         INSERT INTO home_detail (
             home_id,
-            home_detail_id,
             build_date,
             home_floor,
             building_total_floors,
@@ -40,7 +39,6 @@
             is_parking_available
         ) VALUES (
                      #{homeId},
-                     #{homeDetailId},
                      #{buildDate},
                      #{homeFloor},
                      #{buildingTotalFloors},
@@ -193,7 +191,8 @@
                  LEFT JOIN home_detail d ON h.home_id = d.home_id
                  LEFT JOIN home_image hi ON h.home_id = hi.home_id
                  LEFT JOIN home_maintenance_fee hf ON h.home_id = hf.home_id
-                 LEFT JOIN home_facility hfl ON d.home_detail_id = hfl.home_detail_id  LEFT JOIN facility_item fi ON hfl.item_id = fi.item_id
+                 LEFT JOIN home_facility hfl ON d.home_detail_id = hfl.home_detail_id
+                 LEFT JOIN facility_item fi ON hfl.item_id = fi.item_id
         WHERE h.home_id = #{homeId}
         ORDER BY hi.image_id, hf.maintenance_id, fi.item_id
     </select>
@@ -285,7 +284,7 @@
                  JOIN home h ON hl.home_id = h.home_id
                  LEFT JOIN home_detail d ON h.home_id = d.home_id
                  LEFT JOIN (
-            SELECT home_id, MIN(image_id) AS image_id, MIN(image_url) AS image_url
+            SELECT home_id, MIN(image_id) AS image_id
             FROM home_image
             GROUP BY home_id
         ) hi ON h.home_id = hi.home_id

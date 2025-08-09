@@ -41,10 +41,7 @@ public class HomeServiceImpl implements HomeService {
 
           List<HomeResponseDto> content =
                   homes.stream()
-                          .map(
-                                  home ->
-                                          HomeResponseDto.from(
-                                                  home, null, null)) // 두 번째, 세 번째 인자에 null 전달
+                          .map(home -> HomeResponseDto.from(home, null, null))
                           .collect(Collectors.toList());
 
           return PageResponse.<HomeResponseDto>builder()
@@ -65,9 +62,9 @@ public class HomeServiceImpl implements HomeService {
           List<MaintenanceFeeItemResponseDto> maintenanceItems =
                   homeMapper.findHomeMaintenanceItemsByHomeId(homeId);
 
-          List<FacilityResponseDto> facilities = homeMapper.findHomeFacilities(homeId); // 시설 정보 조회
+          List<FacilityResponseDto> facilities = homeMapper.findHomeFacilities(homeId);
 
-          return HomeResponseDto.from(home, maintenanceItems, facilities); // 세 인자 모두 전달
+          return HomeResponseDto.from(home, maintenanceItems, facilities);
       }
 
       @Override
@@ -93,18 +90,20 @@ public class HomeServiceImpl implements HomeService {
           HomeRegisterVO vo = HomeRegisterVO.from(userId, request);
           vo.setUserName(userName);
 
+          // 1. insertHome 호출 후, 생성된 homeId를 받아서 VO에 설정
           homeMapper.insertHome(userId, userName, vo);
           Long homeId = vo.getHomeId();
 
-          vo.setHomeId(homeId);
+          // 2. insertHomeDetail 호출 (home_detail의 PK를 homeId로 사용)
+          // homeDetailId는 homeId와 동일한 값으로 취급
+          vo.setHomeId(homeId); // vo 객체에 homeId를 명시적으로 설정
           homeMapper.insertHomeDetail(vo);
-          Long homeDetailId = vo.getHomeDetailId();
 
           if (request.getFacilityItemIds() != null && !request.getFacilityItemIds().isEmpty()) {
               homeMapper.insertHomeFacilities(
                       Map.of(
                               "homeDetailId",
-                              homeDetailId,
+                              homeId, // home_detail_id 대신 homeId 사용
                               "facilityItemIds",
                               request.getFacilityItemIds()));
           }

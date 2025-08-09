@@ -20,45 +20,42 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class HomeCreateRequestDto {
 
-      private String addr1; // 시/도 + 구/군
-      private String addr2; // 상세 주소
-      private String userName; // 유저 실명
+      private String addr1;
+      private String addr2;
+      private String userName;
 
-      private ResidenceType residenceType; // 예: 오피스텔, 투룸
-      private LeaseType leaseType; // 전세, 월세
+      private ResidenceType residenceType;
+      private LeaseType leaseType;
 
-      private Integer depositPrice; // 보증금
-      private Integer monthlyRent; // 월세
-      private Integer maintenanceFee; // 관리비
-      private String itemName;
+      private Integer depositPrice;
+      private Integer monthlyRent;
+      private Integer maintenanceFee;
 
-      private Float supplyArea; // 공급면적
-      private Float exclusiveArea; // 전용면적
+      private Float supplyArea;
+      private Float exclusiveArea;
 
-      private String homeFloor; // 층 정보 (예: "5층 / 15층" 등)
+      private String homeFloor; // String -> Integer로 변경
+      private Integer buildingTotalFloors;
+
+      private Integer roomCnt;
+      private Integer bathroomCount;
+      private String homeDirection;
+
+      private Boolean isPet;
+      private Boolean isParkingAvailable;
 
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
       private LocalDate buildDate;
 
-      private Integer buildingTotalFloors;
-      private Boolean isPet;
-      private Boolean isParkingAvailable;
-
-      private Integer roomCnt; // 방 개수
-      private Integer bathroomCount; // 욕실 개수
-      private String homeDirection; // 남향, 북향 등
-
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
       private LocalDate moveInDate;
 
-      private List<String> options; // 옵션 (가전 등)
-      private List<Long> facilityItemIds; // 시설 ID 리스트
+      // 이미지 파일 목록
+      private List<MultipartFile> imageFiles;
 
-      // ✅ 관리비 항목 리스트
+      // 관리비 항목 목록
       private List<HomeRegisterVO.MaintenanceFeeItem> maintenanceFeeItems;
 
-      // ✅ 이미지 관련: 업로드용 파일과 저장용 URL 분리
-      private List<MultipartFile> images;
-      private List<MultipartFile> imageFiles;
-      private List<String> imageUrls; // DB 저장용
+      // 시설 항목 ID 목록
+      private List<Long> facilityItemIds;
 }

@@ -35,11 +35,14 @@ public interface HomeMapper {
       /** 특정 매물 이미지 URL 리스트 조회 추가 */
       List<String> findHomeImagesByHomeId(@Param("homeId") Long homeId);
 
-      /** 매물 등록 */
-      void insertHome(
+      /** 매물 등록 (생성된 homeId 반환) */
+      Long insertHome(
               @Param("userId") Long userId,
               @Param("userName") String userName,
               @Param("home") HomeRegisterVO home);
+
+      /** 상세 정보 등록 (생성된 homeDetailId 반환) */
+      Long insertHomeDetail(HomeRegisterVO vo);
 
       /** 매물 수정 */
       void updateHome(@Param("home") HomeRegisterVO home);
@@ -58,16 +61,6 @@ public interface HomeMapper {
 
       /** 조회수 증가 */
       void incrementViewCount(@Param("homeId") Long homeId);
-
-      /** 내가 등록한 매물 리스트 & 개수 */
-      //      List<HomeRegisterVO> findMyHomes(
-      //              @Param("userId") Long userId, @Param("offset") int offset, @Param("size") int
-      // size);
-      //
-      //      long countMyHomes(@Param("userId") Long userId);
-
-      /** 상세 정보 등록 */
-      void insertHomeDetail(HomeRegisterVO vo);
 
       /** 옵션 정보 등록 */
       void insertHomeFacilities(Map<String, Object> param);
