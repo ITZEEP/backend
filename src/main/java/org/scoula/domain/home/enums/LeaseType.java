@@ -23,10 +23,11 @@ public enum LeaseType {
           if (value == null || value.trim().isEmpty()) {
               throw new IllegalArgumentException("임대 유형 값이 null이거나 비어있습니다.");
           }
+          String trimmed = value.trim();
 
-          String trimmedValue = value.trim();
+          // 이름 기반 매칭 (JEONSE, WOLSE)
           for (LeaseType type : values()) {
-              if (type.description.equals(trimmedValue)) {
+              if (type.name().equalsIgnoreCase(trimmed) || type.description.equals(trimmed)) {
                   return type;
               }
           }

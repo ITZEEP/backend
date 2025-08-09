@@ -5,18 +5,19 @@ import java.util.List;
 
 import org.scoula.domain.home.enums.LeaseType;
 import org.scoula.domain.home.enums.ResidenceType;
+import org.scoula.domain.home.vo.HomeRegisterVO;
 
-import lombok.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-@Setter
 public class HomeUpdateRequestDto {
+
       private Long homeId;
       private String userName;
 
@@ -31,8 +32,9 @@ public class HomeUpdateRequestDto {
       private Integer maintenanceFee;
 
       private Float supplyArea;
+      private Float exclusiveArea;
 
-      private String homefloor;
+      private String homeFloor;
       private LocalDate buildDate;
       private Integer buildingTotalFloors;
       private Boolean isPet;
@@ -44,7 +46,9 @@ public class HomeUpdateRequestDto {
       private LocalDate moveInDate;
 
       private List<String> imageUrls;
-
       private List<String> options;
       private List<Long> facilityItemIds;
+
+      // ✅ 관리비 항목 추가
+      private List<HomeRegisterVO.MaintenanceFeeItem> maintenanceFeeItems;
 }

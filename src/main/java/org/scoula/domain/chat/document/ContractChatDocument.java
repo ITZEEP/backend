@@ -1,4 +1,4 @@
-package org.scoula.domain.chat.dto;
+package org.scoula.domain.chat.document;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Field;

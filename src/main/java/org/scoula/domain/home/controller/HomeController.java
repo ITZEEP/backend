@@ -13,6 +13,7 @@ import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
 import org.scoula.global.common.dto.PageRequest;
 import org.scoula.global.common.dto.PageResponse;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,10 +32,11 @@ public class HomeController {
       private final HomeService homeService;
 
       @ApiOperation(value = "매물 등록", notes = "새로운 매물을 등록합니다.")
-      @PostMapping
+      @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
       public ResponseEntity<ApiResponse<Long>> createHome(
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @Valid @RequestBody HomeCreateRequestDto request) {
+              @ModelAttribute HomeCreateRequestDto request) {
+
           Long homeId = homeService.createHome(userDetails.getUserId(), request);
           return ResponseEntity.ok(ApiResponse.success(homeId));
       }
@@ -44,7 +46,7 @@ public class HomeController {
       public ResponseEntity<ApiResponse<Void>> updateHome(
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @PathVariable Long homeId,
-              @Valid HomeUpdateRequestDto request) {
+              @Valid @ModelAttribute HomeUpdateRequestDto request) {
           homeService.updateHome(userDetails.getUserId(), homeId, request);
           return ResponseEntity.ok(ApiResponse.success());
       }
@@ -62,12 +64,14 @@ public class HomeController {
       public ResponseEntity<PageResponse<HomeResponseDto>> getMyHomes(
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue = "1")
-                      int page,
+                      String pageStr,
               @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue = "10")
-                      int size) {
+                      String sizeStr) {
+
+          int page = parseOrDefault(pageStr, 1);
+          int size = parseOrDefault(sizeStr, 10);
 
           PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
-
           PageResponse<HomeResponseDto> response =
                   homeService.getMyHomeList(userDetails.getUserId(), pageRequest);
           return ResponseEntity.ok(response);
@@ -85,12 +89,14 @@ public class HomeController {
       @GetMapping
       public ResponseEntity<PageResponse<HomeResponseDto>> getAllHomes(
               @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue = "1")
-                      int page,
+                      String pageStr,
               @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue = "10")
-                      int size) {
+                      String sizeStr) {
+
+          int page = parseOrDefault(pageStr, 1);
+          int size = parseOrDefault(sizeStr, 10);
 
           PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
-
           PageResponse<HomeResponseDto> response = homeService.getHomeList(pageRequest);
           return ResponseEntity.ok(response);
       }
@@ -142,5 +148,16 @@ public class HomeController {
                           .build();
           homeService.reportHome(reportRequest);
           return ResponseEntity.ok(ApiResponse.success());
+      }
+
+      // 유틸 메서드: 숫자 변환 실패 시 기본값 반환
+      private int parseOrDefault(String str, int defaultValue) {
+          try {
+              int val = Integer.parseInt(str);
+              if (val < 1) return defaultValue; // 페이지 번호, 크기 음수 방지용
+              return val;
+          } catch (NumberFormatException e) {
+              return defaultValue;
+          }
       }
 }

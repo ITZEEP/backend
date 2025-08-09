@@ -357,9 +357,24 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       @Override
       public OwnerPreContractDTO selectOwnerPreContract(Long contractChatId, Long userId) {
           validateUser(contractChatId, userId, true);
-          return ownerMapper
-                  .selectOwnerPreContractSummary(contractChatId, userId)
-                  .orElseThrow(() -> new BusinessException(OwnerPreContractErrorCode.OWNER_SELECT));
+
+          OwnerPreContractDTO dto =
+                  ownerMapper
+                          .selectOwnerPreContractSummary(contractChatId, userId)
+                          .orElseThrow(
+                                  () ->
+                                          new BusinessException(
+                                                  OwnerPreContractErrorCode.OWNER_SELECT));
+
+          List<RestoreCategoryVO> restoreCategoryVOs =
+                  ownerMapper.selectRestoreScope(contractChatId, userId);
+          List<String> restoreCategories =
+                  restoreCategoryVOs.stream()
+                          .map(RestoreCategoryVO::getRestoreCategoryName)
+                          .collect(Collectors.toList());
+          dto.getContractStep2().setRestoreCategories(restoreCategories);
+
+          return dto;
       }
 
       private void validateUser(Long contractChatId, Long userId, boolean requirePrecheck) {
@@ -384,6 +399,14 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
 
           OwnerPreContractMongoDTO dto = fetchOwnerData(contractChatId, userId);
           populateDTOSteps(dto);
+
+          List<RestoreCategoryVO> restoreCategoryVOs =
+                  ownerMapper.selectRestoreScope(contractChatId, userId);
+          List<String> restoreCategories =
+                  restoreCategoryVOs.stream()
+                          .map(RestoreCategoryVO::getRestoreCategoryName)
+                          .collect(Collectors.toList());
+          dto.getContractStep2().setRestoreCategories(restoreCategories);
 
           saveOwnerDocument(dto);
           processAiClauseRecommendation(contractChatId, userId, dto);
@@ -422,7 +445,16 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                           .hasPriorityForExtension(dto.getHasPriorityForExtension())
                           .hasAutoPriceAdjustment(dto.getHasAutoPriceAdjustment())
                           .allowJeonseRightRegistration(dto.getAllowJeonseRightRegistration())
+                          .restoreCategories(dto.getRestoreCategories())
                           .build());
+
+          List<RestoreCategoryVO> restoreCategoryVOs =
+                  ownerMapper.selectRestoreScope(dto.getContractChatId(), dto.getUserId());
+          List<String> restoreCategories =
+                  restoreCategoryVOs.stream()
+                          .map(RestoreCategoryVO::getRestoreCategoryName)
+                          .collect(Collectors.toList());
+          dto.setRestoreCategories(restoreCategories);
 
           dto.setLivingStep1(
                   OwnerLivingStep1DTO.builder()
@@ -539,11 +571,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           ClauseRecommendRequestDto.OwnerData ownerRequestData = buildOwnerData(ownerData);
           ClauseRecommendRequestDto.TenantData tenantData = buildTenantData(ownerData);
 
-          return ClauseRecommendRequestDto.builder()
-                  .ocrData(ocrData)
-                  .ownerData(ownerRequestData)
-                  .tenantData(tenantData)
-                  .build();
+          return null;
       }
 
       private ClauseRecommendRequestDto.OcrData buildOcrData(
@@ -608,6 +636,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
                                           : null)
                           .restoreCategories(null)
                           .wolseInfo(null)
+                          .checkedAt(LocalDateTime.now().toString())
                           .build();
 
           if (ownerData.getRentType() == RentType.WOLSE

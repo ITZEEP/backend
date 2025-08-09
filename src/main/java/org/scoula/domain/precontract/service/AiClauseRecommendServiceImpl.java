@@ -51,11 +51,14 @@ public class AiClauseRecommendServiceImpl implements AiClauseRecommendService {
                                   : 0);
                   return response.getBody();
               } else {
+                  log.error(response.getBody());
+                  log.error(requestEntity.getBody());
                   log.error("AI 서버 응답 오류 - Status: {}", response.getStatusCode());
                   throw new BusinessException(OwnerPreContractErrorCode.AI_SERVER_ERROR);
               }
 
           } catch (Exception e) {
+              log.error(request.toString());
               log.error("AI 특약 추천 요청 실패", e);
               throw new BusinessException(OwnerPreContractErrorCode.AI_SERVER_ERROR, e);
           }

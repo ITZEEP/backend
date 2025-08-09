@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.chat.mapper.NotificationMapper">
+
+    <insert id="insertNotification" parameterType="org.scoula.domain.chat.vo.Notification"
+            useGeneratedKeys="true" keyProperty="notiId">
+        INSERT INTO notification (
+            user_id, title, content, type, related_id,
+            is_read, create_at, data
+        ) VALUES (
+                     #{userId}, #{title}, #{content}, #{type}, #{relatedId},
+                     #{isRead}, #{createAt}, #{data}
+                 )
+    </insert>
+
+    <select id="findByNotiId" resultType="org.scoula.domain.chat.vo.Notification">
+        SELECT
+            noti_id, user_id, title, content, type,
+            related_id, is_read, create_at, data
+        FROM notification
+        WHERE noti_id = #{notiId}
+    </select>
+
+    <select id="findByUserId" resultType="org.scoula.domain.chat.vo.Notification">
+        SELECT
+            noti_id, user_id, title, content, type,
+            related_id, is_read, create_at, data
+        FROM notification
+        WHERE user_id = #{userId}
+        ORDER BY create_at DESC
+            LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM notification
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="countUnreadNotifications" resultType="int">
+        SELECT COUNT(*)
+        FROM notification
+        WHERE user_id = #{userId} AND is_read = FALSE
+    </select>
+
+    <update id="markAsRead">
+        UPDATE notification
+        SET is_read = TRUE
+        WHERE noti_id = #{notiId}
+    </update>
+
+    <update id="markAsReadByIds">
+        UPDATE notification
+        SET is_read = TRUE
+        WHERE noti_id IN
+        <foreach collection="notiIds" item="notiId" open="(" separator="," close=")">
+            #{notiId}
+        </foreach>
+    </update>
+
+    <update id="markAllAsRead">
+        UPDATE notification
+        SET is_read = TRUE
+        WHERE user_id = #{userId} AND is_read = FALSE
+    </update>
+
+    <delete id="deleteNotification">
+        DELETE FROM notification
+        WHERE noti_id = #{notiId}
+    </delete>
+
+    <delete id="deleteNotifications">
+        DELETE FROM notification
+        WHERE noti_id IN
+        <foreach collection="notiIds" item="notiId" open="(" separator="," close=")">
+            #{notiId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteAllByUserId">
+        DELETE FROM notification
+        WHERE user_id = #{userId}
+    </delete>
+
+    <delete id="deleteOldNotifications">
+        DELETE FROM notification
+        WHERE create_at &lt; DATE_SUB(NOW(), INTERVAL #{days} DAY)
+    </delete>
+
+    <select id="findByUserIdAndType" resultType="org.scoula.domain.chat.vo.Notification">
+        SELECT
+            noti_id, user_id, title, content, type,
+            related_id, is_read, create_at, data
+        FROM notification
+        WHERE user_id = #{userId} AND type = #{type}
+        ORDER BY create_at DESC
+            LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserIdAndType" resultType="int">
+        SELECT COUNT(*)
+        FROM notification
+        WHERE user_id = #{userId} AND type = #{type}
+    </select>
+
+    <select id="findLatestByUserId" resultType="org.scoula.domain.chat.vo.Notification">
+        SELECT
+            noti_id, user_id, title, content, type,
+            related_id, is_read, create_at, data
+        FROM notification
+        WHERE user_id = #{userId}
+        ORDER BY create_at DESC
+            LIMIT #{limit}
+    </select>
+
+</mapper>
