@@ -17,7 +17,7 @@
 
     <!-- 본인 인증 정보 저장 -->
     <insert id="insertHomeIdentity" parameterType="org.scoula.domain.home.vo.HomeIdentityVO">
-        INSERT INTO home_identity (
+        INSERT INTO home_identity_verification (
             home_id,
             user_id,
             name,
@@ -41,14 +41,14 @@
             name,
             birth_date,
             identity_verified_at
-        FROM home_identity
+        FROM home_identity_verification
         WHERE home_id = #{homeId}
           AND user_id = #{userId}
     </select>
 
     <!-- 본인 인증 정보 업데이트 -->
     <update id="updateHomeIdentity" parameterType="org.scoula.domain.home.vo.HomeIdentityVO">
-        UPDATE home_identity
+        UPDATE home_identity_verification
         SET
             name = #{vo.name},
             birth_date = #{vo.birthDate},
@@ -66,7 +66,7 @@
             name,
             birth_date,
             identity_verified_at
-        FROM home_identity
+        FROM home_identity_verification
         WHERE home_id = #{homeId}
         ORDER BY identity_verified_at DESC
         LIMIT 1

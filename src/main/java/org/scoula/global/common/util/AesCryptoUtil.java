@@ -13,7 +13,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -27,8 +27,9 @@ import lombok.extern.log4j.Log4j2;
 public class AesCryptoUtil {
 
       private static final String ALGORITHM = "AES";
-      private static final String TRANSFORMATION = "AES/CBC/PKCS5Padding";
-      private static final int IV_SIZE = 16; // 128 bits
+      private static final String TRANSFORMATION = "AES/GCM/NoPadding";
+      private static final int IV_SIZE = 12; // 96 bits
+      private static final int GCM_TAG_LENGTH = 128; // bits
 
       @Value("${crypto.aes.secret-key:#{null}}")
       private String secretKeyString;
@@ -77,11 +78,11 @@ public class AesCryptoUtil {
               // 랜덤 IV 생성
               byte[] iv = new byte[IV_SIZE];
               secureRandom.nextBytes(iv);
-              IvParameterSpec ivParameterSpec = new IvParameterSpec(iv);
+              GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(128, iv); // 128-bit auth tag
 
               // Cipher 초기화
               Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-              cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivParameterSpec);
+              cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
 
               // 암호화 수행
               byte[] encryptedBytes = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
@@ -130,11 +131,11 @@ public class AesCryptoUtil {
               System.arraycopy(combined, 0, iv, 0, IV_SIZE);
               System.arraycopy(combined, IV_SIZE, encryptedBytes, 0, encryptedBytes.length);
 
-              IvParameterSpec ivParameterSpec = new IvParameterSpec(iv);
+              GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
 
               // Cipher 초기화
               Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-              cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec);
+              cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmParameterSpec);
 
               // 복호화 수행
               byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
