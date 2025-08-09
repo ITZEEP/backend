@@ -98,18 +98,35 @@
                           WHEN 'WOLSE' THEN '월세'
                           ELSE h.lease_type END,
                       ' - ',
-                      FORMAT(h.deposit_price, 0), '만원',
-                      CASE WHEN h.monthly_rent > 0
-                               THEN CONCAT(' / ', FORMAT(h.monthly_rent, 0), '만원')
+                      CASE
+                          WHEN h.deposit_price >= 100000000 THEN
+                              CONCAT(FORMAT(h.deposit_price DIV 100000000, 0), '억',
+                                     CASE WHEN (h.deposit_price % 100000000) >= 10000
+                                              THEN CONCAT(' ', FORMAT((h.deposit_price % 100000000) DIV 10000, 0), '만원')
+                                          ELSE '원' END)
+                          ELSE
+                              CONCAT(FORMAT(h.deposit_price DIV 10000, 0), '만원')
+                          END,
+                      CASE WHEN h.monthly_rent > 0 THEN
+                               CONCAT(' / ',
+                                      CASE
+                                          WHEN h.monthly_rent >= 100000000 THEN
+                                              CONCAT(FORMAT(h.monthly_rent DIV 100000000, 0), '억',
+                                                     CASE WHEN (h.monthly_rent % 100000000) >= 10000
+                                                              THEN CONCAT(' ', FORMAT((h.monthly_rent % 100000000) DIV 10000, 0), '만원')
+                                                          ELSE '원' END)
+                                          ELSE
+                                              CONCAT(FORMAT(h.monthly_rent DIV 10000, 0), '만원')
+                                          END)
                            ELSE '' END) AS property_title,
                (SELECT hi.image_url
                 FROM home_image hi
                 WHERE hi.home_id = c.home_id
-                LIMIT 1) AS property_image_url,
-               h.deposit_price AS property_price,
-               h.lease_type AS property_type
+                   LIMIT 1) AS property_image_url,
+           h.deposit_price AS property_price,
+           h.lease_type AS property_type
         FROM chatroom c
-                 JOIN home h ON c.home_id = h.home_id
+            JOIN home h ON c.home_id = h.home_id
         WHERE c.chatroom_id = #{chatRoomId}
           AND (c.owner_id = #{userId} OR c.buyer_id = #{userId})
     </select>
