@@ -36,7 +36,7 @@
         ON cc.home_id = rc.home_id
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
 #         AND DATE(rc.checked_at) = CURRENT_DATE
-        ORDER BY checked_at DESC
+        ORDER BY rc.checked_at DESC
         LIMIT 1
     </select>
 
