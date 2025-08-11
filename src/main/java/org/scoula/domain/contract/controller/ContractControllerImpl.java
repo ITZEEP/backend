@@ -23,7 +23,7 @@ public class ContractControllerImpl implements ContractController {
       private final ContractService service;
 
       @Override
-      @GetMapping("/standBy")
+      @PostMapping("/standBy")
       public ResponseEntity<ApiResponse<Void>> standByContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -43,7 +43,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @GetMapping("")
+      @PostMapping("/getContract")
       public ResponseEntity<ApiResponse<ContractDTO>> getContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -52,7 +52,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @GetMapping("/step1")
+      @PostMapping("/step1")
       public ResponseEntity<ApiResponse<Void>> getContractNext(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -73,7 +73,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @GetMapping("/price")
+      @PostMapping("/getPrice")
       public ResponseEntity<ApiResponse<PaymentDTO>> getDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
