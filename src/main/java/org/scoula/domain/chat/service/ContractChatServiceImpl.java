@@ -2209,7 +2209,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
-          AiMessageBtn(contractChatId, confirmationMessage);
+          AiMessageNext(contractChatId, confirmationMessage);
 
           return Map.of(
                   "message",
