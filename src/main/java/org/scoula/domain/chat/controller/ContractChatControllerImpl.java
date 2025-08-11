@@ -699,8 +699,6 @@ public class ContractChatControllerImpl implements ContractChatController {
           try {
               Long userId = getUserIdFromAuthentication(authentication);
 
-              requestDto.setContractChatId(contractChatId);
-
               ModificationRequestData result =
                       contractChatService.requestFinalContractModification(
                               contractChatId, userId, requestDto);
@@ -724,8 +722,6 @@ public class ContractChatControllerImpl implements ContractChatController {
               Authentication authentication) {
           try {
               Long userId = getUserIdFromAuthentication(authentication);
-
-              responseDto.setContractChatId(contractChatId);
 
               FinalSpecialContractDocument result =
                       contractChatService.respondToModificationRequest(

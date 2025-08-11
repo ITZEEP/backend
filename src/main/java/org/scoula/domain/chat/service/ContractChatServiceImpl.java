@@ -1990,8 +1990,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           ModificationRequestData requestData =
                   ModificationRequestData.builder()
-                          .contractChatId(contractChatId)
-                          .clauseOrder(requestDto.getClauseOrder())
                           .newTitle(requestDto.getNewTitle())
                           .newContent(requestDto.getNewContent())
                           .requesterId(ownerId)
