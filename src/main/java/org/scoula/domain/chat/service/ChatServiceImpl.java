@@ -446,11 +446,12 @@ public class ChatServiceImpl implements ChatServiceInterface {
           return existing != null;
       }
 
-    @Override
-    public Long findExistingChatRoom(Long ownerId, Long buyerId, Long propertyId) {
-        ChatRoom existingRoom = chatRoomMapper.findByUserAndHome(ownerId, buyerId, propertyId);
-        return existingRoom.getChatRoomId();
-    }
+      @Override
+      public Long findExistingChatRoom(Long ownerId, Long buyerId, Long propertyId) {
+          ChatRoom existingRoom = chatRoomMapper.findByUserAndHome(ownerId, buyerId, propertyId);
+          return existingRoom.getChatRoomId();
+      }
+
       /** {@inheritDoc} */
       @Override
       public List<Map<String, Object>> getChatMediaFiles(
@@ -821,21 +822,30 @@ public class ChatServiceImpl implements ChatServiceInterface {
           String contractChatUrl =
                   "http://localhost:5173/pre-contract/"
                           + contractChatRoomId.toString()
-                          + "/owner?step=1"
-                          + "/n"
-                          + "http://localhost:5173/pre-contract/"
-                          + contractChatRoomId.toString()
                           + "/buyer?step=1";
 
           ChatMessageRequestDto linkMessage =
                   ChatMessageRequestDto.builder()
                           .chatRoomId(chatRoomId)
-                          .senderId(userId)
+                          .senderId(originalChatRoom.getOwnerId())
                           .receiverId(originalChatRoom.getBuyerId())
                           .content(contractChatUrl)
-                          .type("TEXT")
+                          .type("URLLINK")
                           .build();
           handleChatMessage(linkMessage);
+          String contractChatUrls =
+                  "http://localhost:5173/pre-contract/"
+                          + contractChatRoomId.toString()
+                          + "/owner?step=1";
+          ChatMessageRequestDto linkMessages =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(chatRoomId)
+                          .senderId(originalChatRoom.getBuyerId())
+                          .receiverId(originalChatRoom.getOwnerId())
+                          .content(contractChatUrls)
+                          .type("URLLINK")
+                          .build();
+          handleChatMessage(linkMessages);
 
           return contractChatRoomId;
       }
