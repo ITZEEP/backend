@@ -29,6 +29,5 @@ public class FinalSpecialContractDocument {
           private Integer order;
           private String title;
           private String content;
-          private Long sourceRound;
       }
 }

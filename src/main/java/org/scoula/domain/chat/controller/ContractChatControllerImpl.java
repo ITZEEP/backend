@@ -669,7 +669,7 @@ public class ContractChatControllerImpl implements ContractChatController {
       @PostMapping("/special-contract/{contractChatId}/ai")
       public ResponseEntity<ApiResponse<String>> sendAiMessage(
               @PathVariable Long contractChatId, @RequestParam Long order) {
-          String aiContent = order + "번호 특약에 대한 대화를 시작합니다!";
+          String aiContent = order + "번 특약에 대한 대화를 시작합니다!";
           contractChatService.AiMessage(contractChatId, aiContent);
           return ResponseEntity.ok(ApiResponse.success(aiContent));
       }

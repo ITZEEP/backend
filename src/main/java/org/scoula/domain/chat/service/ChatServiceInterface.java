@@ -196,4 +196,6 @@ public interface ChatServiceInterface {
        * @param userId 거절하는 사용자 ID (소유자여야 함)
        */
       void rejectContractRequest(Long chatRoomId, Long userId);
+      Long findExistingChatRoom(Long ownerId, Long buyerId, Long propertyId);
+
 }

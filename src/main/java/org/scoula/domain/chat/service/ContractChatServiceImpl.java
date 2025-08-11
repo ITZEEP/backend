@@ -133,6 +133,22 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           contractChatMapper.updateLastMessage(contractChatId, content);
           messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
       }
+    public void AiMessageNext(Long contractChatId, String content) {
+        final Long ai = 9997L;
+
+        ContractChatDocument aiMessage =
+                ContractChatDocument.builder()
+                        .contractChatId(contractChatId.toString())
+                        .senderId(ai)
+                        .receiverId(null)
+                        .content(content)
+                        .sendTime(LocalDateTime.now().toString())
+                        .build();
+
+        contractChatMessageRepository.saveMessage(aiMessage);
+        contractChatMapper.updateLastMessage(contractChatId, content);
+        messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
+    }
 
       public void AiMessageBtn(Long contractChatId, String content) {
           final Long ai = 9998L;
@@ -264,14 +280,65 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String result = sb.toString();
 
-          SpecialContractFixDocument improveClauseRequest =
-                  updateRecentData(contractChatId, order, result);
-          ClauseImproveResponseDto improveClauseResponse = getAiClauseImprove(improveClauseRequest);
 
-          updateSpecialClause(contractChatId, improveClauseResponse);
+
+              SpecialContractFixDocument improveClauseRequest =
+                      updateRecentData(contractChatId, order, result);
+              ClauseImproveResponseDto improveClauseResponse =
+                      getAiClauseImprove(improveClauseRequest);
+
+              updateSpecialClause(contractChatId, improveClauseResponse);
+
           checkAndIncrementRoundIfComplete(contractChatId);
-
           return true;
+      }
+
+      private boolean isRejectedClause(Long contractChatId, Long order) {
+          try {
+              ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+              Long currentRound = contractChat.getCurrentRound();
+
+              SpecialContractDocument currentDocument =
+                      specialContractMongoRepository
+                              .findSpecialContractDocumentByContractChatIdAndRound(
+                                      contractChatId, currentRound)
+                              .orElse(null);
+
+              if (currentDocument == null) {
+                  log.warn("현재 라운드 문서를 찾을 수 없음: round {}", currentRound);
+                  return false;
+              }
+
+              Optional<SpecialContractDocument.Clause> clauseOpt =
+                      currentDocument.getClauses().stream()
+                              .filter(clause -> clause.getOrder().equals(order.intValue()))
+                              .findFirst();
+
+              if (clauseOpt.isEmpty()) {
+                  log.warn("특약 {}번을 현재 라운드에서 찾을 수 없음", order);
+                  return false;
+              }
+
+              SpecialContractDocument.Clause clause = clauseOpt.get();
+
+              boolean isEmpty =
+                      (clause.getTitle() == null || clause.getTitle().trim().isEmpty())
+                              && (clause.getContent() == null
+                                      || clause.getContent().trim().isEmpty());
+
+              log.info(
+                      "특약 {}번 상태 체크 - title: '{}', content: '{}', 거부된 특약: {}",
+                      order,
+                      clause.getTitle(),
+                      clause.getContent(),
+                      isEmpty);
+
+              return isEmpty;
+
+          } catch (Exception e) {
+              log.error("특약 {}번 거부 상태 체크 실패: {}", order, e.getMessage());
+              return false;
+          }
       }
 
       private void updateSpecialClause(Long contractChatId, ClauseImproveResponseDto response) {
@@ -555,84 +622,153 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   rejectedOrders,
                   passedOrders);
 
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          Long currentRound = contractChat.getCurrentRound();
+
           SpecialContractDocument latestDocument =
                   specialContractMongoRepository
-                          .findSpecialContractDocumentByContractChatId(contractChatId)
-                          .orElseThrow(() -> new IllegalArgumentException("기존 특약 문서를 찾을 수 없습니다"));
+                          .findSpecialContractDocumentByContractChatIdAndRound(
+                                  contractChatId, currentRound)
+                          .orElseThrow(
+                                  () -> new IllegalArgumentException("현재 라운드의 특약 문서를 찾을 수 없습니다"));
 
-          Long newRound = latestDocument.getRound() + 1;
-          log.info("새 라운드: {}", newRound);
+
+          Long newRound = currentRound + 1;
+          log.info("새 라운드: {} → {}", currentRound, newRound);
+
+          // 이전 라운드에서 통과된 특약들도 찾아서 포함
+          List<Long> allPassedOrders = new ArrayList<>(passedOrders);
+
+          // 이미 완료된 특약들(isPassed=true)도 추가로 가져와서 포함
+          List<SpecialContractFixDocument> completedContracts =
+                  specialContractMongoRepository.findByContractChatIdAndIsPassed(
+                          contractChatId, true);
+
+          for (SpecialContractFixDocument completed : completedContracts) {
+              if (!allPassedOrders.contains(completed.getOrder())) {
+                  allPassedOrders.add(completed.getOrder());
+                  log.info("이전 라운드에서 이미 완료된 특약 {}번 추가", completed.getOrder());
+              }
+          }
+          log.info("최종 통과된 특약들 (이전 완료 포함): {}", allPassedOrders);
 
           List<SpecialContractDocument.Clause> newClauses = new ArrayList<>();
 
-          for (Long passedOrder : passedOrders) {
-              latestDocument.getClauses().stream()
-                      .filter(clause -> clause.getOrder().equals(passedOrder.intValue()))
-                      .findFirst()
-                      .ifPresent(
-                              clause -> {
-                                  SpecialContractDocument.Clause copiedClause =
-                                          SpecialContractDocument.Clause.builder()
-                                                  .order(clause.getOrder())
-                                                  .title(clause.getTitle())
-                                                  .content(clause.getContent())
-                                                  .assessment(
-                                                          SpecialContractDocument.Assessment.builder()
-                                                                  .owner(
-                                                                          SpecialContractDocument
-                                                                                  .Evaluation
-                                                                                  .builder()
-                                                                                  .level(
-                                                                                          clause.getAssessment()
-                                                                                                  .getOwner()
-                                                                                                  .getLevel())
-                                                                                  .reason(
-                                                                                          clause.getAssessment()
-                                                                                                  .getOwner()
-                                                                                                  .getReason())
-                                                                                  .build())
-                                                                  .tenant(
-                                                                          SpecialContractDocument
-                                                                                  .Evaluation
-                                                                                  .builder()
-                                                                                  .level(
-                                                                                          clause.getAssessment()
-                                                                                                  .getTenant()
-                                                                                                  .getLevel())
-                                                                                  .reason(
-                                                                                          clause.getAssessment()
-                                                                                                  .getTenant()
-                                                                                                  .getReason())
-                                                                                  .build())
-                                                                  .build())
-                                                  .build();
-                                  newClauses.add(copiedClause);
-                                  log.info("통과된 특약 {}번 내용 복사 완료", passedOrder);
-                              });
-          }
+          for (int order = 1; order <= 6; order++) {
+              Integer orderInteger = Integer.valueOf(order);
+              Long orderLong = Long.valueOf(order);
 
-          for (Long rejectedOrder : rejectedOrders) {
-              SpecialContractDocument.Clause emptyClause =
-                      SpecialContractDocument.Clause.builder()
-                              .order(rejectedOrder.intValue())
-                              .title("")
-                              .content("")
-                              .assessment(
-                                      SpecialContractDocument.Assessment.builder()
-                                              .owner(
-                                                      SpecialContractDocument.Evaluation.builder()
-                                                              .level("")
-                                                              .reason("")
-                                                              .build())
-                                              .tenant(
-                                                      SpecialContractDocument.Evaluation.builder()
-                                                              .level("")
-                                                              .reason("")
-                                                              .build())
-                                              .build())
-                              .build();
-              newClauses.add(emptyClause);
-              log.info("거부된 특약 {}번 빈 껍데기 생성 완료", rejectedOrder);
+              if (allPassedOrders.contains(orderLong)) {
+                  // 통과된 특약들을 복사 (이전 라운드에서 완료된 것들 포함)
+                  Optional<SpecialContractDocument.Clause> clauseOpt =
+                          findBestClauseForOrder(contractChatId, orderLong);
+
+                  if (clauseOpt.isPresent()) {
+                      SpecialContractDocument.Clause clause = clauseOpt.get();
+                      SpecialContractDocument.Clause copiedClause =
+                              SpecialContractDocument.Clause.builder()
+                                      .order(clause.getOrder())
+                                      .title(clause.getTitle())
+                                      .content(clause.getContent())
+                                      .assessment(
+                                              SpecialContractDocument.Assessment.builder()
+                                                      .owner(
+                                                              SpecialContractDocument.Evaluation
+                                                                      .builder()
+                                                                      .level(
+                                                                              clause.getAssessment()
+                                                                                      .getOwner()
+                                                                                      .getLevel())
+                                                                      .reason(
+                                                                              clause.getAssessment()
+                                                                                      .getOwner()
+                                                                                      .getReason())
+                                                                      .build())
+                                                      .tenant(
+                                                              SpecialContractDocument.Evaluation
+                                                                      .builder()
+                                                                      .level(
+                                                                              clause.getAssessment()
+                                                                                      .getTenant()
+                                                                                      .getLevel())
+                                                                      .reason(
+                                                                              clause.getAssessment()
+                                                                                      .getTenant()
+                                                                                      .getReason())
+                                                                      .build())
+                                                      .build())
+                                      .build();
+                      newClauses.add(copiedClause);
+                      log.info("통과된 특약 {}번 복사 완료", order);
+                  }
+              } else if (rejectedOrders.contains(orderLong)) {
+                  SpecialContractDocument.Clause emptyClause =
+                          SpecialContractDocument.Clause.builder()
+                                  .order(orderInteger)
+                                  .title("")
+                                  .content("")
+                                  .assessment(
+                                          SpecialContractDocument.Assessment.builder()
+                                                  .owner(
+                                                          SpecialContractDocument.Evaluation.builder()
+                                                                  .level("")
+                                                                  .reason("")
+                                                                  .build())
+                                                  .tenant(
+                                                          SpecialContractDocument.Evaluation.builder()
+                                                                  .level("")
+                                                                  .reason("")
+                                                                  .build())
+                                                  .build())
+                                  .build();
+                  newClauses.add(emptyClause);
+                  log.info("거부된 특약 {}번 빈 껍데기 생성 완료", order);
+              } else {
+                  // 유지되는 특약들
+                  latestDocument.getClauses().stream()
+                          .filter(clause -> clause.getOrder().equals(orderInteger))
+                          .findFirst()
+                          .ifPresent(
+                                  clause -> {
+                                      SpecialContractDocument.Clause maintainedClause =
+                                              SpecialContractDocument.Clause.builder()
+                                                      .order(clause.getOrder())
+                                                      .title(clause.getTitle())
+                                                      .content(clause.getContent())
+                                                      .assessment(
+                                                              SpecialContractDocument.Assessment
+                                                                      .builder()
+                                                                      .owner(
+                                                                              SpecialContractDocument
+                                                                                      .Evaluation
+                                                                                      .builder()
+                                                                                      .level(
+                                                                                              clause.getAssessment()
+                                                                                                      .getOwner()
+                                                                                                      .getLevel())
+                                                                                      .reason(
+                                                                                              clause.getAssessment()
+                                                                                                      .getOwner()
+                                                                                                      .getReason())
+                                                                                      .build())
+                                                                      .tenant(
+                                                                              SpecialContractDocument
+                                                                                      .Evaluation
+                                                                                      .builder()
+                                                                                      .level(
+                                                                                              clause.getAssessment()
+                                                                                                      .getTenant()
+                                                                                                      .getLevel())
+                                                                                      .reason(
+                                                                                              clause.getAssessment()
+                                                                                                      .getTenant()
+                                                                                                      .getReason())
+                                                                                      .build())
+                                                                      .build())
+                                                      .build();
+                                      newClauses.add(maintainedClause);
+                                  });
+              }
           }
 
           newClauses.sort((a, b) -> Integer.compare(a.getOrder(), b.getOrder()));
@@ -651,7 +787,50 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   "새 라운드 SPECIAL_CONTRACT 문서 생성 완료 - round: {}, totalClauses: {}",
                   newRound,
                   newClauses.size());
-          log.info("통과된 특약: {}, 거부된 특약: {}", passedOrders, rejectedOrders);
+          log.info(
+                  "최종 통과된 특약: {}, 거부된 특약: {}, 유지된 특약: {}",
+                  allPassedOrders,
+                  rejectedOrders,
+                  Arrays.asList(1, 2, 3, 4, 5, 6).stream()
+                          .filter(
+                                  i ->
+                                          !allPassedOrders.contains((long) i)
+                                                  && !rejectedOrders.contains((long) i))
+                          .collect(Collectors.toList()));
+      }
+
+      /** 특정 특약 번호에 대해 가장 최신의 완성된 조항을 찾는 메서드 가장 높은 라운드부터 역순으로 검색하여 내용이 있는 조항을 반환 */
+      private Optional<SpecialContractDocument.Clause> findBestClauseForOrder(
+              Long contractChatId, Long order) {
+          // 4라운드부터 1라운드까지 역순으로 검색
+          for (Long round = 4L; round >= 1L; round--) {
+              Optional<SpecialContractDocument> docOpt =
+                      specialContractMongoRepository
+                              .findSpecialContractDocumentByContractChatIdAndRound(
+                                      contractChatId, round);
+
+              if (docOpt.isPresent()) {
+                  SpecialContractDocument doc = docOpt.get();
+                  Optional<SpecialContractDocument.Clause> clauseOpt =
+                          doc.getClauses().stream()
+                                  .filter(clause -> clause.getOrder().equals(order.intValue()))
+                                  .filter(
+                                          clause ->
+                                                  clause.getTitle() != null
+                                                          && !clause.getTitle().trim().isEmpty()
+                                                          && clause.getContent() != null
+                                                          && !clause.getContent().trim().isEmpty())
+                                  .findFirst();
+
+                  if (clauseOpt.isPresent()) {
+                      log.info("특약 {}번의 최적 조항을 라운드 {}에서 발견", order, round);
+                      return clauseOpt;
+                  }
+              }
+          }
+
+          log.warn("특약 {}번의 완성된 조항을 찾을 수 없음", order);
+          return Optional.empty();
       }
 
       @Override
@@ -887,7 +1066,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                       FinalSpecialContractDocument finalContract =
                               saveFinalSpecialContract(contractChatId);
 
-                      AiMessage(contractChatId, "🎉 모든 특약 협상이 완료되었습니다! 최종 특약서가 생성되었습니다.");
+                      AiMessageNext(contractChatId, "🎉 모든 특약 협상이 완료되었습니다! 최종 특약서가 생성되었습니다.");
 
                       return Map.of(
                               "message",
@@ -913,7 +1092,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
               resetSelectionDocument(contractChatId);
 
-              return Map.of("message", "협상을 계속 진행해주세요.", "completed", true);
+              return Map.of("message", "특약 협상이 시작됩니다.", "completed", true);
           }
       }
 
@@ -1304,21 +1483,18 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               Long contractChatId, Long order, String messages) {
           ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
           Long currentRound = contractChat.getCurrentRound();
+
           SpecialContractDocument specialContract =
                   specialContractMongoRepository
-                          .findSpecialContractDocumentByContractChatId(contractChatId)
+                          .findSpecialContractDocumentByContractChatIdAndRound(
+                                  contractChatId, currentRound)
                           .orElseThrow(
                                   () ->
                                           new IllegalArgumentException(
-                                                  "특약 원본 문서를 찾을 수 없습니다: " + contractChatId));
-
-          if (!specialContract.getRound().equals(currentRound)) {
-              throw new IllegalArgumentException(
-                      "라운드가 일치하지 않습니다. 현재 라운드: "
-                              + currentRound
-                              + ", 특약 라운드: "
-                              + specialContract.getRound());
-          }
+                                                  "라운드 "
+                                                          + currentRound
+                                                          + "의 특약 문서를 찾을 수 없습니다: "
+                                                          + contractChatId));
 
           SpecialContractDocument.Clause targetClause =
                   specialContract.getClauses().stream()
@@ -1405,73 +1581,107 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return rejectedOrders;
       }
 
-      @Override
-      @Transactional
-      public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
-          List<SpecialContractFixDocument> incompleteContracts =
-                  specialContractMongoRepository.findByContractChatIdAndIsPassed(
-                          contractChatId, false);
 
-          if (!incompleteContracts.isEmpty()) {
-              throw new IllegalStateException(
-                      "아직 완료되지 않은 특약이 " + incompleteContracts.size() + "개 있습니다.");
-          }
+    @Override
+    @Transactional
+    public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
+        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+        ContractChat.ContractStatus currentStatus = contractChat.getStatus();
 
-          List<SpecialContractFixDocument> completedContracts =
-                  specialContractMongoRepository.findByContractChatIdAndIsPassed(
-                          contractChatId, true);
+        boolean isThirdRoundComplete = (currentStatus == ContractChat.ContractStatus.ROUND3);
 
-          if (completedContracts.isEmpty()) {
-              throw new IllegalStateException("완료된 특약이 없습니다.");
-          }
+        List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
 
-          List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
+        if (isThirdRoundComplete) {
+            log.info("=== 3회차 수정 완료 - 4라운드 데이터에서 최종 특약 생성 ===");
 
-          for (SpecialContractFixDocument completedContract : completedContracts) {
-              Long order = completedContract.getOrder();
+            Optional<SpecialContractDocument> round4DocOpt =
+                    specialContractMongoRepository.findSpecialContractDocumentByContractChatIdAndRound(contractChatId, 4L);
 
-              Optional<SpecialContractDocument> latestRoundDoc =
-                      findLatestRoundForOrder(contractChatId, order);
+            if (round4DocOpt.isPresent()) {
+                SpecialContractDocument round4Doc = round4DocOpt.get();
 
-              if (latestRoundDoc.isPresent()) {
-                  SpecialContractDocument doc = latestRoundDoc.get();
+                for (SpecialContractDocument.Clause clause : round4Doc.getClauses()) {
+                    if (clause.getTitle() != null && !clause.getTitle().trim().isEmpty() &&
+                            clause.getContent() != null && !clause.getContent().trim().isEmpty()) {
 
-                  doc.getClauses().stream()
-                          .filter(clause -> clause.getOrder().equals(order.intValue()))
-                          .findFirst()
-                          .ifPresent(
-                                  clause -> {
-                                      FinalSpecialContractDocument.FinalClause finalClause =
-                                              FinalSpecialContractDocument.FinalClause.builder()
-                                                      .order(clause.getOrder())
-                                                      .title(clause.getTitle())
-                                                      .content(clause.getContent())
-                                                      .sourceRound(doc.getRound())
-                                                      .build();
+                        FinalSpecialContractDocument.FinalClause finalClause =
+                                FinalSpecialContractDocument.FinalClause.builder()
+                                        .order(clause.getOrder())
+                                        .title(clause.getTitle())
+                                        .content(clause.getContent())
+                                        .build();
 
-                                      finalClauses.add(finalClause);
-                                      log.info(
-                                              "특약 {}번 최종 저장 완료 - sourceRound: {}",
-                                              order,
-                                              doc.getRound());
-                                  });
-              }
-          }
+                        finalClauses.add(finalClause);
+                        log.info("4라운드에서 특약 {}번 최종 저장: {}", clause.getOrder(), clause.getTitle());
+                    }
+                }
+            }
+        } else {
+            log.info("=== 모든 특약 완료 - 완료된 특약들만 최종 저장 ===");
 
-          FinalSpecialContractDocument finalDocument =
-                  FinalSpecialContractDocument.builder()
-                          .contractChatId(contractChatId)
-                          .totalFinalClauses(finalClauses.size())
-                          .finalClauses(finalClauses)
-                          .build();
+            List<SpecialContractFixDocument> incompleteContracts =
+                    specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, false);
 
-          FinalSpecialContractDocument savedDocument =
-                  specialContractMongoRepository.saveFinalSpecialContract(finalDocument);
+            if (!incompleteContracts.isEmpty()) {
+                throw new IllegalStateException(
+                        "아직 완료되지 않은 특약이 " + incompleteContracts.size() + "개 있습니다.");
+            }
 
-          log.info("최종 특약 저장 완료 - 총 {}개 조항", finalClauses.size());
+            List<SpecialContractFixDocument> completedContracts =
+                    specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, true);
 
-          return savedDocument;
-      }
+            if (completedContracts.isEmpty()) {
+                throw new IllegalStateException("완료된 특약이 없습니다.");
+            }
+
+            for (SpecialContractFixDocument completedContract : completedContracts) {
+                Long order = completedContract.getOrder();
+
+                Optional<SpecialContractDocument> latestRoundDoc =
+                        findLatestRoundForOrder(contractChatId, order);
+
+                if (latestRoundDoc.isPresent()) {
+                    SpecialContractDocument doc = latestRoundDoc.get();
+
+                    doc.getClauses().stream()
+                            .filter(clause -> clause.getOrder().equals(order.intValue()))
+                            .findFirst()
+                            .ifPresent(
+                                    clause -> {
+                                        FinalSpecialContractDocument.FinalClause finalClause =
+                                                FinalSpecialContractDocument.FinalClause.builder()
+                                                        .order(clause.getOrder())
+                                                        .title(clause.getTitle())
+                                                        .content(clause.getContent())
+                                                        .build();
+
+                                        finalClauses.add(finalClause);
+                                        log.info(
+                                                "특약 {}번 최종 저장 완료 - sourceRound: {}",
+                                                order,
+                                                doc.getRound());
+                                    });
+                }
+            }
+        }
+
+        FinalSpecialContractDocument finalDocument =
+                FinalSpecialContractDocument.builder()
+                        .contractChatId(contractChatId)
+                        .totalFinalClauses(finalClauses.size())
+                        .finalClauses(finalClauses)
+                        .build();
+
+        FinalSpecialContractDocument savedDocument =
+                specialContractMongoRepository.saveFinalSpecialContract(finalDocument);
+
+        log.info("최종 특약 저장 완료 - 총 {}개 조항 (방식: {})",
+                finalClauses.size(),
+                isThirdRoundComplete ? "3회차 완료" : "모든 특약 완료");
+
+        return savedDocument;
+    }
 
       private Optional<SpecialContractDocument> findLatestRoundForOrder(
               Long contractChatId, Long order) {
@@ -1508,6 +1718,10 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           Long nextRoundNumber = getNextRoundNumber(currentStatus);
           if (nextRoundNumber == null) {
               log.info("더 이상 증가할 라운드가 없음: {}", currentStatus);
+
+              if (currentStatus == ContractChat.ContractStatus.ROUND3) {
+                  checkFinalRoundCompletion(contractChatId);
+              }
               return;
           }
 
@@ -1552,9 +1766,90 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   log.info("라운드 자동 증가: {} → {}", currentStatus, nextStatus);
                   String aimsg = getRoundIncrementMessage(nextStatus);
                   AiMessageBtn(contractChatId, aimsg);
+
+                  if (nextStatus == ContractChat.ContractStatus.ROUND3) {
+                      checkFinalRoundCompletion(contractChatId);
+                  }
               }
           } else {
               log.info("아직 모든 특약이 꽉 차지 않아서 라운드 유지");
+          }
+      }
+
+      /** 최종 라운드(4차) 완료 체크 및 자동 완료 처리 */
+      @Transactional
+      public void checkFinalRoundCompletion(Long contractChatId) {
+          log.info("=== 최종 라운드(4차) 완료 체크 시작 ===");
+
+          Optional<SpecialContractDocument> round4DocOpt =
+                  specialContractMongoRepository.findSpecialContractDocumentByContractChatIdAndRound(
+                          contractChatId, 4L);
+
+          if (round4DocOpt.isEmpty()) {
+              log.info("4차 라운드 문서가 아직 없음");
+              return;
+          }
+
+          SpecialContractDocument round4Document = round4DocOpt.get();
+
+          List<SpecialContractFixDocument> incompleteContracts =
+                  specialContractMongoRepository.findByContractChatIdAndIsPassed(
+                          contractChatId, false);
+
+          if (incompleteContracts.isEmpty()) {
+              log.info("이미 모든 특약이 완료됨");
+              return;
+          }
+
+          Set<Integer> incompleteOrders =
+                  incompleteContracts.stream()
+                          .map(doc -> doc.getOrder().intValue())
+                          .collect(Collectors.toSet());
+
+          log.info("미완료 특약 번호들: {}", incompleteOrders);
+
+          boolean allFinalClausesAreFilled =
+                  incompleteOrders.stream().allMatch(order -> isClauseFilled(round4Document, order));
+
+          log.info("4차 라운드 모든 미완료 특약이 작성됨: {}", allFinalClausesAreFilled);
+
+          if (allFinalClausesAreFilled) {
+              log.info("🎉 모든 특약 협상이 완료되었습니다! 자동으로 완료 처리합니다.");
+
+              for (SpecialContractFixDocument incompleteContract : incompleteContracts) {
+                  try {
+                      markSpecialContractAsPassed(contractChatId, incompleteContract.getOrder());
+                      log.info("특약 {}번 자동 완료 처리", incompleteContract.getOrder());
+                  } catch (Exception e) {
+                      log.error("특약 {}번 완료 처리 실패: {}", incompleteContract.getOrder(), e.getMessage());
+                  }
+              }
+
+              try {
+                  FinalSpecialContractDocument finalContract =
+                          saveFinalSpecialContract(contractChatId);
+
+                  AiMessageNext(
+                          contractChatId,
+                          "🎉 3차 수정까지 모든 특약 협상이 완료되었습니다! "
+                                  + "최종 특약서가 자동으로 생성되었습니다. "
+                                  + "총 "
+                                  + finalContract.getTotalFinalClauses()
+                                  + "개의 특약이 확정되었습니다.");
+
+                  log.info(
+                          "최종 특약 자동 저장 완료 - finalContractId: {}, 총 {}개 조항",
+                          finalContract.getId(),
+                          finalContract.getTotalFinalClauses());
+
+              } catch (Exception e) {
+                  log.error("최종 특약 자동 저장 실패", e);
+                  AiMessage(
+                          contractChatId,
+                          "모든 특약 협상이 완료되었지만 최종 특약서 생성 중 오류가 발생했습니다. " + "관리자에게 문의해주세요.");
+              }
+          } else {
+              log.info("아직 4차 라운드의 모든 특약이 작성되지 않음");
           }
       }
 
@@ -1571,7 +1866,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                               boolean contentFilled = content != null && !content.trim().isEmpty();
                               boolean isFilled = titleFilled && contentFilled;
 
-                              // 🔍 상세 디버그 로그
                               log.info("🔍 특약 {}번 상세 체크:", order);
                               log.info("  - title 원본: '{}'", title);
                               log.info("  - title 길이: {}", title != null ? title.length() : "null");
@@ -1618,9 +1912,9 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private String getRoundIncrementMessage(ContractChat.ContractStatus status) {
           switch (status) {
               case ROUND1:
-                  return "1차 수정이 완료되었습니다! 1차 협상 라운드가 시작됩니다.";
+                  return "1차 수정이 완료되었습니다! 2차 협상 라운드가 시작됩니다.";
               case ROUND2:
-                  return "2차 수정이 완료되었습니다! 2차 협상 라운드가 시작됩니다.";
+                  return "2차 수정이 완료되었습니다! 3차 협상 라운드가 시작됩니다.";
               case ROUND3:
                   return "3차 수정이 완료되었습니다! 최종 협상 라운드가 시작됩니다.";
               default:

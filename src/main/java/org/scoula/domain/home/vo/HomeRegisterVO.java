@@ -40,6 +40,7 @@ public class HomeRegisterVO {
       private Integer reportCnt;
       private Integer roomCnt;
       private Float supplyArea;
+      private Float exclusiveArea;
       private String homeFloor;
       private LocalDateTime createdAt;
       private LocalDateTime updatedAt;
@@ -55,8 +56,10 @@ public class HomeRegisterVO {
       private LocalDate moveInDate;
       private Boolean isParkingAvailable;
 
-      // 사진
+      // 이미지
       private List<String> imageUrls;
+      private Long imageId; // << 이 필드를 추가했습니다.
+      private String imageUrl;
 
       // 관리비 항목
       private List<MaintenanceFeeItem> maintenanceItems;
@@ -72,10 +75,14 @@ public class HomeRegisterVO {
       public static class MaintenanceFeeItem {
           private Long maintenanceId;
           private Integer fee;
+          private String itemName;
       }
 
-      // 기존 생성용 from 메서드
+      // 생성용 from (HomeCreateRequestDto)
       public static HomeRegisterVO from(Long userId, HomeCreateRequestDto dto) {
+          LocalDateTime parsedBuildDate =
+                  dto.getBuildDate() != null ? dto.getBuildDate().atStartOfDay() : null;
+
           return HomeRegisterVO.builder()
                   .userId(userId)
                   .userName(dto.getUserName())
@@ -86,26 +93,28 @@ public class HomeRegisterVO {
                   .depositPrice(dto.getDepositPrice())
                   .monthlyRent(dto.getMonthlyRent())
                   .maintenanceFee(dto.getMaintenanceFee())
-                  .supplyArea(dto.getSupplyArea())
-                  .homeFloor(dto.getHomefloor())
+                  .supplyArea(dto.getSupplyArea() != null ? dto.getSupplyArea() : 0f)
+                  .exclusiveArea(dto.getExclusiveArea())
+                  .homeFloor(dto.getHomeFloor())
                   .roomCnt(dto.getRoomCnt())
                   .bathroomCount(dto.getBathroomCount())
-                  .homeDirection(
-                          dto.getHomeDirection() != null
-                                  ? HomeDirection.valueOf(dto.getHomeDirection())
-                                  : null)
-                  .imageUrls(dto.getImageUrls())
                   .facilityItemIds(dto.getFacilityItemIds())
+                  .buildDate(parsedBuildDate)
                   .options(dto.getOptions())
                   .isParkingAvailable(dto.getIsParkingAvailable())
                   .buildingTotalFloors(dto.getBuildingTotalFloors())
                   .isPet(dto.getIsPet())
                   .moveInDate(dto.getMoveInDate())
+                  .maintenanceItems(dto.getMaintenanceFeeItems())
+                  .imageUrls(dto.getImageUrls())
                   .build();
       }
 
-      // 추가: 수정용 from 메서드 (HomeUpdateRequestDto를 받음)
+      // 수정용 from (HomeUpdateRequestDto)
       public static HomeRegisterVO from(Long userId, HomeUpdateRequestDto dto) {
+          LocalDateTime parsedBuildDate =
+                  dto.getBuildDate() != null ? dto.getBuildDate().atStartOfDay() : null;
+
           return HomeRegisterVO.builder()
                   .homeId(dto.getHomeId())
                   .userId(userId)
@@ -118,13 +127,11 @@ public class HomeRegisterVO {
                   .monthlyRent(dto.getMonthlyRent())
                   .maintenanceFee(dto.getMaintenanceFee())
                   .supplyArea(dto.getSupplyArea())
-                  .homeFloor(dto.getHomefloor())
+                  .exclusiveArea(dto.getExclusiveArea())
+                  .homeFloor(dto.getHomeFloor())
                   .roomCnt(dto.getRoomCnt())
                   .bathroomCount(dto.getBathroomCount())
-                  .homeDirection(
-                          dto.getHomeDirection() != null
-                                  ? HomeDirection.valueOf(dto.getHomeDirection())
-                                  : null)
+                  .homeDirection(parseHomeDirection(dto.getHomeDirection()))
                   .imageUrls(dto.getImageUrls())
                   .facilityItemIds(dto.getFacilityItemIds())
                   .options(dto.getOptions())
@@ -132,6 +139,8 @@ public class HomeRegisterVO {
                   .buildingTotalFloors(dto.getBuildingTotalFloors())
                   .isPet(dto.getIsPet())
                   .moveInDate(dto.getMoveInDate())
+                  .buildDate(parsedBuildDate)
+                  .maintenanceItems(dto.getMaintenanceFeeItems())
                   .build();
       }
 
@@ -139,7 +148,7 @@ public class HomeRegisterVO {
           try {
               return HomeDirection.valueOf(direction);
           } catch (IllegalArgumentException e) {
-              return null; // 또는 기본값 설정
+              return null;
           }
       }
 }

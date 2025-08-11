@@ -12,16 +12,21 @@ import org.scoula.domain.precontract.document.OwnerMongoDocument;
 import org.scoula.domain.precontract.dto.ai.ClauseRecommendRequestDto;
 import org.scoula.domain.precontract.dto.ai.ClauseRecommendResponseDto;
 import org.scoula.domain.precontract.dto.ai.ContractParseResponseDto;
+import org.scoula.domain.precontract.dto.common.IdentityVerificationInfoDTO;
 import org.scoula.domain.precontract.dto.owner.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.OwnerPreContractErrorCode;
 import org.scoula.domain.precontract.mapper.OwnerPreContractMapper;
 import org.scoula.domain.precontract.repository.ContractDocumentMongoRepository;
 import org.scoula.domain.precontract.repository.OwnerMongoRepository;
+import org.scoula.domain.precontract.vo.IdentityVerificationInfoVO;
 import org.scoula.domain.precontract.vo.OwnerJeonseInfoVO;
 import org.scoula.domain.precontract.vo.OwnerWolseInfoVO;
 import org.scoula.domain.precontract.vo.RestoreCategoryVO;
+import org.scoula.domain.verification.dto.request.IdCardVerificationRequest;
+import org.scoula.domain.verification.service.IdCardVerificationService;
 import org.scoula.global.common.exception.BusinessException;
+import org.scoula.global.common.util.AesCryptoUtil;
 import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -38,7 +43,7 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 @Log4j2
 public class OwnerPreContractServiceImpl implements OwnerPreContractService {
-
+      private final IdCardVerificationService idCardVerificationService;
       private final OwnerPreContractMapper ownerMapper;
       private final OwnerMongoRepository mongoRepository;
       private final ContractDocumentMongoRepository contractDocumentMongoRepository;
@@ -46,6 +51,69 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       private final AiClauseRecommendService aiClauseRecommendService;
       private final MongoTemplate mongoTemplate;
       private final ObjectMapper objectMapper;
+      private final AesCryptoUtil aesCryptoUtil;
+
+      @Override
+      public Void requireVerification(
+              Long contractChatId, Long userId, IdentityVerificationInfoDTO dto) {
+          // 1. 진위 확인 요청 DTO 구성 (※ 실명 인증용이므로 평문 사용)
+          IdCardVerificationRequest request =
+                  IdCardVerificationRequest.builder()
+                          .name(dto.getName())
+                          .rrn1(dto.getSsnFront())
+                          .rrn2(dto.getSsnBack())
+                          .date(dto.getIssuedDate())
+                          .build();
+
+          // 2. 신분증 진위 확인
+          boolean result = idCardVerificationService.verifyIdCard(request);
+
+          if (!result) {
+              log.warn("신분증 진위 확인 실패");
+              throw new RuntimeException("신분증 검증 실패");
+          }
+
+          log.info("신분증 진위 확인 성공");
+
+          // 3. 민감 정보 암호화 처리
+          String encryptedSsnBack = aesCryptoUtil.encrypt(dto.getSsnBack());
+          String encryptedPhoneNumber = aesCryptoUtil.encrypt(dto.getPhoneNumber());
+
+          // 주소는 선택적 암호화 (민감도에 따라 결정)
+          String encryptedAddr2 =
+                  dto.getAddr2() != null ? aesCryptoUtil.encrypt(dto.getAddr2()) : null;
+
+          IdentityVerificationInfoVO vo =
+                  IdentityVerificationInfoVO.builder()
+                          .userId(userId)
+                          .name(dto.getName()) // 이름은 평문 저장 (계약서 표시용)
+                          .ssnFront(dto.getSsnFront()) // 앞자리는 평문 저장
+                          .ssnBack(encryptedSsnBack) // 뒷자리는 암호화
+                          .addr1(dto.getAddr1()) // 기본 주소는 평문
+                          .addr2(encryptedAddr2) // 상세 주소는 암호화
+                          .phoneNumber(encryptedPhoneNumber) // 전화번호 암호화
+                          .build();
+
+          // 4. 기존 데이터 확인 후 저장 또는 업데이트
+          Optional<IdentityVerificationInfoVO> existingInfo =
+                  ownerMapper.selectIdentityVerificationInfo(contractChatId, userId);
+
+          if (existingInfo.isPresent()) {
+              // 기존 데이터가 있으면 업데이트
+              int updated = ownerMapper.updateIdentityVerification(contractChatId, vo);
+              if (updated == 0) {
+                  throw new BusinessException(
+                          OwnerPreContractErrorCode.OWNER_UPDATE, "본인 인증 정보 업데이트에 실패했습니다.");
+              }
+              log.info("본인 인증 정보 업데이트 완료 - contractChatId: {}, userId: {}", contractChatId, userId);
+          } else {
+              // 기존 데이터가 없으면 새로 저장
+              ownerMapper.insertIdentityVerification(contractChatId, userId, vo);
+              log.info("본인 인증 정보 신규 저장 완료 - contractChatId: {}, userId: {}", contractChatId, userId);
+          }
+
+          return null;
+      }
 
       @Override
       @Transactional
@@ -242,9 +310,11 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
               log.info(
                       "계약서 특약 OCR 완료 - 특약 수: {}",
                       aiResponse != null
-                                      && aiResponse.getParsedData() != null
-                                      && aiResponse.getParsedData().getSpecialTerms() != null
-                              ? aiResponse.getParsedData().getSpecialTerms().size()
+                                      && aiResponse.getData() != null
+                                      && aiResponse.getData().getParsedData() != null
+                                      && aiResponse.getData().getParsedData().getSpecialTerms()
+                                              != null
+                              ? aiResponse.getData().getParsedData().getSpecialTerms().size()
                               : 0);
 
               return aiResponse;

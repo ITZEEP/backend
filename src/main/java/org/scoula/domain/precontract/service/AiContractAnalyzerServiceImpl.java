@@ -68,36 +68,39 @@ public class AiContractAnalyzerServiceImpl implements AiContractAnalyzerService 
                           "계약서 특약 OCR 완료 - AI 서버 전체 응답: {}",
                           LogSanitizerUtil.sanitizeValue(responseBody));
 
-                  Boolean success = (Boolean) responseBody.get("success");
-                  if (success != null && success) {
-                      @SuppressWarnings("unchecked")
-                      Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
-                      if (data != null) {
-                          log.info("계약서 특약 OCR 파싱 데이터: {}", LogSanitizerUtil.sanitizeValue(data));
+                  // 전체 응답을 DTO로 변환
+                  ContractParseResponseDto parseResponse =
+                          objectMapper.convertValue(responseBody, ContractParseResponseDto.class);
 
-                          return objectMapper.convertValue(data, ContractParseResponseDto.class);
-                      }
+                  if (parseResponse.isSuccess() && parseResponse.getData() != null) {
+                      log.info(
+                              "계약서 특약 OCR 파싱 성공 - 특약 수: {}",
+                              parseResponse.getData().getParsedData() != null
+                                              && parseResponse
+                                                              .getData()
+                                                              .getParsedData()
+                                                              .getSpecialTerms()
+                                                      != null
+                                      ? parseResponse
+                                              .getData()
+                                              .getParsedData()
+                                              .getSpecialTerms()
+                                              .size()
+                                      : 0);
+
+                      return parseResponse;
                   } else {
-                      String message = (String) responseBody.get("message");
-                      String aiErrorCode = null;
-                      @SuppressWarnings("unchecked")
-                      Map<String, Object> errorObj = (Map<String, Object>) responseBody.get("error");
-                      if (errorObj != null) {
-                          aiErrorCode = (String) errorObj.get("code");
-                      }
-
                       log.error(
-                              "AI 서버 계약서 특약 OCR 실패 - errorCode: {}, message: {}",
-                              LogSanitizerUtil.sanitize(aiErrorCode),
-                              LogSanitizerUtil.sanitize(message));
+                              "AI 서버 계약서 특약 OCR 실패 - error: {}, message: {}",
+                              LogSanitizerUtil.sanitize(parseResponse.getError()),
+                              LogSanitizerUtil.sanitize(parseResponse.getMessage()));
 
                       throw new BusinessException(
                               OwnerPreContractErrorCode.AI_SERVICE_ERROR,
-                              message != null ? message : "계약서 특약 분석 중 오류가 발생했습니다.");
+                              parseResponse.getMessage() != null
+                                      ? parseResponse.getMessage()
+                                      : "계약서 특약 분석 중 오류가 발생했습니다.");
                   }
-
-                  throw new BusinessException(
-                          OwnerPreContractErrorCode.AI_SERVICE_ERROR, "계약서 특약 데이터를 추출할 수 없습니다.");
               } else {
                   throw new BusinessException(
                           OwnerPreContractErrorCode.AI_SERVICE_ERROR,

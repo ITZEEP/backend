@@ -1,6 +1,8 @@
 package org.scoula.domain.home.dto.response;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 import org.scoula.domain.home.enums.LeaseType;
@@ -18,6 +20,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class HomeResponseDto {
       private Long homeId;
+      private Long homeDetailId;
       private Long userId;
       private String userName;
 
@@ -32,21 +35,44 @@ public class HomeResponseDto {
       private Integer maintenanceFee;
 
       private Float supplyArea;
+      private Float exclusiveArea;
 
       private String homeFloor;
+      private Integer buildingTotalFloors;
 
       private Integer roomCnt;
       private Integer bathroomCount;
       private String homeDirection;
 
-      private List<String> imageUrls;
+      private Boolean isPet;
+      private Boolean isParkingAvailable;
+
+      private LocalDate buildDate;
+      private LocalDate moveInDate;
+
+      private Integer viewCnt;
+      private Integer chatCnt;
+      private Integer likeCnt;
+
+      private String imageUrl;
+      private Long imageId;
 
       private List<String> options;
       private List<Long> facilityItemIds;
 
       private String createdAt;
 
-      public static HomeResponseDto from(HomeRegisterVO vo) {
+      private List<MaintenanceFeeItemResponseDto> maintenanceFeeItems;
+      private List<FacilityResponseDto> facilities; // 시설 정보 필드 추가
+
+      // (기존) MaintenanceFeeItemResponseDto 클래스는 별도 파일로 분리
+      // (기존) HomeRegisterVO$MaintenanceFeeItem
+
+      // 세 가지 인자를 받는 from 메서드 추가
+      public static HomeResponseDto from(
+              HomeRegisterVO vo,
+              List<MaintenanceFeeItemResponseDto> maintenanceItems,
+              List<FacilityResponseDto> facilities) {
           String createdAtStr = null;
           if (vo.getCreatedAt() != null) {
               createdAtStr =
@@ -57,6 +83,7 @@ public class HomeResponseDto {
                   .homeId(vo.getHomeId())
                   .userId(vo.getUserId())
                   .userName(vo.getUserName())
+                  .homeDetailId(vo.getHomeDetailId())
                   .addr1(vo.getAddr1())
                   .addr2(vo.getAddr2())
                   .residenceType(vo.getResidenceType())
@@ -65,14 +92,29 @@ public class HomeResponseDto {
                   .monthlyRent(vo.getMonthlyRent())
                   .maintenanceFee(vo.getMaintenanceFee())
                   .supplyArea(vo.getSupplyArea())
-                  .homeFloor(vo.getFloor() != null ? vo.getFloor().toString() : "")
+                  .exclusiveArea(vo.getExclusiveArea())
+                  .homeFloor(vo.getHomeFloor() != null ? vo.getHomeFloor() : "")
+                  .buildingTotalFloors(vo.getBuildingTotalFloors())
                   .roomCnt(vo.getRoomCnt())
+                  .likeCnt(vo.getLikeCnt())
+                  .viewCnt(vo.getViewCnt())
+                  .chatCnt(vo.getChatCnt())
                   .bathroomCount(vo.getBathroomCount())
                   .homeDirection(vo.getHomeDirection() != null ? vo.getHomeDirection().name() : null)
-                  .imageUrls(vo.getImageUrls())
-                  .options(vo.getOptions())
-                  .facilityItemIds(vo.getFacilityItemIds())
+                  .isPet(vo.getIsPet())
+                  .isParkingAvailable(vo.getIsParkingAvailable())
+                  .buildDate(vo.getBuildDate() != null ? vo.getBuildDate().toLocalDate() : null)
+                  .moveInDate(vo.getMoveInDate())
+                  .imageUrl(vo.getImageUrl())
+                  .imageId(vo.getImageId())
+                  .options(vo.getOptions() != null ? vo.getOptions() : Collections.emptyList())
+                  .facilityItemIds(
+                          vo.getFacilityItemIds() != null
+                                  ? vo.getFacilityItemIds()
+                                  : Collections.emptyList())
                   .createdAt(createdAtStr)
+                  .maintenanceFeeItems(maintenanceItems)
+                  .facilities(facilities) // 시설 정보 필드 설정
                   .build();
       }
 }
