@@ -2002,22 +2002,16 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               String jsonData = objectMapper.writeValueAsString(requestData);
               stringRedisTemplate.opsForValue().set(redisKey, jsonData, Duration.ofHours(24));
 
-              String notificationMessage =
-                      String.format("임대인이 특약 %d번 수정을 요청했습니다.", requestDto.getClauseOrder());
+              String notificationMessage = String.format(
+                      "임대인이 특약 %d번 수정을 요청했습니다.\n\n" +
+                              "📝 수정 제목: %s\n" +
+                              "✏️ 수정 내용: %s\n\n",
+                      requestDto.getClauseOrder(),
+                      requestDto.getNewTitle(),
+                      requestDto.getNewContent()
+              );
 
-              ContractChatDocument requestMessage =
-                      ContractChatDocument.builder()
-                              .contractChatId(contractChatId.toString())
-                              .senderId(ownerId)
-                              .receiverId(contractChat.getBuyerId())
-                              .content(notificationMessage)
-                              .sendTime(LocalDateTime.now().toString())
-                              .build();
-
-              contractChatMessageRepository.saveMessage(requestMessage);
-              messagingTemplate.convertAndSend(
-                      "/topic/contract-chat/" + contractChatId, requestMessage);
-
+              AiMessageBtn(contractChatId,notificationMessage);
               log.info("수정 요청 Redis 저장 완료 - key: {}", redisKey);
               return requestData;
 
@@ -2110,19 +2104,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
               stringRedisTemplate.delete(redisKey);
 
-              ContractChatDocument responseMessage =
-                      ContractChatDocument.builder()
-                              .contractChatId(contractChatId.toString())
-                              .senderId(buyerId)
-                              .receiverId(contractChat.getOwnerId())
-                              .content(resultMessage)
-                              .sendTime(LocalDateTime.now().toString())
-                              .build();
-
-              contractChatMessageRepository.saveMessage(responseMessage);
-              messagingTemplate.convertAndSend(
-                      "/topic/contract-chat/" + contractChatId, responseMessage);
-
+              AiMessage(contractChatId,resultMessage);
               return finalContract;
 
           } catch (Exception e) {
@@ -2174,14 +2156,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
           }
 
-          ContractChatDocument confirmationRequestMessage =
-                  ContractChatDocument.builder()
-                          .contractChatId(contractChatId.toString())
-                          .senderId(ownerId)
-                          .receiverId(contractChat.getBuyerId())
-                          .content("임대인이 최종 특약서 확정을 요청했습니다.")
-                          .sendTime(LocalDateTime.now().toString())
-                          .build();
+          AiMessage(contractChatId,"특약을 수락하였습니다");
 
           String key = "final-contract:confirmation:" + contractChatId;
           String existingValue = stringRedisTemplate.opsForValue().get(key);
@@ -2192,10 +2167,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String value = ownerId.toString();
           stringRedisTemplate.opsForValue().set(key, value);
 
-          contractChatMessageRepository.saveMessage(confirmationRequestMessage);
-
-          messagingTemplate.convertAndSend(
-                  "/topic/contract-chat/" + contractChatId, confirmationRequestMessage);
       }
 
       @Override
@@ -2241,17 +2212,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
-          ContractChatDocument successMessage =
-                  ContractChatDocument.builder()
-                          .contractChatId(contractChatId.toString())
-                          .senderId(buyerId)
-                          .receiverId(ownerId)
-                          .content(confirmationMessage)
-                          .sendTime(LocalDateTime.now().toString())
-                          .build();
-
-          contractChatMessageRepository.saveMessage(successMessage);
-          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, successMessage);
+          AiMessage(contractChatId,confirmationMessage);
 
           return Map.of(
                   "message",
@@ -2269,20 +2230,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String redisKey = "final-contract:confirmation:" + contractChatId;
           stringRedisTemplate.delete(redisKey);
 
-          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-          ContractChatDocument rejectNotification =
-                  ContractChatDocument.builder()
-                          .contractChatId(contractChatId.toString())
-                          .senderId(buyerId)
-                          .receiverId(contractChat.getOwnerId())
-                          .content("임차인이 최종 특약서 확정을 거절했습니다.")
-                          .sendTime(LocalDateTime.now().toString())
-                          .build();
-
-          contractChatMessageRepository.saveMessage(rejectNotification);
-
-          messagingTemplate.convertAndSend(
-                  "/topic/contract-chat/" + contractChatId, rejectNotification);
+          AiMessage(contractChatId,"임차인이 수정을 거절하였습니다.");
       }
 
       @Override
@@ -2334,17 +2282,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String notificationMessage = String.format("임대인이 특약 %d번 삭제를 요청했습니다.", clauseOrder);
 
-          ContractChatDocument requestMessage =
-                  ContractChatDocument.builder()
-                          .contractChatId(contractChatId.toString())
-                          .senderId(ownerId)
-                          .receiverId(contractChat.getBuyerId())
-                          .content(notificationMessage)
-                          .sendTime(LocalDateTime.now().toString())
-                          .build();
-
-          contractChatMessageRepository.saveMessage(requestMessage);
-          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, requestMessage);
+          AiMessage(contractChatId,notificationMessage);
 
           log.info("삭제 요청 Redis 저장 완료 - key: {}, value: {}", redisKey, ownerId);
       }
@@ -2402,17 +2340,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String confirmationMessage =
                   String.format("임차인이 특약 %d번 삭제 요청을 수락했습니다. 특약이 삭제되었습니다.", clauseOrder);
 
-          ContractChatDocument successMessage =
-                  ContractChatDocument.builder()
-                          .contractChatId(contractChatId.toString())
-                          .senderId(buyerId)
-                          .receiverId(contractChat.getOwnerId())
-                          .content(confirmationMessage)
-                          .sendTime(LocalDateTime.now().toString())
-                          .build();
-
-          contractChatMessageRepository.saveMessage(successMessage);
-          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, successMessage);
+          AiMessage(contractChatId,confirmationMessage);
 
           log.info("특약 {}번 삭제 완료 - contractChatId: {}", clauseOrder, contractChatId);
 
@@ -2460,17 +2388,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String rejectionMessage =
                   String.format("임차인이 특약 %d번 삭제 요청을 거절했습니다. 기존 특약이 유지됩니다.", clauseOrder);
 
-          ContractChatDocument rejectionDoc =
-                  ContractChatDocument.builder()
-                          .contractChatId(contractChatId.toString())
-                          .senderId(buyerId)
-                          .receiverId(contractChat.getOwnerId())
-                          .content(rejectionMessage)
-                          .sendTime(LocalDateTime.now().toString())
-                          .build();
-
-          contractChatMessageRepository.saveMessage(rejectionDoc);
-          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, rejectionDoc);
+          AiMessage(contractChatId,rejectionMessage);
 
           log.info("특약 {}번 삭제 거절 완료 - contractChatId: {}", clauseOrder, contractChatId);
       }
