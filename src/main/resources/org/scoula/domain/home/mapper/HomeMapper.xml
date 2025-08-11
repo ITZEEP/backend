@@ -88,7 +88,7 @@
             h.room_cnt as roomCnt, h.supply_area as supplyArea, h.exclusive_area as exclusiveArea,
             h.created_at as createdAt, h.updated_at as updatedAt
         FROM home h
-        WHERE h.home_status = 'AVAILABLE'
+        WHERE h.home_status = 'AVAILABLE' AND EXISTS(select * from home_identity_verification as hiv where h.home_id = hiv.home_id)
         ORDER BY h.created_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
