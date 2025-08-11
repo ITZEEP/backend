@@ -115,10 +115,13 @@ public class SpecialContractMongoRepository {
           mongoTemplate.remove(document);
       }
 
-      /** contractChatId로 특약 문서 삭제 */
-      public void deleteByContractChatId(Long contractChatId) {
+      public void deleteFinalContractClause(Long contractChatId, Integer clauseOrder) {
           Query query = new Query(Criteria.where("contractChatId").is(contractChatId));
-          mongoTemplate.remove(query, SpecialContractFixDocument.class);
+          Update update =
+                  new Update()
+                          .pull("finalClauses", Query.query(Criteria.where("order").is(clauseOrder)));
+
+          mongoTemplate.updateFirst(query, update, "FINAL_SPECIAL_CONTRACT");
       }
 
       /** contractChatId로 SpecialContractDocument (원본 특약 문서) 조회 */
