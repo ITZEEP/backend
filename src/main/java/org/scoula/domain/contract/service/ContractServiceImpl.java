@@ -416,15 +416,25 @@ public class ContractServiceImpl implements ContractService {
               // 반환값을 받아오고, 그 값을 프론트에 넘겨준다.
               ResponseEntity<LegalityDTO> response =
                       restTemplate.exchange(url, HttpMethod.POST, requestEntity, LegalityDTO.class);
-                LegalityDTO res = response.getBody();
+              LegalityDTO res = response.getBody();
               assert res != null;
-              log.warn("AI 응답 값 확인: {}",res.toString());
+              log.warn("AI 응답 값 확인: {}", res.toString());
 
-              log.warn("AI 응답 헤더 확인: {}",response.getStatusCode());
+              log.warn("AI 응답 헤더 확인: {}", response.getStatusCode());
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   return response.getBody();
               } else {
-                  log.error(response.getBody());
+                  // Sanitize response body before logging to prevent log injection
+                  String responseBodyStr;
+                  try {
+                      ObjectMapper objectMapper = new ObjectMapper();
+                      responseBodyStr = objectMapper.writeValueAsString(response.getBody());
+                  } catch (Exception ex) {
+                      responseBodyStr = String.valueOf(response.getBody());
+                  }
+                  // Remove newlines and carriage returns
+                  responseBodyStr = responseBodyStr.replaceAll("[\\r\\n]", " ");
+                  log.error(responseBodyStr);
                   throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR);
               }
 
