@@ -7,8 +7,7 @@ import java.util.Map;
 import org.scoula.domain.chat.document.ContractChatDocument;
 import org.scoula.domain.chat.document.FinalSpecialContractDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
-import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
+import org.scoula.domain.chat.dto.*;
 import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -143,4 +142,68 @@ public interface ContractChatController {
       @GetMapping("/final-contract/{contractChatId}")
       ResponseEntity<ApiResponse<FinalSpecialContractDocument>> getFinalSpecialContract(
               @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "최종 특약서 수정 요청 (임대인)", notes = "임대인이 최종 특약서의 특정 조항 수정을 요청합니다.")
+      @PostMapping("/final-contract/{contractChatId}/modification-request")
+      ResponseEntity<ApiResponse<ModificationRequestData>> requestFinalContractModification(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractModificationRequestDto requestDto,
+              Authentication authentication);
+
+      @ApiOperation(value = "최종 특약서 수정 요청 응답 (임차인)", notes = "임차인이 수정 요청을 수락 또는 거절합니다.")
+      @PostMapping("/final-contract/{contractChatId}/modification-response")
+      ResponseEntity<ApiResponse<FinalSpecialContractDocument>> respondToModificationRequest(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractModificationResponseDto responseDto,
+              Authentication authentication);
+
+      @ApiOperation(value = "특정 수정 요청 조회", notes = "특정 조항에 대한 대기중인 수정 요청을 조회합니다.")
+      @GetMapping("/final-contract/{contractChatId}/modification-request/{clauseOrder}")
+      ResponseEntity<ApiResponse<ModificationRequestData>> getPendingModificationRequest(
+              @PathVariable Long contractChatId,
+              @PathVariable Integer clauseOrder,
+              Authentication authentication);
+
+      @ApiOperation(value = "대기중인 수정 요청 확인", notes = "특정 조항에 대해 대기중인 수정 요청이 있는지 확인합니다.")
+      @GetMapping("/final-contract/{contractChatId}/has-pending-request/{clauseOrder}")
+      ResponseEntity<ApiResponse<Boolean>> hasPendingModificationRequest(
+              @PathVariable Long contractChatId,
+              @PathVariable Integer clauseOrder,
+              Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 확정 요청 (임대인)", notes = "임대인이 최종 특약서에 대한 확정을 요청합니다.")
+      @PostMapping("/{contractChatId}/final-contract/request-confirmation")
+      ResponseEntity<ApiResponse<String>> requestFinalContractConfirmation(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 확정 수락 (임차인)", notes = "임차인이 임대인의 최종 특약서 확정 요청을 수락합니다.")
+      @PostMapping("/{contractChatId}/final-contract/accept-confirmation")
+      ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractConfirmation(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 확정 거절 (임차인)", notes = "임차인이 임대인의 최종 특약서 확정 요청을 거절합니다.")
+      @PostMapping("/{contractChatId}/final-contract/reject-confirmation")
+      ResponseEntity<ApiResponse<String>> rejectFinalContractConfirmation(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 삭제 요청 (임대인)", notes = "임대인이 최종 특약서의 특정 조항 삭제를 요청합니다.")
+      @PostMapping("/final-contract/{contractChatId}/deletion-request/{clauseOrder}")
+      ResponseEntity<ApiResponse<String>> requestFinalContractDeletion(
+              @PathVariable Long contractChatId,
+              @PathVariable Integer clauseOrder,
+              Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 삭제 수락 (임차인)", notes = "임차인이 임대인의 최종 특약 삭제 요청을 수락합니다.")
+      @PostMapping("/final-contract/{contractChatId}/accept-deletion/{clauseOrder}")
+      ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractDeletion(
+              @PathVariable Long contractChatId,
+              @PathVariable Integer clauseOrder,
+              Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 삭제 거절 (임차인)", notes = "임차인이 임대인의 최종 특약 삭제 요청을 거절합니다.")
+      @PostMapping("/final-contract/{contractChatId}/reject-deletion/{clauseOrder}")
+      ResponseEntity<ApiResponse<String>> rejectFinalContractDeletion(
+              @PathVariable Long contractChatId,
+              @PathVariable Integer clauseOrder,
+              Authentication authentication);
 }

@@ -6,8 +6,7 @@ import java.util.Map;
 import org.scoula.domain.chat.document.ContractChatDocument;
 import org.scoula.domain.chat.document.FinalSpecialContractDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
-import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
+import org.scoula.domain.chat.dto.*;
 import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
@@ -259,4 +258,33 @@ public interface ContractChatServiceInterface {
       void AiMessage(Long contractChatId, String content);
 
       void AiMessageBtn(Long contractChatId, String content);
+
+      ModificationRequestData requestFinalContractModification(
+              Long contractChatId, Long ownerId, FinalContractModificationRequestDto requestDto);
+
+      FinalSpecialContractDocument respondToModificationRequest(
+              Long contractChatId, Long buyerId, FinalContractModificationResponseDto responseDto);
+
+      ModificationRequestData getPendingModificationRequest(Long contractChatId, Integer clauseOrder);
+
+      boolean hasPendingModificationRequest(Long contractChatId, Integer clauseOrder);
+
+      /** 임대인이 최종 특약 확정 요청 */
+      void requestFinalContractConfirmation(Long contractChatId, Long ownerId);
+
+      /** 임차인이 최종 특약 확정 수락 */
+      Map<String, Object> acceptFinalContractConfirmation(Long contractChatId, Long buyerId);
+
+      /** 임차인이 최종 특약 확정 거절 */
+      void rejectFinalContractConfirmation(Long contractChatId, Long buyerId);
+
+      /** 임대인이 최종 특약 삭제 요청 */
+      void requestFinalContractDeletion(Long contractChatId, Long ownerId, Integer clauseOrder);
+
+      /** 임차인이 최종 특약 삭제 수락 */
+      Map<String, Object> acceptFinalContractDeletion(
+              Long contractChatId, Long buyerId, Integer clauseOrder);
+
+      /** 임차인이 최종 특약 삭제 거절 */
+      void rejectFinalContractDeletion(Long contractChatId, Long buyerId, Integer clauseOrder);
 }

@@ -1,14 +1,13 @@
 package org.scoula.domain.chat.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.scoula.domain.chat.document.*;
-import org.scoula.domain.chat.dto.ContentDataDto;
-import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
+import org.scoula.domain.chat.dto.*;
 import org.scoula.domain.chat.dto.ai.ClauseImproveRequestDto;
 import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.domain.chat.exception.ChatErrorCode;
@@ -28,6 +27,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,6 +47,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       private final Map<String, Set<Long>> contractChatOnlineUsers = new ConcurrentHashMap<>();
       private final RedisTemplate<String, String> stringRedisTemplate;
+      private final ObjectMapper objectMapper = new ObjectMapper();
       @Autowired private SpecialContractMongoRepository specialContractMongoRepository;
 
       /** {@inheritDoc} */
@@ -133,22 +135,23 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           contractChatMapper.updateLastMessage(contractChatId, content);
           messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
       }
-    public void AiMessageNext(Long contractChatId, String content) {
-        final Long ai = 9997L;
 
-        ContractChatDocument aiMessage =
-                ContractChatDocument.builder()
-                        .contractChatId(contractChatId.toString())
-                        .senderId(ai)
-                        .receiverId(null)
-                        .content(content)
-                        .sendTime(LocalDateTime.now().toString())
-                        .build();
+      public void AiMessageNext(Long contractChatId, String content) {
+          final Long ai = 9997L;
 
-        contractChatMessageRepository.saveMessage(aiMessage);
-        contractChatMapper.updateLastMessage(contractChatId, content);
-        messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
-    }
+          ContractChatDocument aiMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(ai)
+                          .receiverId(null)
+                          .content(content)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(aiMessage);
+          contractChatMapper.updateLastMessage(contractChatId, content);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
+      }
 
       public void AiMessageBtn(Long contractChatId, String content) {
           final Long ai = 9998L;
@@ -280,14 +283,11 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String result = sb.toString();
 
+          SpecialContractFixDocument improveClauseRequest =
+                  updateRecentData(contractChatId, order, result);
+          ClauseImproveResponseDto improveClauseResponse = getAiClauseImprove(improveClauseRequest);
 
-
-              SpecialContractFixDocument improveClauseRequest =
-                      updateRecentData(contractChatId, order, result);
-              ClauseImproveResponseDto improveClauseResponse =
-                      getAiClauseImprove(improveClauseRequest);
-
-              updateSpecialClause(contractChatId, improveClauseResponse);
+          updateSpecialClause(contractChatId, improveClauseResponse);
 
           checkAndIncrementRoundIfComplete(contractChatId);
           return true;
@@ -632,14 +632,11 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           .orElseThrow(
                                   () -> new IllegalArgumentException("현재 라운드의 특약 문서를 찾을 수 없습니다"));
 
-
           Long newRound = currentRound + 1;
           log.info("새 라운드: {} → {}", currentRound, newRound);
 
-          // 이전 라운드에서 통과된 특약들도 찾아서 포함
           List<Long> allPassedOrders = new ArrayList<>(passedOrders);
 
-          // 이미 완료된 특약들(isPassed=true)도 추가로 가져와서 포함
           List<SpecialContractFixDocument> completedContracts =
                   specialContractMongoRepository.findByContractChatIdAndIsPassed(
                           contractChatId, true);
@@ -659,7 +656,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               Long orderLong = Long.valueOf(order);
 
               if (allPassedOrders.contains(orderLong)) {
-                  // 통과된 특약들을 복사 (이전 라운드에서 완료된 것들 포함)
                   Optional<SpecialContractDocument.Clause> clauseOpt =
                           findBestClauseForOrder(contractChatId, orderLong);
 
@@ -724,7 +720,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   newClauses.add(emptyClause);
                   log.info("거부된 특약 {}번 빈 껍데기 생성 완료", order);
               } else {
-                  // 유지되는 특약들
                   latestDocument.getClauses().stream()
                           .filter(clause -> clause.getOrder().equals(orderInteger))
                           .findFirst()
@@ -799,10 +794,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           .collect(Collectors.toList()));
       }
 
-      /** 특정 특약 번호에 대해 가장 최신의 완성된 조항을 찾는 메서드 가장 높은 라운드부터 역순으로 검색하여 내용이 있는 조항을 반환 */
       private Optional<SpecialContractDocument.Clause> findBestClauseForOrder(
               Long contractChatId, Long order) {
-          // 4라운드부터 1라운드까지 역순으로 검색
           for (Long round = 4L; round >= 1L; round--) {
               Optional<SpecialContractDocument> docOpt =
                       specialContractMongoRepository
@@ -967,7 +960,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return processRoundResults(contractChatId, document, currentStatus, isOwner);
       }
 
-      /** 현재 상태에 따른 선택 가능한 특약들 반환 */
       private List<Integer> getAvailableOrders(
               Long contractChatId, ContractChat.ContractStatus status) {
           if (status == ContractChat.ContractStatus.STEP0
@@ -983,7 +975,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
       }
 
-      /** 라운드별 결과 처리 (기존 로직 + 라운드 진행) */
       @Transactional
       public Object processRoundResults(
               Long contractChatId,
@@ -1193,7 +1184,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String userRole = isOwner ? "owner" : "tenant";
 
-          Map<String, SpecialContractUserViewDto> allRounds = new HashMap<>();
+          Map<String, SpecialContractUserViewDto> allRounds = new LinkedHashMap<>();
           int availableRounds = 0;
 
           for (Long round = 1L; round <= 4L; round++) {
@@ -1560,7 +1551,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   contractChatId, false);
       }
 
-      /** 빈 ContentDataDto 생성 헬퍼 메서드 */
       private ContentDataDto createEmptyContentData() {
           return ContentDataDto.builder().title("").content("").messages("").build();
       }
@@ -1581,107 +1571,137 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return rejectedOrders;
       }
 
+      @Override
+      @Transactional
+      public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
+          log.info("=== 최종 특약 저장 시작 ===");
+          log.info("contractChatId: {}", contractChatId);
 
-    @Override
-    @Transactional
-    public FinalSpecialContractDocument saveFinalSpecialContract(Long contractChatId) {
-        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-        ContractChat.ContractStatus currentStatus = contractChat.getStatus();
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
 
-        boolean isThirdRoundComplete = (currentStatus == ContractChat.ContractStatus.ROUND3);
+          SpecialContractDocument latestDocument = null;
+          Long latestRound = null;
 
-        List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
+          for (Long round = 4L; round >= 1L; round--) {
+              Optional<SpecialContractDocument> docOpt =
+                      specialContractMongoRepository
+                              .findSpecialContractDocumentByContractChatIdAndRound(
+                                      contractChatId, round);
 
-        if (isThirdRoundComplete) {
-            log.info("=== 3회차 수정 완료 - 4라운드 데이터에서 최종 특약 생성 ===");
+              if (docOpt.isPresent()) {
+                  latestDocument = docOpt.get();
+                  latestRound = round;
+                  log.info("가장 최근 라운드 발견: {}", round);
+                  break;
+              }
+          }
 
-            Optional<SpecialContractDocument> round4DocOpt =
-                    specialContractMongoRepository.findSpecialContractDocumentByContractChatIdAndRound(contractChatId, 4L);
+          if (latestDocument == null) {
+              throw new IllegalStateException("특약 문서를 찾을 수 없습니다: " + contractChatId);
+          }
 
-            if (round4DocOpt.isPresent()) {
-                SpecialContractDocument round4Doc = round4DocOpt.get();
+          List<FinalSpecialContractDocument.FinalClause> finalClauses = new ArrayList<>();
 
-                for (SpecialContractDocument.Clause clause : round4Doc.getClauses()) {
-                    if (clause.getTitle() != null && !clause.getTitle().trim().isEmpty() &&
-                            clause.getContent() != null && !clause.getContent().trim().isEmpty()) {
+          for (SpecialContractDocument.Clause clause : latestDocument.getClauses()) {
+              if (clause.getOrder() != null) {
+                  String title = clause.getTitle();
+                  String content = clause.getContent();
 
-                        FinalSpecialContractDocument.FinalClause finalClause =
-                                FinalSpecialContractDocument.FinalClause.builder()
-                                        .order(clause.getOrder())
-                                        .title(clause.getTitle())
-                                        .content(clause.getContent())
-                                        .build();
+                  if (title != null
+                          && !title.trim().isEmpty()
+                          && content != null
+                          && !content.trim().isEmpty()) {
 
-                        finalClauses.add(finalClause);
-                        log.info("4라운드에서 특약 {}번 최종 저장: {}", clause.getOrder(), clause.getTitle());
-                    }
-                }
-            }
-        } else {
-            log.info("=== 모든 특약 완료 - 완료된 특약들만 최종 저장 ===");
+                      FinalSpecialContractDocument.FinalClause finalClause =
+                              FinalSpecialContractDocument.FinalClause.builder()
+                                      .order(clause.getOrder())
+                                      .title(title.trim())
+                                      .content(content.trim())
+                                      .build();
 
-            List<SpecialContractFixDocument> incompleteContracts =
-                    specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, false);
+                      finalClauses.add(finalClause);
+                      log.info("특약 {}번 저장 완료 (라운드 {}): {}", clause.getOrder(), latestRound, title);
+                  } else {
+                      boolean foundInPreviousRound = false;
+                      for (Long searchRound = latestRound - 1; searchRound >= 1L; searchRound--) {
+                          Optional<SpecialContractDocument> prevDocOpt =
+                                  specialContractMongoRepository
+                                          .findSpecialContractDocumentByContractChatIdAndRound(
+                                                  contractChatId, searchRound);
 
-            if (!incompleteContracts.isEmpty()) {
-                throw new IllegalStateException(
-                        "아직 완료되지 않은 특약이 " + incompleteContracts.size() + "개 있습니다.");
-            }
+                          if (prevDocOpt.isPresent()) {
+                              SpecialContractDocument prevDoc = prevDocOpt.get();
 
-            List<SpecialContractFixDocument> completedContracts =
-                    specialContractMongoRepository.findByContractChatIdAndIsPassed(contractChatId, true);
+                              for (SpecialContractDocument.Clause prevClause : prevDoc.getClauses()) {
+                                  if (prevClause.getOrder() != null
+                                          && prevClause.getOrder().equals(clause.getOrder())) {
 
-            if (completedContracts.isEmpty()) {
-                throw new IllegalStateException("완료된 특약이 없습니다.");
-            }
+                                      String prevTitle = prevClause.getTitle();
+                                      String prevContent = prevClause.getContent();
 
-            for (SpecialContractFixDocument completedContract : completedContracts) {
-                Long order = completedContract.getOrder();
+                                      if (prevTitle != null
+                                              && !prevTitle.trim().isEmpty()
+                                              && prevContent != null
+                                              && !prevContent.trim().isEmpty()) {
 
-                Optional<SpecialContractDocument> latestRoundDoc =
-                        findLatestRoundForOrder(contractChatId, order);
+                                          FinalSpecialContractDocument.FinalClause finalClause =
+                                                  FinalSpecialContractDocument.FinalClause.builder()
+                                                          .order(prevClause.getOrder())
+                                                          .title(prevTitle.trim())
+                                                          .content(prevContent.trim())
+                                                          .build();
 
-                if (latestRoundDoc.isPresent()) {
-                    SpecialContractDocument doc = latestRoundDoc.get();
+                                          finalClauses.add(finalClause);
+                                          log.info(
+                                                  "특약 {}번 저장 완료 (이전 라운드 {}): {}",
+                                                  prevClause.getOrder(),
+                                                  searchRound,
+                                                  prevTitle);
+                                          foundInPreviousRound = true;
+                                          break;
+                                      }
+                                  }
+                              }
 
-                    doc.getClauses().stream()
-                            .filter(clause -> clause.getOrder().equals(order.intValue()))
-                            .findFirst()
-                            .ifPresent(
-                                    clause -> {
-                                        FinalSpecialContractDocument.FinalClause finalClause =
-                                                FinalSpecialContractDocument.FinalClause.builder()
-                                                        .order(clause.getOrder())
-                                                        .title(clause.getTitle())
-                                                        .content(clause.getContent())
-                                                        .build();
+                              if (foundInPreviousRound) {
+                                  break;
+                              }
+                          }
+                      }
 
-                                        finalClauses.add(finalClause);
-                                        log.info(
-                                                "특약 {}번 최종 저장 완료 - sourceRound: {}",
-                                                order,
-                                                doc.getRound());
-                                    });
-                }
-            }
-        }
+                      if (!foundInPreviousRound) {
+                          log.info("특약 {}번: 모든 라운드에서 유효한 내용을 찾을 수 없음 - 건너뜀", clause.getOrder());
+                      }
+                  }
+              }
+          }
 
-        FinalSpecialContractDocument finalDocument =
-                FinalSpecialContractDocument.builder()
-                        .contractChatId(contractChatId)
-                        .totalFinalClauses(finalClauses.size())
-                        .finalClauses(finalClauses)
-                        .build();
+          finalClauses.sort((a, b) -> Integer.compare(a.getOrder(), b.getOrder()));
 
-        FinalSpecialContractDocument savedDocument =
-                specialContractMongoRepository.saveFinalSpecialContract(finalDocument);
+          log.info("최종 저장될 특약 개수: {}", finalClauses.size());
+          for (FinalSpecialContractDocument.FinalClause clause : finalClauses) {
+              log.info("- 특약 {}번: {}", clause.getOrder(), clause.getTitle());
+          }
 
-        log.info("최종 특약 저장 완료 - 총 {}개 조항 (방식: {})",
-                finalClauses.size(),
-                isThirdRoundComplete ? "3회차 완료" : "모든 특약 완료");
+          FinalSpecialContractDocument finalDocument =
+                  FinalSpecialContractDocument.builder()
+                          .contractChatId(contractChatId)
+                          .totalFinalClauses(finalClauses.size())
+                          .finalClauses(finalClauses)
+                          .build();
 
-        return savedDocument;
-    }
+          FinalSpecialContractDocument savedDocument =
+                  specialContractMongoRepository.saveFinalSpecialContract(finalDocument);
+
+          log.info("=== 최종 특약 저장 완료 ===");
+          log.info("저장된 문서 ID: {}", savedDocument.getId());
+          log.info("총 특약 개수: {}", savedDocument.getTotalFinalClauses());
+
+          return savedDocument;
+      }
 
       private Optional<SpecialContractDocument> findLatestRoundForOrder(
               Long contractChatId, Long order) {
@@ -1776,7 +1796,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
       }
 
-      /** 최종 라운드(4차) 완료 체크 및 자동 완료 처리 */
       @Transactional
       public void checkFinalRoundCompletion(Long contractChatId) {
           log.info("=== 최종 라운드(4차) 완료 체크 시작 ===");
@@ -1920,5 +1939,539 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               default:
                   return "새로운 협상 라운드가 시작됩니다.";
           }
+      }
+
+      @Override
+      @Transactional
+      public ModificationRequestData requestFinalContractModification(
+              Long contractChatId, Long ownerId, FinalContractModificationRequestDto requestDto) {
+
+          log.info("=== 최종 특약서 수정 요청 시작 ===");
+          log.info(
+                  "contractChatId: {}, ownerId: {}, clauseOrder: {}",
+                  contractChatId,
+                  ownerId,
+                  requestDto.getClauseOrder());
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!ownerId.equals(contractChat.getOwnerId())) {
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임대인만 수정 요청할 수 있습니다.");
+          }
+
+          Optional<FinalSpecialContractDocument> finalContractOpt =
+                  specialContractMongoRepository.findFinalContractByContractChatId(contractChatId);
+
+          if (finalContractOpt.isEmpty()) {
+              throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
+          }
+
+          FinalSpecialContractDocument finalContract = finalContractOpt.get();
+          boolean clauseExists =
+                  finalContract.getFinalClauses().stream()
+                          .anyMatch(clause -> clause.getOrder().equals(requestDto.getClauseOrder()));
+
+          if (!clauseExists) {
+              throw new IllegalArgumentException(
+                      "해당 특약 조항을 찾을 수 없습니다: " + requestDto.getClauseOrder());
+          }
+
+          String redisKey =
+                  "final-contract:modification:" + contractChatId + ":" + requestDto.getClauseOrder();
+
+          String existingRequest = stringRedisTemplate.opsForValue().get(redisKey);
+          if (existingRequest != null) {
+              throw new IllegalArgumentException("해당 조항에 대한 수정 요청이 이미 대기중입니다.");
+          }
+
+          ModificationRequestData requestData =
+                  ModificationRequestData.builder()
+                          .contractChatId(contractChatId)
+                          .clauseOrder(requestDto.getClauseOrder())
+                          .newTitle(requestDto.getNewTitle())
+                          .newContent(requestDto.getNewContent())
+                          .requesterId(ownerId)
+                          .createdAt(LocalDateTime.now().toString())
+                          .build();
+
+          try {
+              String jsonData = objectMapper.writeValueAsString(requestData);
+              stringRedisTemplate.opsForValue().set(redisKey, jsonData, Duration.ofHours(24));
+
+              String notificationMessage =
+                      String.format("임대인이 특약 %d번 수정을 요청했습니다.", requestDto.getClauseOrder());
+
+              ContractChatDocument requestMessage =
+                      ContractChatDocument.builder()
+                              .contractChatId(contractChatId.toString())
+                              .senderId(ownerId)
+                              .receiverId(contractChat.getBuyerId())
+                              .content(notificationMessage)
+                              .sendTime(LocalDateTime.now().toString())
+                              .build();
+
+              contractChatMessageRepository.saveMessage(requestMessage);
+              messagingTemplate.convertAndSend(
+                      "/topic/contract-chat/" + contractChatId, requestMessage);
+
+              log.info("수정 요청 Redis 저장 완료 - key: {}", redisKey);
+              return requestData;
+
+          } catch (Exception e) {
+              log.error("수정 요청 저장 실패", e);
+              throw new RuntimeException("수정 요청 저장 중 오류가 발생했습니다.");
+          }
+      }
+
+      @Override
+      @Transactional
+      public FinalSpecialContractDocument respondToModificationRequest(
+              Long contractChatId, Long buyerId, FinalContractModificationResponseDto responseDto) {
+
+          log.info("=== 수정 요청 응답 처리 시작 ===");
+          log.info(
+                  "contractChatId: {}, buyerId: {}, accepted: {}",
+                  contractChatId,
+                  buyerId,
+                  responseDto.isAccepted());
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 응답할 수 있습니다.");
+          }
+
+          String redisKey =
+                  "final-contract:modification:"
+                          + contractChatId
+                          + ":"
+                          + responseDto.getClauseOrder();
+          String requestDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (requestDataJson == null) {
+              throw new IllegalArgumentException("해당 조항에 대한 대기중인 수정 요청이 없습니다.");
+          }
+
+          try {
+              ModificationRequestData requestData =
+                      objectMapper.readValue(requestDataJson, ModificationRequestData.class);
+
+              FinalSpecialContractDocument finalContract =
+                      specialContractMongoRepository
+                              .findFinalContractByContractChatId(contractChatId)
+                              .orElseThrow(() -> new IllegalArgumentException("최종 특약서를 찾을 수 없습니다."));
+
+              String resultMessage;
+
+              if (responseDto.isAccepted()) {
+                  List<FinalSpecialContractDocument.FinalClause> updatedClauses =
+                          finalContract.getFinalClauses().stream()
+                                  .map(
+                                          clause -> {
+                                              if (clause.getOrder()
+                                                      .equals(responseDto.getClauseOrder())) {
+                                                  return FinalSpecialContractDocument.FinalClause
+                                                          .builder()
+                                                          .order(clause.getOrder())
+                                                          .title(requestData.getNewTitle())
+                                                          .content(requestData.getNewContent())
+                                                          .build();
+                                              }
+                                              return clause;
+                                          })
+                                  .collect(Collectors.toList());
+
+                  finalContract.setFinalClauses(updatedClauses);
+
+                  specialContractMongoRepository.saveFinalSpecialContract(finalContract);
+
+                  resultMessage =
+                          String.format(
+                                  "임차인이 특약 %d번 수정 요청을 수락했습니다. 특약이 변경되었습니다.",
+                                  responseDto.getClauseOrder());
+
+                  log.info("수정 수락 - 최종 특약서 업데이트 완료");
+
+              } else {
+                  resultMessage =
+                          String.format(
+                                  "임차인이 특약 %d번 수정 요청을 거절했습니다. 기존 특약이 유지됩니다.",
+                                  responseDto.getClauseOrder());
+
+                  log.info("수정 거절 - 기존 특약서 유지");
+              }
+
+              stringRedisTemplate.delete(redisKey);
+
+              ContractChatDocument responseMessage =
+                      ContractChatDocument.builder()
+                              .contractChatId(contractChatId.toString())
+                              .senderId(buyerId)
+                              .receiverId(contractChat.getOwnerId())
+                              .content(resultMessage)
+                              .sendTime(LocalDateTime.now().toString())
+                              .build();
+
+              contractChatMessageRepository.saveMessage(responseMessage);
+              messagingTemplate.convertAndSend(
+                      "/topic/contract-chat/" + contractChatId, responseMessage);
+
+              return finalContract;
+
+          } catch (Exception e) {
+              log.error("수정 요청 응답 처리 실패", e);
+              throw new RuntimeException("응답 처리 중 오류가 발생했습니다.");
+          }
+      }
+
+      @Override
+      public ModificationRequestData getPendingModificationRequest(
+              Long contractChatId, Integer clauseOrder) {
+          String redisKey = "final-contract:modification:" + contractChatId + ":" + clauseOrder;
+          String requestDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (requestDataJson == null) {
+              return null;
+          }
+
+          try {
+              return objectMapper.readValue(requestDataJson, ModificationRequestData.class);
+          } catch (Exception e) {
+              log.error("수정 요청 데이터 파싱 실패", e);
+              return null;
+          }
+      }
+
+      @Override
+      public boolean hasPendingModificationRequest(Long contractChatId, Integer clauseOrder) {
+          String redisKey = "final-contract:modification:" + contractChatId + ":" + clauseOrder;
+          return stringRedisTemplate.hasKey(redisKey);
+      }
+
+      @Override
+      @Transactional
+      public void requestFinalContractConfirmation(Long contractChatId, Long ownerId) {
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!ownerId.equals(contractChat.getOwnerId())) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          Optional<FinalSpecialContractDocument> finalContractOpt =
+                  specialContractMongoRepository.findFinalContractByContractChatId(contractChatId);
+
+          if (finalContractOpt.isEmpty()) {
+              throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
+          }
+
+          ContractChatDocument confirmationRequestMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(ownerId)
+                          .receiverId(contractChat.getBuyerId())
+                          .content("임대인이 최종 특약서 확정을 요청했습니다.")
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          String key = "final-contract:confirmation:" + contractChatId;
+          String existingValue = stringRedisTemplate.opsForValue().get(key);
+          if (existingValue != null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_ALREADY_EXISTS, "이미 확정 요청이 진행 중입니다.");
+          }
+          String value = ownerId.toString();
+          stringRedisTemplate.opsForValue().set(key, value);
+
+          contractChatMessageRepository.saveMessage(confirmationRequestMessage);
+
+          messagingTemplate.convertAndSend(
+                  "/topic/contract-chat/" + contractChatId, confirmationRequestMessage);
+      }
+
+      @Override
+      @Transactional
+      public Map<String, Object> acceptFinalContractConfirmation(Long contractChatId, Long buyerId) {
+          if (!isUserInContractChat(contractChatId, buyerId)) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          Long ownerId = contractChat.getOwnerId();
+
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 확정 수락을 할 수 있습니다.");
+          }
+
+          String redisKey = "final-contract:confirmation:" + contractChatId;
+          String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (storedOwnerId == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "확정 요청이 존재하지 않습니다.");
+          }
+
+          if (!storedOwnerId.equals(ownerId.toString())) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
+          }
+
+          FinalSpecialContractDocument finalContract =
+                  specialContractMongoRepository
+                          .findFinalContractByContractChatId(contractChatId)
+                          .orElseThrow(() -> new IllegalArgumentException("최종 특약서를 찾을 수 없습니다."));
+
+          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP4);
+
+          stringRedisTemplate.delete(redisKey);
+
+          String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
+
+          ContractChatDocument successMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(buyerId)
+                          .receiverId(ownerId)
+                          .content(confirmationMessage)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(successMessage);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, successMessage);
+
+          return Map.of(
+                  "message",
+                  "최종 특약서가 확정되었습니다.",
+                  "status",
+                  "COMPLETED",
+                  "finalContractId",
+                  finalContract.getId(),
+                  "totalFinalClauses",
+                  finalContract.getTotalFinalClauses());
+      }
+
+      @Override
+      public void rejectFinalContractConfirmation(Long contractChatId, Long buyerId) {
+          String redisKey = "final-contract:confirmation:" + contractChatId;
+          stringRedisTemplate.delete(redisKey);
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          ContractChatDocument rejectNotification =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(buyerId)
+                          .receiverId(contractChat.getOwnerId())
+                          .content("임차인이 최종 특약서 확정을 거절했습니다.")
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(rejectNotification);
+
+          messagingTemplate.convertAndSend(
+                  "/topic/contract-chat/" + contractChatId, rejectNotification);
+      }
+
+      @Override
+      @Transactional
+      public void requestFinalContractDeletion(
+              Long contractChatId, Long ownerId, Integer clauseOrder) {
+          log.info("=== 최종 특약 삭제 요청 시작 ===");
+          log.info(
+                  "contractChatId: {}, ownerId: {}, clauseOrder: {}",
+                  contractChatId,
+                  ownerId,
+                  clauseOrder);
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!ownerId.equals(contractChat.getOwnerId())) {
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임대인만 삭제 요청할 수 있습니다.");
+          }
+
+          Optional<FinalSpecialContractDocument> finalContractOpt =
+                  specialContractMongoRepository.findFinalContractByContractChatId(contractChatId);
+
+          if (finalContractOpt.isEmpty()) {
+              throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
+          }
+
+          FinalSpecialContractDocument finalContract = finalContractOpt.get();
+          boolean clauseExists =
+                  finalContract.getFinalClauses().stream()
+                          .anyMatch(clause -> clause.getOrder().equals(clauseOrder));
+
+          if (!clauseExists) {
+              throw new IllegalArgumentException("해당 특약 조항을 찾을 수 없습니다: " + clauseOrder);
+          }
+
+          String redisKey = "final-contract:deletion:" + contractChatId + ":" + clauseOrder;
+
+          String existingRequest = stringRedisTemplate.opsForValue().get(redisKey);
+          if (existingRequest != null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_ALREADY_EXISTS, "이미 삭제 요청이 진행 중입니다.");
+          }
+
+          stringRedisTemplate.opsForValue().set(redisKey, ownerId.toString(), Duration.ofHours(24));
+
+          String notificationMessage = String.format("임대인이 특약 %d번 삭제를 요청했습니다.", clauseOrder);
+
+          ContractChatDocument requestMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(ownerId)
+                          .receiverId(contractChat.getBuyerId())
+                          .content(notificationMessage)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(requestMessage);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, requestMessage);
+
+          log.info("삭제 요청 Redis 저장 완료 - key: {}, value: {}", redisKey, ownerId);
+      }
+
+      @Override
+      @Transactional
+      public Map<String, Object> acceptFinalContractDeletion(
+              Long contractChatId, Long buyerId, Integer clauseOrder) {
+          log.info("=== 최종 특약 삭제 수락 처리 시작 ===");
+          log.info(
+                  "contractChatId: {}, buyerId: {}, clauseOrder: {}",
+                  contractChatId,
+                  buyerId,
+                  clauseOrder);
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 응답할 수 있습니다.");
+          }
+
+          String redisKey = "final-contract:deletion:" + contractChatId + ":" + clauseOrder;
+          String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (storedOwnerId == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "삭제 요청이 존재하지 않습니다.");
+          }
+
+          if (!storedOwnerId.equals(contractChat.getOwnerId().toString())) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "삭제 요청 정보가 유효하지 않습니다.");
+          }
+
+          FinalSpecialContractDocument finalContract =
+                  specialContractMongoRepository
+                          .findFinalContractByContractChatId(contractChatId)
+                          .orElseThrow(() -> new IllegalArgumentException("최종 특약서를 찾을 수 없습니다."));
+
+          List<FinalSpecialContractDocument.FinalClause> updatedClauses =
+                  finalContract.getFinalClauses().stream()
+                          .filter(clause -> !clause.getOrder().equals(clauseOrder))
+                          .collect(Collectors.toList());
+
+          finalContract.setFinalClauses(updatedClauses);
+          finalContract.setTotalFinalClauses(updatedClauses.size());
+
+          specialContractMongoRepository.saveFinalSpecialContract(finalContract);
+
+          stringRedisTemplate.delete(redisKey);
+
+          String confirmationMessage =
+                  String.format("임차인이 특약 %d번 삭제 요청을 수락했습니다. 특약이 삭제되었습니다.", clauseOrder);
+
+          ContractChatDocument successMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(buyerId)
+                          .receiverId(contractChat.getOwnerId())
+                          .content(confirmationMessage)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(successMessage);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, successMessage);
+
+          log.info("특약 {}번 삭제 완료 - contractChatId: {}", clauseOrder, contractChatId);
+
+          return Map.of(
+                  "message",
+                  "특약이 삭제되었습니다.",
+                  "deletedClauseOrder",
+                  clauseOrder,
+                  "finalContractId",
+                  finalContract.getId(),
+                  "remainingClauses",
+                  finalContract.getTotalFinalClauses());
+      }
+
+      @Override
+      @Transactional
+      public void rejectFinalContractDeletion(
+              Long contractChatId, Long buyerId, Integer clauseOrder) {
+          log.info("=== 최종 특약 삭제 거절 처리 시작 ===");
+          log.info(
+                  "contractChatId: {}, buyerId: {}, clauseOrder: {}",
+                  contractChatId,
+                  buyerId,
+                  clauseOrder);
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 응답할 수 있습니다.");
+          }
+
+          String redisKey = "final-contract:deletion:" + contractChatId + ":" + clauseOrder;
+          String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (storedOwnerId == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "삭제 요청이 존재하지 않습니다.");
+          }
+
+          stringRedisTemplate.delete(redisKey);
+
+          String rejectionMessage =
+                  String.format("임차인이 특약 %d번 삭제 요청을 거절했습니다. 기존 특약이 유지됩니다.", clauseOrder);
+
+          ContractChatDocument rejectionDoc =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(buyerId)
+                          .receiverId(contractChat.getOwnerId())
+                          .content(rejectionMessage)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(rejectionDoc);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, rejectionDoc);
+
+          log.info("특약 {}번 삭제 거절 완료 - contractChatId: {}", clauseOrder, contractChatId);
       }
 }
