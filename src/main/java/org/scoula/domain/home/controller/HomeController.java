@@ -1,146 +1,238 @@
 package org.scoula.domain.home.controller;
 
 import java.util.List;
+import java.util.Optional;
 
 import javax.validation.Valid;
 
-import org.scoula.domain.home.dto.request.HomeCreateRequestDto;
-import org.scoula.domain.home.dto.request.HomeReportRequestDto;
-import org.scoula.domain.home.dto.request.HomeUpdateRequestDto;
-import org.scoula.domain.home.dto.response.HomeResponseDto;
+import org.scoula.domain.home.dto.HomeCreateDTO;
+import org.scoula.domain.home.dto.HomeResponseDTO;
+import org.scoula.domain.home.dto.HomeSearchDTO;
 import org.scoula.domain.home.service.HomeService;
-import org.scoula.global.auth.dto.CustomUserDetails;
+import org.scoula.domain.home.vo.FacilityCategory;
+import org.scoula.domain.home.vo.FacilityItem;
+import org.scoula.domain.user.service.UserServiceInterface;
+import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.dto.ApiResponse;
-import org.scoula.global.common.dto.PageRequest;
-import org.scoula.global.common.dto.PageResponse;
-import org.springframework.http.MediaType;
+import org.scoula.global.common.exception.BusinessException;
+import org.scoula.global.common.exception.CommonErrorCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/homes")
 @RequiredArgsConstructor
-@Api(tags = {"매물 API"})
+@Api(tags = "매물 관리", description = "매물 등록, 조회, 수정, 삭제 API")
 public class HomeController {
 
       private final HomeService homeService;
+      private final UserServiceInterface userService;
 
       @ApiOperation(value = "매물 등록", notes = "새로운 매물을 등록합니다.")
-      @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-      public ResponseEntity<ApiResponse<Long>> createHome(
-              @AuthenticationPrincipal CustomUserDetails userDetails,
-              @ModelAttribute HomeCreateRequestDto request) {
+      @PostMapping
+      public ResponseEntity<ApiResponse<Integer>> createHome(
+              @Valid @RequestBody HomeCreateDTO createDTO, Authentication authentication) {
 
-          Long homeId = homeService.createHome(userDetails.getUserId(), request);
-          return ResponseEntity.ok(ApiResponse.success(homeId));
+          Integer userId = getCurrentUserId(authentication);
+
+          log.info("매물 등록 요청: userId={}, residenceType={}", userId, createDTO.getResidenceType());
+
+          Integer homeId = homeService.createHome(createDTO, null, userId);
+
+          return ResponseEntity.ok(ApiResponse.success(homeId, "매물이 성공적으로 등록되었습니다."));
+      }
+
+      @ApiOperation(value = "매물 상세 조회", notes = "매물 ID로 상세 정보를 조회합니다.")
+      @GetMapping("/{homeId}")
+      public ResponseEntity<ApiResponse<HomeResponseDTO>> getHome(
+              @ApiParam(value = "매물 ID", required = true) @PathVariable Integer homeId) {
+
+          log.info("매물 상세 조회 요청: homeId={}", homeId);
+
+          HomeResponseDTO home = homeService.getHome(homeId);
+
+          return ResponseEntity.ok(ApiResponse.success(home, "매물 조회가 완료되었습니다."));
+      }
+
+      @ApiOperation(value = "매물 목록 조회", notes = "페이징된 매물 목록을 조회합니다.")
+      @GetMapping
+      public ResponseEntity<ApiResponse<List<HomeResponseDTO>>> getHomeList(
+              @ApiParam(value = "페이지 번호 (1부터 시작)", defaultValue = "1")
+                      @RequestParam(defaultValue = "1")
+                      int page,
+              @ApiParam(value = "페이지 크기", defaultValue = "20") @RequestParam(defaultValue = "20")
+                      int size) {
+
+          log.info("매물 목록 조회 요청: page={}, size={}", page, size);
+
+          List<HomeResponseDTO> homes = homeService.getHomeList(page, size);
+          int totalCount = homeService.getTotalHomeCount();
+
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          homes, String.format("매물 목록 조회가 완료되었습니다. (총 %d개)", totalCount)));
+      }
+
+      @ApiOperation(value = "매물 검색", notes = "조건에 따라 매물을 검색합니다.")
+      @GetMapping("/search")
+      public ResponseEntity<ApiResponse<List<HomeResponseDTO>>> searchHomes(
+              @ApiParam(value = "검색 조건") @ModelAttribute HomeSearchDTO searchDTO) {
+
+          log.info(
+                  "매물 검색 요청: residenceType={}, leaseType={}, addr1={}",
+                  searchDTO.getResidenceType(),
+                  searchDTO.getLeaseType(),
+                  searchDTO.getAddr1());
+
+          List<HomeResponseDTO> homes = homeService.searchHomes(searchDTO);
+          int totalCount = homeService.getHomeCountByCondition(searchDTO);
+
+          return ResponseEntity.ok(
+                  ApiResponse.success(homes, String.format("매물 검색이 완료되었습니다. (총 %d개)", totalCount)));
       }
 
       @ApiOperation(value = "매물 수정", notes = "기존 매물 정보를 수정합니다.")
       @PutMapping("/{homeId}")
       public ResponseEntity<ApiResponse<Void>> updateHome(
-              @AuthenticationPrincipal CustomUserDetails userDetails,
-              @PathVariable Long homeId,
-              @Valid @ModelAttribute HomeUpdateRequestDto request) {
-          homeService.updateHome(userDetails.getUserId(), homeId, request);
-          return ResponseEntity.ok(ApiResponse.success());
+              @ApiParam(value = "매물 ID", required = true) @PathVariable Integer homeId,
+              @Valid @RequestBody HomeCreateDTO updateDTO,
+              Authentication authentication) {
+
+          Integer userId = getCurrentUserId(authentication);
+
+          log.info("매물 수정 요청: homeId={}, userId={}", homeId, userId);
+
+          homeService.updateHome(homeId, updateDTO, userId);
+
+          return ResponseEntity.ok(ApiResponse.success(null, "매물이 성공적으로 수정되었습니다."));
       }
 
-      @ApiOperation(value = "매물 상세 조회", notes = "homeId에 해당하는 매물 정보를 조회합니다.")
-      @GetMapping("/{homeId}")
-      public ResponseEntity<ApiResponse<HomeResponseDto>> getHomeDetail(
-              @AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long homeId) {
-          HomeResponseDto response = homeService.getHomeDetail(homeId);
-          return ResponseEntity.ok(ApiResponse.success(response));
-      }
-
-      @ApiOperation(value = "내가 등록한 매물 목록 조회", notes = "사용자가 등록한 매물 목록을 페이지네이션하여 조회합니다.")
-      @GetMapping("/my")
-      public ResponseEntity<PageResponse<HomeResponseDto>> getMyHomes(
-              @AuthenticationPrincipal CustomUserDetails userDetails,
-              @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue = "1")
-                      int page,
-              @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue = "10")
-                      int size) {
-
-          PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
-          PageResponse<HomeResponseDto> response =
-                  homeService.getMyHomeList(userDetails.getUserId(), pageRequest);
-          return ResponseEntity.ok(response);
-      }
-
-      @ApiOperation(value = "매물 삭제", notes = "매물 ID에 해당하는 매물을 삭제합니다.")
+      @ApiOperation(value = "매물 삭제", notes = "매물을 삭제합니다.")
       @DeleteMapping("/{homeId}")
       public ResponseEntity<ApiResponse<Void>> deleteHome(
-              @AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long homeId) {
-          homeService.deleteHome(userDetails.getUserId(), homeId);
-          return ResponseEntity.ok(ApiResponse.success());
+              @ApiParam(value = "매물 ID", required = true) @PathVariable Integer homeId,
+              Authentication authentication) {
+
+          Integer userId = getCurrentUserId(authentication);
+
+          log.info("매물 삭제 요청: homeId={}, userId={}", homeId, userId);
+
+          homeService.deleteHome(homeId, userId);
+
+          return ResponseEntity.ok(ApiResponse.success(null, "매물이 성공적으로 삭제되었습니다."));
       }
 
-      @ApiOperation(value = "모든 매물 검색", notes = "전체 매물을 페이징하여 조회합니다.")
-      @GetMapping
-      public ResponseEntity<PageResponse<HomeResponseDto>> getAllHomes(
-              @ApiParam(value = "페이지 번호", defaultValue = "1") @RequestParam(defaultValue = "1")
-                      int page,
-              @ApiParam(value = "페이지 크기", defaultValue = "10") @RequestParam(defaultValue = "10")
-                      int size) {
+      @ApiOperation(value = "매물 상태 변경", notes = "매물의 상태를 변경합니다.")
+      @PatchMapping("/{homeId}/status")
+      public ResponseEntity<ApiResponse<Void>> updateHomeStatus(
+              @ApiParam(value = "매물 ID", required = true) @PathVariable Integer homeId,
+              @ApiParam(value = "변경할 상태", required = true) @RequestParam String status,
+              Authentication authentication) {
 
-          PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
-          PageResponse<HomeResponseDto> response = homeService.getHomeList(pageRequest);
-          return ResponseEntity.ok(response);
+          Integer userId = getCurrentUserId(authentication);
+
+          log.info("매물 상태 변경 요청: homeId={}, status={}, userId={}", homeId, status, userId);
+
+          homeService.updateHomeStatus(homeId, status, userId);
+
+          return ResponseEntity.ok(ApiResponse.success(null, "매물 상태가 성공적으로 변경되었습니다."));
       }
 
-      @ApiOperation(value = "매물 찜하기", notes = "해당 매물을 찜합니다.")
+      @ApiOperation(value = "내 매물 목록 조회", notes = "로그인한 사용자의 매물 목록을 조회합니다.")
+      @GetMapping("/my")
+      public ResponseEntity<ApiResponse<List<HomeResponseDTO>>> getMyHomes(
+              Authentication authentication) {
+
+          Integer userId = getCurrentUserId(authentication);
+
+          log.info("내 매물 목록 조회 요청: userId={}", userId);
+
+          List<HomeResponseDTO> homes = homeService.getHomesByUser(userId);
+
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          homes, String.format("내 매물 목록 조회가 완료되었습니다. (총 %d개)", homes.size())));
+      }
+
+      @ApiOperation(value = "매물 찜하기/해제", notes = "매물을 찜하거나 찜을 해제합니다.")
       @PostMapping("/{homeId}/like")
-      public ResponseEntity<ApiResponse<Void>> likeHome(
-              @AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long homeId) {
-          homeService.addLike(userDetails.getUserId(), homeId);
-          return ResponseEntity.ok(ApiResponse.success());
+      public ResponseEntity<ApiResponse<Void>> toggleHomeLike(
+              @ApiParam(value = "매물 ID", required = true) @PathVariable Integer homeId,
+              Authentication authentication) {
+
+          Integer userId = getCurrentUserId(authentication);
+
+          log.info("매물 찜 토글 요청: homeId={}, userId={}", homeId, userId);
+
+          homeService.toggleHomeLike(userId, homeId);
+
+          return ResponseEntity.ok(ApiResponse.success(null, "찜 상태가 변경되었습니다."));
       }
 
-      @ApiOperation(value = "매물 찜 해제", notes = "해당 매물의 찜을 취소합니다.")
-      @DeleteMapping("/{homeId}/like")
-      public ResponseEntity<ApiResponse<Void>> unlikeHome(
-              @AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long homeId) {
-          homeService.removeLike(userDetails.getUserId(), homeId);
-          return ResponseEntity.ok(ApiResponse.success());
-      }
-
-      @ApiOperation(value = "찜한 매물 목록 조회", notes = "내가 찜한 매물 목록을 조회합니다.")
+      @ApiOperation(value = "찜한 매물 목록 조회", notes = "사용자가 찜한 매물 목록을 조회합니다.")
       @GetMapping("/likes")
-      public ResponseEntity<ApiResponse<List<HomeResponseDto>>> getLikedHomes(
-              @AuthenticationPrincipal CustomUserDetails userDetails) {
-          List<HomeResponseDto> likedHomes = homeService.getLikedHomes(userDetails.getUserId());
-          return ResponseEntity.ok(ApiResponse.success(likedHomes));
+      public ResponseEntity<ApiResponse<List<HomeResponseDTO>>> getHomeLikes(
+              Authentication authentication) {
+
+          Integer userId = getCurrentUserId(authentication);
+
+          log.info("찜한 매물 목록 조회 요청: userId={}", userId);
+
+          List<HomeResponseDTO> homes = homeService.getHomeLikes(userId);
+
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          homes, String.format("찜한 매물 목록 조회가 완료되었습니다. (총 %d개)", homes.size())));
       }
 
-      @ApiOperation(value = "조회수 증가", notes = "해당 매물의 조회수를 1 증가시킵니다.")
-      @PostMapping("/{homeId}/view")
-      public ResponseEntity<ApiResponse<Void>> increaseViewCount(@PathVariable Long homeId) {
-          homeService.increaseViewCount(homeId);
-          return ResponseEntity.ok(ApiResponse.success());
+      @ApiOperation(value = "편의시설 카테고리 조회", notes = "편의시설 카테고리 목록을 조회합니다.")
+      @GetMapping("/facilities/categories")
+      public ResponseEntity<ApiResponse<List<FacilityCategory>>> getFacilityCategories() {
+
+          log.info("편의시설 카테고리 조회 요청");
+
+          List<FacilityCategory> categories = homeService.getFacilityCategories();
+
+          return ResponseEntity.ok(ApiResponse.success(categories, "편의시설 카테고리 조회가 완료되었습니다."));
       }
 
-      @ApiOperation(value = "매물 신고", notes = "해당 매물을 신고합니다.")
-      @PostMapping("/report")
-      public ResponseEntity<ApiResponse<Void>> reportHome(
-              @RequestBody HomeReportRequestDto requestDto,
-              @AuthenticationPrincipal CustomUserDetails userDetails) {
-          HomeReportRequestDto reportRequest =
-                  HomeReportRequestDto.builder()
-                          .reportId(requestDto.getReportId())
-                          .userId(userDetails.getUserId())
-                          .homeId(requestDto.getHomeId())
-                          .reportReason(requestDto.getReportReason())
-                          .reportAt(requestDto.getReportAt())
-                          .reportStatus(requestDto.getReportStatus())
-                          .build();
-          homeService.reportHome(reportRequest);
-          return ResponseEntity.ok(ApiResponse.success());
+      @ApiOperation(value = "편의시설 아이템 조회", notes = "특정 카테고리의 편의시설 아이템 목록을 조회합니다.")
+      @GetMapping("/facilities/categories/{categoryId}/items")
+      public ResponseEntity<ApiResponse<List<FacilityItem>>> getFacilityItems(
+              @ApiParam(value = "카테고리 ID", required = true) @PathVariable Integer categoryId) {
+
+          log.info("편의시설 아이템 조회 요청: categoryId={}", categoryId);
+
+          List<FacilityItem> items = homeService.getFacilityItemsByCategory(categoryId);
+
+          return ResponseEntity.ok(ApiResponse.success(items, "편의시설 아이템 조회가 완료되었습니다."));
+      }
+
+      /** Authentication에서 사용자 ID를 추출하는 메서드 실제 구현시에는 JWT에서 사용자 정보를 추출 */
+      private Integer getCurrentUserId(Authentication authentication) {
+          if (authentication == null || !authentication.isAuthenticated()) {
+              throw new BusinessException(CommonErrorCode.AUTHENTICATION_FAILED, "인증되지 않은 사용자입니다.");
+          }
+
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(CommonErrorCode.AUTHENTICATION_FAILED, "사용자를 찾을 수 없습니다.");
+          }
+
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
+
+          // Long을 Integer로 변환 (기존 코드와의 호환성을 위해)
+          return userId.intValue();
       }
 }
