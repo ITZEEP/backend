@@ -77,3 +77,5 @@ certbot/
 *.temp
 .claude
 .idea
+
+firebase-service-account.json
