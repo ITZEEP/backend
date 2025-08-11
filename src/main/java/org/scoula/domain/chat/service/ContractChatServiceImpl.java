@@ -2002,16 +2002,14 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               String jsonData = objectMapper.writeValueAsString(requestData);
               stringRedisTemplate.opsForValue().set(redisKey, jsonData, Duration.ofHours(24));
 
-              String notificationMessage = String.format(
-                      "임대인이 특약 %d번 수정을 요청했습니다.\n\n" +
-                              "📝 수정 제목: %s\n" +
-                              "✏️ 수정 내용: %s\n\n",
-                      requestDto.getClauseOrder(),
-                      requestDto.getNewTitle(),
-                      requestDto.getNewContent()
-              );
+              String notificationMessage =
+                      String.format(
+                              "임대인이 특약 %d번 수정을 요청했습니다.\n\n" + "📝 수정 제목: %s\n" + "✏️ 수정 내용: %s\n\n",
+                              requestDto.getClauseOrder(),
+                              requestDto.getNewTitle(),
+                              requestDto.getNewContent());
 
-              AiMessageBtn(contractChatId,notificationMessage);
+              AiMessageBtn(contractChatId, notificationMessage);
               log.info("수정 요청 Redis 저장 완료 - key: {}", redisKey);
               return requestData;
 
@@ -2104,7 +2102,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
               stringRedisTemplate.delete(redisKey);
 
-              AiMessage(contractChatId,resultMessage);
+              AiMessage(contractChatId, resultMessage);
               return finalContract;
 
           } catch (Exception e) {
@@ -2156,7 +2154,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
           }
 
-          AiMessage(contractChatId,"특약을 수락하였습니다");
+          AiMessageBtn(contractChatId, "최종 특약을 요청하였습니다");
 
           String key = "final-contract:confirmation:" + contractChatId;
           String existingValue = stringRedisTemplate.opsForValue().get(key);
@@ -2166,7 +2164,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           String value = ownerId.toString();
           stringRedisTemplate.opsForValue().set(key, value);
-
       }
 
       @Override
@@ -2212,7 +2209,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
-          AiMessage(contractChatId,confirmationMessage);
+          AiMessageBtn(contractChatId, confirmationMessage);
 
           return Map.of(
                   "message",
@@ -2230,7 +2227,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String redisKey = "final-contract:confirmation:" + contractChatId;
           stringRedisTemplate.delete(redisKey);
 
-          AiMessage(contractChatId,"임차인이 수정을 거절하였습니다.");
+          AiMessage(contractChatId, "임차인이 수정을 거절하였습니다.");
       }
 
       @Override
@@ -2282,7 +2279,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String notificationMessage = String.format("임대인이 특약 %d번 삭제를 요청했습니다.", clauseOrder);
 
-          AiMessage(contractChatId,notificationMessage);
+          AiMessageBtn(contractChatId, notificationMessage);
 
           log.info("삭제 요청 Redis 저장 완료 - key: {}, value: {}", redisKey, ownerId);
       }
@@ -2340,7 +2337,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String confirmationMessage =
                   String.format("임차인이 특약 %d번 삭제 요청을 수락했습니다. 특약이 삭제되었습니다.", clauseOrder);
 
-          AiMessage(contractChatId,confirmationMessage);
+          AiMessage(contractChatId, confirmationMessage);
 
           log.info("특약 {}번 삭제 완료 - contractChatId: {}", clauseOrder, contractChatId);
 
@@ -2388,7 +2385,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String rejectionMessage =
                   String.format("임차인이 특약 %d번 삭제 요청을 거절했습니다. 기존 특약이 유지됩니다.", clauseOrder);
 
-          AiMessage(contractChatId,rejectionMessage);
+          AiMessage(contractChatId, rejectionMessage);
 
           log.info("특약 {}번 삭제 거절 완료 - contractChatId: {}", clauseOrder, contractChatId);
       }
