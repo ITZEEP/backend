@@ -653,6 +653,25 @@ public class ContractChatControllerImpl implements ContractChatController {
       }
 
       @Override
+      @GetMapping("/special-contract/{contractChatId}/incomplete/now")
+      public ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>>
+              getIncompleteSpecialContractsWithoutMessage(
+                      @PathVariable Long contractChatId, Authentication authentication) {
+
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              List<SpecialContractFixDocument> result =
+                      contractChatService.getIncompleteSpecialContractsWithoutMessage(
+                              contractChatId, userId);
+
+              return ResponseEntity.ok(ApiResponse.success(result, "메시지가 없는 미완료 특약 목록 조회 성공"));
+          } catch (Exception e) {
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "미완료 특약 목록 조회 중 오류가 발생했습니다."));
+          }
+      }
+
+      @Override
       @PostMapping("/special-contract/{contractChatId}/ai")
       public ResponseEntity<ApiResponse<String>> sendAiMessage(
               @PathVariable Long contractChatId, @RequestParam Long order) {
@@ -895,68 +914,54 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
-      @Override
-      public ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractDeletion(
-              Long contractChatId, Integer clauseOrder, Authentication authentication) {
+      @PostMapping("/final-contract/{contractChatId}/deletion-response")
+      public ResponseEntity<ApiResponse<Map<String, Object>>> respondToFinalContractDeletion(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
+              Authentication authentication) {
           try {
               Long userId = getUserIdFromAuthentication(authentication);
-              ContractChat contractChat =
-                      contractChatService.getContractChatInfo(contractChatId, userId);
-              Long buyerId = contractChat.getBuyerId();
-              Long ownerId = contractChat.getOwnerId();
-
-              if (!userId.equals(buyerId)) {
-                  throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-              }
-
-              String redisKey = "final-contract:deletion:" + contractChatId + ":" + clauseOrder;
-              String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
-
-              if (storedOwnerId == null || !storedOwnerId.equals(ownerId.toString())) {
-                  throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-              }
 
               Map<String, Object> result =
-                      contractChatService.acceptFinalContractDeletion(
-                              contractChatId, userId, clauseOrder);
+                      contractChatService.respondToFinalContractDeletionRequest(
+                              contractChatId, userId, responseDto);
 
-              return ResponseEntity.ok(ApiResponse.success(result, "특약이 삭제되었습니다."));
-          } catch (Exception e) {
-              log.error("최종 특약 삭제 수락 실패", e);
+              String message = responseDto.isAccepted() ? "삭제 요청을 수락했습니다." : "삭제 요청을 거절했습니다.";
+
+              return ResponseEntity.ok(ApiResponse.success(result, message));
+
+          } catch (IllegalArgumentException e) {
               return ResponseEntity.badRequest()
-                      .body(ApiResponse.error("최종 특약 삭제 수락에 실패했습니다: " + e.getMessage()));
+                      .body(ApiResponse.error("RESPONSE_FAILED", e.getMessage()));
+          } catch (Exception e) {
+              log.error("삭제 요청 응답 실패", e);
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "응답 처리 중 오류가 발생했습니다."));
           }
       }
 
       @Override
-      public ResponseEntity<ApiResponse<String>> rejectFinalContractDeletion(
-              Long contractChatId, Integer clauseOrder, Authentication authentication) {
-          try {
-              Long userId = getUserIdFromAuthentication(authentication);
-
-              ContractChat contractChat =
-                      contractChatService.getContractChatInfo(contractChatId, userId);
-              Long buyerId = contractChat.getBuyerId();
-              Long ownerId = contractChat.getOwnerId();
-
-              if (!userId.equals(buyerId)) {
-                  throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-              }
-
-              String redisKey = "final-contract:deletion:" + contractChatId + ":" + clauseOrder;
-              String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
-
-              if (storedOwnerId == null || !storedOwnerId.equals(ownerId.toString())) {
-                  throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-              }
-
-              contractChatService.rejectFinalContractDeletion(contractChatId, userId, clauseOrder);
-
-              return ResponseEntity.ok(ApiResponse.success("특약 삭제 요청을 거절했습니다."));
-          } catch (Exception e) {
-              log.error("최종 특약 삭제 거절 실패", e);
+      @GetMapping("/{contractChatId}/status")
+      public ResponseEntity<ApiResponse<String>> getContractStatus(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          Long userId = getUserIdFromAuthentication(authentication);
+          if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
               return ResponseEntity.badRequest()
-                      .body(ApiResponse.error("최종 특약 삭제 거절에 실패했습니다: " + e.getMessage()));
+                      .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
           }
+
+          ContractChat contractChat = contractChatService.getContractChatInfo(contractChatId, userId);
+          if (contractChat == null) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("NOT_FOUND", "해당 계약 채팅방을 찾을 수 없습니다."));
+          }
+
+          String statusParam = contractChatService.getContractStatusParam(contractChatId, userId);
+          if (statusParam == null) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("INVALID_STATUS", "유효하지 않은 계약 상태입니다."));
+          }
+
+          return ResponseEntity.ok(ApiResponse.success(statusParam, "계약 상태 조회 성공"));
       }
 }

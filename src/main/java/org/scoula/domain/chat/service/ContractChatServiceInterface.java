@@ -244,6 +244,9 @@ public interface ContractChatServiceInterface {
       List<SpecialContractFixDocument> getIncompleteSpecialContractsByChat(
               Long contractChatId, Long userId);
 
+      List<SpecialContractFixDocument> getIncompleteSpecialContractsWithoutMessage(
+              Long contractChatId, Long userId);
+
       List<SpecialContractFixDocument> proceedAllIncompleteToNextRound(Long contractChatId);
 
       void createNextRoundSpecialContractDocument(
@@ -285,6 +288,11 @@ public interface ContractChatServiceInterface {
       Map<String, Object> acceptFinalContractDeletion(
               Long contractChatId, Long buyerId, Integer clauseOrder);
 
+      String getContractStatusParam(Long contractChatId, Long userId);
+
       /** 임차인이 최종 특약 삭제 거절 */
       void rejectFinalContractDeletion(Long contractChatId, Long buyerId, Integer clauseOrder);
+
+      Map<String, Object> respondToFinalContractDeletionRequest(
+              Long contractChatId, Long buyerId, FinalContractDeletionResponseDto responseDto);
 }

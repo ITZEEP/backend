@@ -133,6 +133,14 @@ public interface ContractChatController {
       ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> getIncompleteSpecialContracts(
               @PathVariable Long contractChatId, Authentication authentication);
 
+      @ApiOperation(
+              value = "메시지 미포함 미완료 특약 문서 목록 조회",
+              notes = "메시지 내역이 포함되지 않은 미완료된 모든 특약 문서를 조회합니다.")
+      @GetMapping("/special-contract/{contractChatId}/incomplete/now")
+      ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>>
+              getIncompleteSpecialContractsWithoutMessage(
+                      @PathVariable Long contractChatId, Authentication authentication);
+
       @ApiOperation(value = "특약 대화 시작 AI 메시지", notes = "선택된 특약 번호 대화를 시작한다는 메시지를 AI가 전송합니다.")
       @PostMapping("/special-contract/{contractChatId}/ai")
       ResponseEntity<ApiResponse<String>> sendAiMessage(
@@ -193,17 +201,8 @@ public interface ContractChatController {
               @PathVariable Integer clauseOrder,
               Authentication authentication);
 
-      @ApiOperation(value = "최종 특약 삭제 수락 (임차인)", notes = "임차인이 임대인의 최종 특약 삭제 요청을 수락합니다.")
-      @PostMapping("/final-contract/{contractChatId}/accept-deletion/{clauseOrder}")
-      ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractDeletion(
-              @PathVariable Long contractChatId,
-              @PathVariable Integer clauseOrder,
-              Authentication authentication);
-
-      @ApiOperation(value = "최종 특약 삭제 거절 (임차인)", notes = "임차인이 임대인의 최종 특약 삭제 요청을 거절합니다.")
-      @PostMapping("/final-contract/{contractChatId}/reject-deletion/{clauseOrder}")
-      ResponseEntity<ApiResponse<String>> rejectFinalContractDeletion(
-              @PathVariable Long contractChatId,
-              @PathVariable Integer clauseOrder,
-              Authentication authentication);
+      @ApiOperation(value = "현재 스텝 조회", notes = "현재 진행 상황을 조회합니다.")
+      @GetMapping("/{contractChatId}/status")
+      ResponseEntity<ApiResponse<String>> getContractStatus(
+              @PathVariable Long contractChatId, Authentication authentication);
 }

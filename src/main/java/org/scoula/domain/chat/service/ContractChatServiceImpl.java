@@ -1551,6 +1551,17 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   contractChatId, false);
       }
 
+      @Override
+      public List<SpecialContractFixDocument> getIncompleteSpecialContractsWithoutMessage(
+              Long contractChatId, Long userId) {
+          if (!isUserInContractChat(contractChatId, userId)) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          return specialContractMongoRepository
+                  .findByContractChatIdAndIsPassedAndRecentDataMessagesEmpty(contractChatId, false);
+      }
+
       private ContentDataDto createEmptyContentData() {
           return ContentDataDto.builder().title("").content("").messages("").build();
       }
@@ -1928,6 +1939,33 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
       }
 
+      private String getContractChatStatus(ContractChat.ContractStatus status) {
+          switch (status) {
+              case STEP0:
+                  return "?step=1";
+              case STEP1:
+                  return "?step=2";
+              case STEP2:
+                  return "?step=3";
+              case ROUND0:
+                  return "?step=3&round=0";
+              case ROUND1:
+                  return "?step=3&round=1";
+              case ROUND2:
+                  return "?step=3&round=2";
+              case ROUND3:
+                  return "?step=3&round=3";
+              default:
+                  return null;
+          }
+      }
+
+      @Override
+      public String getContractStatusParam(Long contractChatId, Long userId) {
+          ContractChat contractChat = getContractChatInfo(contractChatId, userId);
+          return getContractChatStatus(contractChat.getStatus());
+      }
+
       private String getRoundIncrementMessage(ContractChat.ContractStatus status) {
           switch (status) {
               case ROUND1:
@@ -1939,6 +1977,83 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               default:
                   return "새로운 협상 라운드가 시작됩니다.";
           }
+      }
+
+      @Override
+      @Transactional
+      public Map<String, Object> respondToFinalContractDeletionRequest(
+              Long contractChatId, Long buyerId, FinalContractDeletionResponseDto responseDto) {
+
+          log.info("=== 삭제 요청 응답 처리 시작 ===");
+          log.info(
+                  "contractChatId: {}, buyerId: {}, accepted: {}",
+                  contractChatId,
+                  buyerId,
+                  responseDto.isAccepted());
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new IllegalArgumentException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 응답할 수 있습니다.");
+          }
+
+          String redisKey =
+                  "final-contract:deletion:" + contractChatId + ":" + contractChat.getOwnerId();
+          String clauseOrderStr = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (clauseOrderStr == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "삭제 요청이 존재하지 않습니다.");
+          }
+
+          Integer clauseOrder = Integer.parseInt(clauseOrderStr);
+
+          Map<String, Object> result = new HashMap<>();
+          String resultMessage;
+
+          if (responseDto.isAccepted()) {
+              // 삭제 수락 로직
+              FinalSpecialContractDocument finalContract =
+                      specialContractMongoRepository
+                              .findFinalContractByContractChatId(contractChatId)
+                              .orElseThrow(() -> new IllegalArgumentException("최종 특약서를 찾을 수 없습니다."));
+
+              List<FinalSpecialContractDocument.FinalClause> updatedClauses =
+                      finalContract.getFinalClauses().stream()
+                              .filter(clause -> !clause.getOrder().equals(clauseOrder))
+                              .collect(Collectors.toList());
+
+              finalContract.setFinalClauses(updatedClauses);
+              finalContract.setTotalFinalClauses(updatedClauses.size());
+
+              specialContractMongoRepository.saveFinalSpecialContract(finalContract);
+
+              resultMessage = String.format("임차인이 특약 %d번 삭제 요청을 수락했습니다. 특약이 삭제되었습니다.", clauseOrder);
+
+              result.put("message", "특약이 삭제되었습니다.");
+              result.put("deletedClauseOrder", clauseOrder);
+              result.put("finalContractId", finalContract.getId());
+              result.put("remainingClauses", finalContract.getTotalFinalClauses());
+
+              log.info("특약 {}번 삭제 완료 - contractChatId: {}", clauseOrder, contractChatId);
+
+          } else {
+              // 삭제 거절
+              resultMessage = String.format("임차인이 특약 %d번 삭제 요청을 거절했습니다. 기존 특약이 유지됩니다.", clauseOrder);
+
+              result.put("message", "삭제 요청을 거절했습니다.");
+              result.put("clauseOrder", clauseOrder);
+
+              log.info("특약 {}번 삭제 거절 완료 - contractChatId: {}", clauseOrder, contractChatId);
+          }
+
+          stringRedisTemplate.delete(redisKey);
+          AiMessage(contractChatId, resultMessage);
+
+          return result;
       }
 
       @Override
@@ -1980,8 +2095,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                       "해당 특약 조항을 찾을 수 없습니다: " + requestDto.getClauseOrder());
           }
 
-          String redisKey =
-                  "final-contract:modification:" + contractChatId + ":" + requestDto.getClauseOrder();
+          String redisKey = "final-contract:modification:" + contractChatId + ":" + ownerId;
 
           String existingRequest = stringRedisTemplate.opsForValue().get(redisKey);
           if (existingRequest != null) {
@@ -1998,7 +2112,11 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           try {
               String jsonData = objectMapper.writeValueAsString(requestData);
-              stringRedisTemplate.opsForValue().set(redisKey, jsonData, Duration.ofHours(24));
+              String valueData =
+                      String.format(
+                              "{\"clauseOrder\":%d,\"requestData\":%s}",
+                              requestDto.getClauseOrder(), jsonData);
+              stringRedisTemplate.opsForValue().set(redisKey, valueData, Duration.ofHours(24));
 
               String notificationMessage =
                       String.format(
@@ -2039,17 +2157,19 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
 
           String redisKey =
-                  "final-contract:modification:"
-                          + contractChatId
-                          + ":"
-                          + responseDto.getClauseOrder();
-          String requestDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+                  "final-contract:modification:" + contractChatId + ":" + contractChat.getOwnerId();
+          String valueDataJson = stringRedisTemplate.opsForValue().get(redisKey);
 
-          if (requestDataJson == null) {
-              throw new IllegalArgumentException("해당 조항에 대한 대기중인 수정 요청이 없습니다.");
+          if (valueDataJson == null) {
+              throw new IllegalArgumentException("대기중인 수정 요청이 없습니다.");
           }
 
           try {
+              // JSON에서 clauseOrder와 requestData 추출
+              com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(valueDataJson);
+              Integer clauseOrder = rootNode.get("clauseOrder").asInt();
+              String requestDataJson = rootNode.get("requestData").toString();
+
               ModificationRequestData requestData =
                       objectMapper.readValue(requestDataJson, ModificationRequestData.class);
 
@@ -2065,8 +2185,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           finalContract.getFinalClauses().stream()
                                   .map(
                                           clause -> {
-                                              if (clause.getOrder()
-                                                      .equals(responseDto.getClauseOrder())) {
+                                              if (clause.getOrder().equals(clauseOrder)) {
                                                   return FinalSpecialContractDocument.FinalClause
                                                           .builder()
                                                           .order(clause.getOrder())
@@ -2079,27 +2198,19 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                                   .collect(Collectors.toList());
 
                   finalContract.setFinalClauses(updatedClauses);
-
                   specialContractMongoRepository.saveFinalSpecialContract(finalContract);
 
                   resultMessage =
-                          String.format(
-                                  "임차인이 특약 %d번 수정 요청을 수락했습니다. 특약이 변경되었습니다.",
-                                  responseDto.getClauseOrder());
-
+                          String.format("임차인이 특약 %d번 수정 요청을 수락했습니다. 특약이 변경되었습니다.", clauseOrder);
                   log.info("수정 수락 - 최종 특약서 업데이트 완료");
 
               } else {
                   resultMessage =
-                          String.format(
-                                  "임차인이 특약 %d번 수정 요청을 거절했습니다. 기존 특약이 유지됩니다.",
-                                  responseDto.getClauseOrder());
-
+                          String.format("임차인이 특약 %d번 수정 요청을 거절했습니다. 기존 특약이 유지됩니다.", clauseOrder);
                   log.info("수정 거절 - 기존 특약서 유지");
               }
 
               stringRedisTemplate.delete(redisKey);
-
               AiMessage(contractChatId, resultMessage);
               return finalContract;
 
@@ -2112,15 +2223,32 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       @Override
       public ModificationRequestData getPendingModificationRequest(
               Long contractChatId, Integer clauseOrder) {
-          String redisKey = "final-contract:modification:" + contractChatId + ":" + clauseOrder;
-          String requestDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+          // 기존 방식 대신 임대인의 요청을 찾도록 수정
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              return null;
+          }
 
-          if (requestDataJson == null) {
+          String redisKey =
+                  "final-contract:modification:" + contractChatId + ":" + contractChat.getOwnerId();
+          String valueDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (valueDataJson == null) {
               return null;
           }
 
           try {
+              com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(valueDataJson);
+              Integer storedClauseOrder = rootNode.get("clauseOrder").asInt();
+
+              // 요청한 clauseOrder와 저장된 clauseOrder가 일치하는지 확인
+              if (!clauseOrder.equals(storedClauseOrder)) {
+                  return null;
+              }
+
+              String requestDataJson = rootNode.get("requestData").toString();
               return objectMapper.readValue(requestDataJson, ModificationRequestData.class);
+
           } catch (Exception e) {
               log.error("수정 요청 데이터 파싱 실패", e);
               return null;
@@ -2265,7 +2393,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               throw new IllegalArgumentException("해당 특약 조항을 찾을 수 없습니다: " + clauseOrder);
           }
 
-          String redisKey = "final-contract:deletion:" + contractChatId + ":" + clauseOrder;
+          String redisKey = "final-contract:deletion:" + contractChatId + ":" + ownerId;
 
           String existingRequest = stringRedisTemplate.opsForValue().get(redisKey);
           if (existingRequest != null) {
@@ -2273,7 +2401,9 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                       ChatErrorCode.CONTRACT_END_REQUEST_ALREADY_EXISTS, "이미 삭제 요청이 진행 중입니다.");
           }
 
-          stringRedisTemplate.opsForValue().set(redisKey, ownerId.toString(), Duration.ofHours(24));
+          stringRedisTemplate
+                  .opsForValue()
+                  .set(redisKey, clauseOrder.toString(), Duration.ofHours(24));
 
           String notificationMessage = String.format("임대인이 특약 %d번 삭제를 요청했습니다.", clauseOrder);
 
