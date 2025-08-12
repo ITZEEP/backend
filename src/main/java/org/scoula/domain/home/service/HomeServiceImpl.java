@@ -18,9 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+@Log4j2
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -115,17 +115,7 @@ public class HomeServiceImpl implements HomeService {
                   log.info("관리비 정보 등록 완료: 개수={}", createDTO.getMaintenanceFees().size());
               }
 
-              // 1. URL 방식 이미지 처리 (기존 방식)
-              if (createDTO.getImageUrls() != null && !createDTO.getImageUrls().isEmpty()) {
-                  for (String imageUrl : createDTO.getImageUrls()) {
-                      HomeImageVO homeImage =
-                              HomeImageVO.builder().homeId(homeId).ImageUrl(imageUrl).build();
-                      homeMapper.insertHomeImage(homeImage);
-                  }
-                  log.info("URL 이미지 등록 완료: 개수={}", createDTO.getImageUrls().size());
-              }
-
-              // 2. 파일 업로드 방식 이미지 처리 (새로운 방식)
+              // 파일 업로드 방식 이미지 처리
               if (images != null && !images.isEmpty()) {
                   int successCount = 0;
                   for (MultipartFile image : images) {
@@ -133,15 +123,22 @@ public class HomeServiceImpl implements HomeService {
                           try {
                               String fileName =
                                       generateHomeImageFileName(homeId, image.getOriginalFilename());
-                              String s3Key = "home-images/" + homeId + "/" + fileName;
-                              String imageUrl = s3Service.uploadFile(image, s3Key);
+                              // S3에 업로드 (uploads/home/{homeId}/{fileName} 형식으로 저장됨)
+                              String uploadedKey =
+                                      s3Service.uploadFile(image, "home/" + homeId + "/" + fileName);
+                              String imageUrl = s3Service.getFileUrl(uploadedKey);
 
                               HomeImageVO homeImage =
-                                      HomeImageVO.builder().homeId(homeId).ImageUrl(imageUrl).build();
+                                      HomeImageVO.builder().homeId(homeId).imageUrl(imageUrl).build();
+
                               homeMapper.insertHomeImage(homeImage);
                               successCount++;
 
-                              log.info("파일 이미지 S3 업로드 완료: homeId={}, imageUrl={}", homeId, imageUrl);
+                              log.info(
+                                      "이미지 업로드 완료: homeId={}, fileName={}, imageUrl={}",
+                                      homeId,
+                                      fileName,
+                                      imageUrl);
                           } catch (Exception e) {
                               log.error(
                                       "이미지 업로드 실패: homeId={}, fileName={}",
@@ -309,13 +306,53 @@ public class HomeServiceImpl implements HomeService {
       }
 
       @Override
-      public void updateHome(Integer homeId, HomeCreateDTO updateDTO, Integer userId) {
+      public void updateHome(
+              Integer homeId, HomeCreateDTO updateDTO, List<MultipartFile> images, Integer userId) {
           HomeVO existingHome = homeMapper.selectHomeById(homeId);
           if (existingHome == null) {
               throw new BusinessException(CommonErrorCode.ENTITY_NOT_FOUND, "존재하지 않는 매물입니다.");
           }
           if (!existingHome.getUserId().equals(userId)) {
               throw new BusinessException(CommonErrorCode.UNAUTHORIZED_ACCESS, "매물을 수정할 권한이 없습니다.");
+          }
+
+          // TODO: 매물 기본 정보 업데이트 로직 구현
+          // homeMapper.updateHome(homeId, updateDTO);
+
+          // 새로운 이미지 업로드 처리
+          if (images != null && !images.isEmpty()) {
+              int successCount = 0;
+              for (MultipartFile image : images) {
+                  if (!image.isEmpty()) {
+                      try {
+                          String fileName =
+                                  generateHomeImageFileName(homeId, image.getOriginalFilename());
+                          // S3에 업로드 (uploads/home/{homeId}/{fileName} 형식으로 저장됨)
+                          String uploadedKey =
+                                  s3Service.uploadFile(image, "home/" + homeId + "/" + fileName);
+                          String imageUrl = s3Service.getFileUrl(uploadedKey);
+
+                          HomeImageVO homeImage =
+                                  HomeImageVO.builder().homeId(homeId).imageUrl(imageUrl).build();
+
+                          homeMapper.insertHomeImage(homeImage);
+                          successCount++;
+
+                          log.info(
+                                  "이미지 추가 업로드 완료: homeId={}, fileName={}, imageUrl={}",
+                                  homeId,
+                                  fileName,
+                                  imageUrl);
+                      } catch (Exception e) {
+                          log.error(
+                                  "이미지 업로드 실패: homeId={}, fileName={}",
+                                  homeId,
+                                  image.getOriginalFilename(),
+                                  e);
+                      }
+                  }
+              }
+              log.info("매물 이미지 추가 완료: homeId={}, 성공한 이미지 개수={}", homeId, successCount);
           }
 
           log.info("매물 수정 완료: homeId={}, userId={}", homeId, userId);
