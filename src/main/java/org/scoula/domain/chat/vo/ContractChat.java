@@ -29,6 +29,7 @@ public class ContractChat {
           ROUND1,
           ROUND2,
           ROUND3,
+          ROUND4,
           STEP4
       }
 
