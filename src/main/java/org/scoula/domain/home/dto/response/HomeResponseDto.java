@@ -103,7 +103,7 @@ public class HomeResponseDto {
                   .homeDirection(vo.getHomeDirection() != null ? vo.getHomeDirection().name() : null)
                   .isPet(vo.getIsPet())
                   .isParkingAvailable(vo.getIsParkingAvailable())
-                  .buildDate(vo.getBuildDate() != null ? vo.getBuildDate().toLocalDate() : null)
+                  .buildDate(vo.getBuildDate() != null ? vo.getBuildDate() : null)
                   .moveInDate(vo.getMoveInDate())
                   .imageUrl(vo.getImageUrl())
                   .imageId(vo.getImageId())
