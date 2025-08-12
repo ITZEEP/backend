@@ -29,7 +29,8 @@ import lombok.RequiredArgsConstructor;
               "org.scoula.domain.chat.mapper",
               "org.scoula.domain.home.mapper",
               "org.scoula.domain.mypage.mapper",
-              "org.scoula.domain.chat.mapper"
+              "org.scoula.domain.chat.mapper",
+              "org.scoula.domain.contract.mapper"
           })
 @RequiredArgsConstructor
 public class DatabaseConfig {
