@@ -22,7 +22,7 @@
     <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeDetailVO" useGeneratedKeys="true" keyProperty="homeDetailId">
         INSERT INTO home_detail (
             home_id, build_date, home_floor, building_total_floors,
-            home_direction, bathroom_count, is_pet, is_parking_available,area,landCategory
+            home_direction, bathroom_count, is_pet, is_parking_available,area,land_category
 
         ) VALUES (
                      #{homeId}, #{buildDate}, #{homeFloor}, #{buildingTotalFloors},

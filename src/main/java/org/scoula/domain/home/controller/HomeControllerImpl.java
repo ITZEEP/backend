@@ -1,6 +1,5 @@
 package org.scoula.domain.home.controller;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,23 +36,14 @@ public class HomeControllerImpl implements HomeController {
       private final UserServiceInterface userService;
 
       @Override
-      @PostMapping
+      @PostMapping(consumes = "multipart/form-data")
       public ResponseEntity<ApiResponse<Integer>> createHome(
-              @Valid @ModelAttribute HomeCreateRequestDto requestDto,
-              @RequestParam(value = "images", required = false) List<MultipartFile> images,
-              Authentication authentication) {
+              @Valid @RequestPart HomeCreateRequestDto requestDto, Authentication authentication) {
 
           Integer userId = getCurrentUserId(authentication);
 
           // 이미지 파일 리스트 처리
-          List<MultipartFile> imageList = new ArrayList<>();
-          if (images != null && !images.isEmpty()) {
-              for (MultipartFile image : images) {
-                  if (image != null && !image.isEmpty()) {
-                      imageList.add(image);
-                  }
-              }
-          }
+          List<MultipartFile> imageList = requestDto.getImages();
 
           log.info(
                   "매물 등록 요청: userId={}, residenceType={}, 이미지 개수={}",
@@ -78,6 +68,8 @@ public class HomeControllerImpl implements HomeController {
                           .homeFloor(requestDto.getHomeFloor())
                           .buildingTotalFloors(requestDto.getBuildingTotalFloors())
                           .homeDirection(requestDto.getHomeDirection())
+                          .area(requestDto.getArea())
+                          .landCategory(requestDto.getLandCategory())
                           .bathroomCnt(requestDto.getBathroomCnt())
                           .isPet(requestDto.getIsPet())
                           .isParking(requestDto.getIsParking())

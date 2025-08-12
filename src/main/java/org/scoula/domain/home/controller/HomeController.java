@@ -27,11 +27,7 @@ public interface HomeController {
       @ApiOperation(value = "매물 등록", notes = "새로운 매물을 등록합니다. 이미지 파일을 함께 업로드할 수 있습니다.")
       @PostMapping(consumes = "multipart/form-data")
       ResponseEntity<ApiResponse<Integer>> createHome(
-              @Valid @ModelAttribute HomeCreateRequestDto requestDto,
-              @ApiParam(value = "매물 이미지 파일들 (최대 5개)")
-                      @RequestParam(value = "images", required = false)
-                      List<MultipartFile> images,
-              Authentication authentication);
+              @Valid @ModelAttribute HomeCreateRequestDto requestDto, Authentication authentication);
 
       @ApiOperation(value = "매물 상세 조회", notes = "매물 ID로 상세 정보를 조회합니다.")
       @GetMapping("/{homeId}")

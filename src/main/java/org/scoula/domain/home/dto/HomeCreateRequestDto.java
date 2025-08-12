@@ -8,6 +8,7 @@ import javax.validation.constraints.*;
 import org.scoula.domain.home.enums.HomeDirection;
 import org.scoula.domain.home.enums.LeaseType;
 import org.scoula.domain.home.enums.ResidenceType;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -93,6 +94,9 @@ public class HomeCreateRequestDto {
 
       @ApiModelProperty(value = "관리비 항목 목록")
       private List<MaintenanceFeeDTO> maintenanceFees;
+
+      @ApiModelProperty(value = "매물 이미지 목록")
+      private List<MultipartFile> images;
 
       @ApiModel(description = "관리비 항목 DTO")
       @Data
