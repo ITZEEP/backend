@@ -16,9 +16,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AIMessageDTO {
-      // 임차인 이름
-      private String ownerName;
       // 임대인 이름
+      private String ownerName;
+      // 임차인 이름
       private String buyerName;
 
       // 계약 기간

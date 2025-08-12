@@ -1,7 +1,5 @@
 package org.scoula.domain.contract.controller;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
 import org.scoula.domain.contract.dto.*;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
@@ -9,6 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 
 @Api(tags = "계약서 API", description = "계약서 : 정보확인 / 금액 조율 / 적법성 확인")
 public interface ContractController {
@@ -78,12 +79,10 @@ public interface ContractController {
       ResponseEntity<ApiResponse<Void>> updateSpecialContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @RequestBody SpecialContractDTO dto);
+              @RequestBody SpecialContractUpdateDTO dto);
 
       @ApiOperation(value = "적법성 검사 후 다음단계로 넘어가기", notes = "적법성 검사 후 AI 메세지를 보낸다")
       ResponseEntity<ApiResponse<Void>> sendStep4(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
-
-
 }

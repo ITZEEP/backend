@@ -1,7 +1,5 @@
 package org.scoula.domain.contract.controller;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
 import org.scoula.domain.contract.dto.*;
 import org.scoula.domain.contract.service.ContractService;
 import org.scoula.global.auth.dto.CustomUserDetails;
@@ -9,6 +7,9 @@ import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 
 @RestController
 @Log4j2
@@ -133,7 +134,7 @@ public class ContractControllerImpl implements ContractController {
       public ResponseEntity<ApiResponse<Void>> updateSpecialContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @RequestBody SpecialContractDTO dto) {
+              @RequestBody SpecialContractUpdateDTO dto) {
           return ResponseEntity.ok(
                   ApiResponse.success(
                           service.updateSpecialContract(
@@ -148,5 +149,4 @@ public class ContractControllerImpl implements ContractController {
           return ResponseEntity.ok(
                   ApiResponse.success(service.sendStep4(contractChatId, userDetails.getUserId())));
       }
-
 }

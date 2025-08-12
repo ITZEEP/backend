@@ -20,7 +20,7 @@ public class FinalContractDTO {
       private MultipartFile ownerContractSignature;
       private MultipartFile buyerContractSignature;
 
-      private Boolean mediation_agree; // 조정 동의 여부
+      private Boolean mediationAgree; // 조정 동의 여부
 
       private String contractKey; // 계약서 비밀번호
 }

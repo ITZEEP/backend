@@ -44,10 +44,6 @@ public class ContractServiceImpl implements ContractService {
       private final S3ServiceImpl s3Service;
       private final EmailServiceImpl emailService;
 
-      private static final String ALGORITHM = "AES";
-      private static final String TRANSFORMATION = "AES";
-      private static final String SECRET_KEY = "mySuperSecretKey"; // 16글자 (128bit) ==> 환경변수에 넣기
-
       @Value("${ai.server.url:http://localhost:8000}")
       private String aiServerUrl;
 
@@ -243,7 +239,7 @@ public class ContractServiceImpl implements ContractService {
             stringRedisTemplate.opsForValue().set(redisKey, updatedJson);
             return false;
         } catch (Exception e) {
-            throw new BusinessException(ContractException.CONTRACt_REDIS, e);
+            throw new BusinessException(ContractException.CONTRACT_REDIS, e);
         }
     }
 
@@ -314,7 +310,7 @@ public class ContractServiceImpl implements ContractService {
               stringRedisTemplate.opsForValue().set(redisKey, json);
 
           } catch (JsonProcessingException e) {
-              throw new BusinessException(ContractException.CONTRACt_REDIS, e);
+              throw new BusinessException(ContractException.CONTRACT_REDIS, e);
           }
 
           return null;
@@ -332,7 +328,7 @@ public class ContractServiceImpl implements ContractService {
           String json = stringRedisTemplate.opsForValue().get(redisKey);
 
           if (json == null) {
-              throw new BusinessException(ContractException.CONTRACt_REDIS, "금액 정보가 Redis에 없습니다.");
+              throw new BusinessException(ContractException.CONTRACT_REDIS, "금액 정보가 Redis에 없습니다.");
           }
 
           // Redis에서 삭제
@@ -352,7 +348,7 @@ public class ContractServiceImpl implements ContractService {
           String json = stringRedisTemplate.opsForValue().get(redisKey);
 
           if (json == null) {
-              throw new BusinessException(ContractException.CONTRACt_REDIS, "금액 정보가 Redis에 없습니다.");
+              throw new BusinessException(ContractException.CONTRACT_REDIS, "금액 정보가 Redis에 없습니다.");
           }
 
           try {
@@ -446,7 +442,7 @@ public class ContractServiceImpl implements ContractService {
 
       /** {@inheritDoc} */
       @Override
-      public Void updateSpecialContract(Long contractChatId, Long userId, SpecialContractDTO dto) {
+      public Void updateSpecialContract(Long contractChatId, Long userId, SpecialContractUpdateDTO dto) {
           // userId 검증
           validateUserId(contractChatId, userId);
 

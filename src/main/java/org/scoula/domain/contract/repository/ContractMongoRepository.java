@@ -5,11 +5,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.scoula.domain.chat.document.FinalSpecialContractDocument;
 import org.scoula.domain.contract.document.ContractMongoDocument;
-import org.scoula.domain.contract.document.FinalSpecialContractDocument;
 import org.scoula.domain.contract.dto.ContractDTO;
 import org.scoula.domain.contract.dto.PaymentDTO;
-import org.scoula.domain.contract.dto.SpecialContractDTO;
+import org.scoula.domain.contract.dto.SpecialContractUpdateDTO;
 import org.scoula.domain.contract.exception.ContractException;
 import org.scoula.global.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,7 +102,7 @@ public class ContractMongoRepository {
           mongoTemplate.save(contractDoc);
       }
 
-      public void updateSpecialContract(Long contractChatId, SpecialContractDTO dto) {
+      public void updateSpecialContract(Long contractChatId, SpecialContractUpdateDTO dto) {
           Query query = new Query(Criteria.where("contractChatId").is(contractChatId));
           ContractMongoDocument document = mongoTemplate.findOne(query, ContractMongoDocument.class);
 
@@ -116,10 +116,10 @@ public class ContractMongoRepository {
               throw new BusinessException(ContractException.CONTRACT_GET, "특약사항이 존재하지 않습니다.");
           }
 
-          List<SpecialContractDTO.SpecialClauseDTO> newClauses = dto.getSpecialClauses();
+          List<SpecialContractUpdateDTO.SpecialClauseDTO> newClauses = dto.getSpecialClauses();
           if (newClauses == null || newClauses.isEmpty()) return;
 
-          for (SpecialContractDTO.SpecialClauseDTO newClause : newClauses) {
+          for (SpecialContractUpdateDTO.SpecialClauseDTO newClause : newClauses) {
               Integer order = newClause.getOrder();
               if (order != null && order >= 0 && order < existingClauses.size()) {
                   ContractMongoDocument.SpecialContract target = existingClauses.get(order);

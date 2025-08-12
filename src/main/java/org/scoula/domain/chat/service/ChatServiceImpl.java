@@ -446,11 +446,12 @@ public class ChatServiceImpl implements ChatServiceInterface {
           return existing != null;
       }
 
-    @Override
-    public Long findExistingChatRoom(Long ownerId, Long buyerId, Long propertyId) {
-        ChatRoom existingRoom = chatRoomMapper.findByUserAndHome(ownerId, buyerId, propertyId);
-        return existingRoom.getChatRoomId();
-    }
+      @Override
+      public Long findExistingChatRoom(Long ownerId, Long buyerId, Long propertyId) {
+          ChatRoom existingRoom = chatRoomMapper.findByUserAndHome(ownerId, buyerId, propertyId);
+          return existingRoom.getChatRoomId();
+      }
+
       /** {@inheritDoc} */
       @Override
       public List<Map<String, Object>> getChatMediaFiles(

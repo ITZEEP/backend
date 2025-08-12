@@ -103,7 +103,7 @@ public interface ContractService {
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디 @Param dto 변경된 특약
        */
-      Void updateSpecialContract(Long contractChatId, Long userId, SpecialContractDTO dto);
+      Void updateSpecialContract(Long contractChatId, Long userId, SpecialContractUpdateDTO dto);
 
       /**
        * step4 finish 적법성 검사 후 다음단계로 넘어가기
@@ -112,6 +112,4 @@ public interface ContractService {
        * @param userId 유저 아이디 @Parma step 계약서 단계
        */
       Void sendStep4(Long contractChatId, Long userId);
-
-
 }

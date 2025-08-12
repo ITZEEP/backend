@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SpecialContractDTO {
+public class SpecialContractUpdateDTO {
       private List<SpecialClauseDTO> specialClauses;
 
       @Data

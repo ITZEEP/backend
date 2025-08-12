@@ -64,11 +64,11 @@
         WHERE cc.contract_chat_id = 4;
     </insert>
 
-    <insert id="updateTaxSignature">
+    <update id="updateTaxSignature">
         UPDATE electronic_signature
         SET owner_tax_signature_file_url = #{url}, owner_tax_file_hash = #{hashKey}, owner_tax_signed_at = NOW()
             WHERE contract_id = #{finalContractId}
-    </insert>
+    </update>
 
     <insert id="insertFinalContract">
         INSERT INTO final_contract (
@@ -99,7 +99,7 @@
             oiv.identity_verified_at,
             biv.identity_verified_at,
             es.owner_signed_at,
-            bs.buyer_signed_at,
+            es.buyer_signed_at,
             h.deposit_price,
             h.monthly_rent,
             h.maintenance_fee,
