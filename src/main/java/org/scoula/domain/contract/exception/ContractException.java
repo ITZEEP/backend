@@ -19,4 +19,3 @@ public enum ContractException implements IErrorCode {
       private final HttpStatus httpStatus;
       private final String message;
 }
-
