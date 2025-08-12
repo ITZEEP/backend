@@ -32,7 +32,7 @@
     <!-- 매물 이미지 등록 -->
     <insert id="insertHomeImage" parameterType="org.scoula.domain.home.vo.HomeImageVO" useGeneratedKeys="true" keyProperty="imageId">
         INSERT INTO home_image (home_id, image_url)
-        VALUES (#{homeId}, #{ImageUrl})
+        VALUES (#{homeId}, #{imageUrl})
     </insert>
 
     <!-- 매물 편의시설 등록 -->
@@ -148,50 +148,6 @@
         LIMIT #{search.limit} OFFSET #{search.offset}
     </select>
 
-    <!-- 매물 이미지 목록 조회 -->
-    <select id="selectHomeImagesByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeImageVO">
-        SELECT image_id, home_id, image_url as ImageUrl
-        FROM home_image
-        WHERE home_id = #{homeId}
-        ORDER BY image_id
-    </select>
-
-    <!-- 매물 편의시설 조회 -->
-    <select id="selectHomeFacilitiesByHomeDetailId" parameterType="int" resultType="org.scoula.domain.home.vo.FacilityItem">
-        SELECT fi.item_id, fi.category_id, fi.item_name
-        FROM home_facility hf
-                 JOIN facility_item fi ON hf.item_id = fi.item_id
-        WHERE hf.home_detail_id = #{homeDetailId}
-    </select>
-
-    <!-- 매물 관리비 조회 -->
-    <select id="selectHomeMaintenanceFeesByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeMaintenanceFeeVO">
-        SELECT home_id, maintenance_id, fee
-        FROM home_maintenance_fee
-        WHERE home_id = #{homeId}
-    </select>
-
-    <!-- 편의시설 카테고리 조회 -->
-    <select id="selectFacilityCategories" resultType="org.scoula.domain.home.vo.FacilityCategory">
-        SELECT category_id, category_type
-        FROM facility_category
-        ORDER BY category_id
-    </select>
-
-    <!-- 편의시설 아이템 조회 -->
-    <select id="selectFacilityItemsByCategoryId" parameterType="int" resultType="org.scoula.domain.home.vo.FacilityItem">
-        SELECT item_id, category_id, item_name
-        FROM facility_item
-        WHERE category_id = #{categoryId}
-        ORDER BY item_id
-    </select>
-
-    <!-- 조회수 증가 -->
-    <update id="incrementViewCount" parameterType="int">
-        UPDATE home
-        SET view_cnt = view_cnt + 1
-        WHERE home_id = #{homeId}
-    </update>
 
     <!-- 매물 총 개수 -->
     <select id="selectHomeCount" resultType="int">
@@ -344,5 +300,44 @@
     <delete id="deleteHomeFacilitiesByHomeDetailId" parameterType="int">
         DELETE FROM home_facility WHERE home_detail_id = #{homeDetailId}
     </delete>
+
+    <!-- 매물 이미지 조회 -->
+    <select id="selectHomeImagesByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeImageVO">
+        SELECT image_id as imageId, home_id as homeId, image_url as imageUrl
+        FROM home_image
+        WHERE home_id = #{homeId}
+    </select>
+
+    <!-- 매물 편의시설 조회 -->
+    <select id="selectHomeFacilitiesByHomeDetailId" parameterType="int" resultType="org.scoula.domain.home.vo.FacilityItem">
+        SELECT fi.item_id as itemId, fi.category_id as categoryId, fi.item_name as itemName
+        FROM home_facility hf
+        JOIN facility_item fi ON hf.item_id = fi.item_id
+        WHERE hf.home_detail_id = #{homeDetailId}
+    </select>
+
+    <!-- 매물 관리비 조회 -->
+    <select id="selectHomeMaintenanceFeesByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeMaintenanceFeeVO">
+        SELECT hmf.home_id as homeId, hmf.maintenance_id as maintenanceId, hmf.fee,
+               mi.item_name as itemName
+        FROM home_maintenance_fee hmf
+        JOIN maintenance_item mi ON hmf.maintenance_id = mi.maintenance_id
+        WHERE hmf.home_id = #{homeId}
+    </select>
+
+    <!-- 편의시설 카테고리 조회 -->
+    <select id="selectFacilityCategories" resultType="org.scoula.domain.home.vo.FacilityCategory">
+        SELECT category_id as categoryId, category_type as categoryType
+        FROM facility_category
+        ORDER BY category_id
+    </select>
+
+    <!-- 편의시설 아이템 조회 -->
+    <select id="selectFacilityItemsByCategoryId" parameterType="int" resultType="org.scoula.domain.home.vo.FacilityItem">
+        SELECT item_id as itemId, category_id as categoryId, item_name as itemName
+        FROM facility_item
+        WHERE category_id = #{categoryId}
+        ORDER BY item_id
+    </select>
 
 </mapper>
