@@ -1055,26 +1055,32 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                       "message", "특약 협상이 시작됩니다.", "completed", true, "createdOrders", createdOrders);
           } else {
               if (rejectedOrders.isEmpty()) {
-                  try {
-                      FinalSpecialContractDocument finalContract =
-                              saveFinalSpecialContract(contractChatId);
+                  List<SpecialContractFixDocument> remainingIncompleteContracts =
+                          specialContractMongoRepository.findByContractChatIdAndIsPassed(
+                                  contractChatId, false);
+                  if (remainingIncompleteContracts.isEmpty()) {
+                      try {
+                          FinalSpecialContractDocument finalContract =
+                                  saveFinalSpecialContract(contractChatId);
 
-                      AiMessageNext(contractChatId, "🎉 모든 특약 협상이 완료되었습니다! 최종 특약서가 생성되었습니다.");
-                      contractChatMapper.updateStatus(
-                              contractChatId, ContractChat.ContractStatus.ROUND4);
+                          AiMessageNext(contractChatId, "🎉 모든 특약 협상이 완료되었습니다! 최종 특약서가 생성되었습니다.");
+                          contractChatMapper.updateStatus(
+                                  contractChatId, ContractChat.ContractStatus.ROUND4);
 
-                      return Map.of(
-                              "message",
-                              "모든 특약이 완료되었습니다!",
-                              "completed",
-                              true,
-                              "finalContractId",
-                              finalContract.getId(),
-                              "totalFinalClauses",
-                              finalContract.getTotalFinalClauses());
-                  } catch (Exception e) {
-                      log.error("최종 특약 저장 실패", e);
-                      return Map.of("message", "특약은 완료되었지만 최종 저장 중 오류가 발생했습니다.", "completed", true);
+                          return Map.of(
+                                  "message",
+                                  "모든 특약이 완료되었습니다!",
+                                  "completed",
+                                  true,
+                                  "finalContractId",
+                                  finalContract.getId(),
+                                  "totalFinalClauses",
+                                  finalContract.getTotalFinalClauses());
+                      } catch (Exception e) {
+                          log.error("최종 특약 저장 실패", e);
+                          return Map.of(
+                                  "message", "특약은 완료되었지만 최종 저장 중 오류가 발생했습니다.", "completed", true);
+                      }
                   }
               }
 
