@@ -484,7 +484,7 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("INTERNAL_ERROR", "특약 문서 생성 중 오류가 발생했습니다."));
           }
       }
-
+      @Override
       @GetMapping("/special-contract/{contractChatId}/all-rounds")
       public ResponseEntity<ApiResponse<Map<String, Object>>> getAllRoundsSpecialContract(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -535,7 +535,7 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("INTERNAL_ERROR", "특약 문서 조회 중 오류가 발생했습니다."));
           }
       }
-
+      @Override
       @PutMapping("/special-contract/{contractChatId}/recent")
       public ResponseEntity<ApiResponse<SpecialContractFixDocument>> updateRecentData(
               @PathVariable Long contractChatId,
@@ -709,7 +709,7 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("INTERNAL_ERROR", "최종 특약서 조회 중 오류가 발생했습니다."));
           }
       }
-
+      @Override
       @PostMapping("/final-contract/{contractChatId}/modification-request")
       public ResponseEntity<ApiResponse<ModificationRequestData>> requestFinalContractModification(
               @PathVariable Long contractChatId,
@@ -733,7 +733,7 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("INTERNAL_ERROR", "수정 요청 중 오류가 발생했습니다."));
           }
       }
-
+      @Override
       @PostMapping("/final-contract/{contractChatId}/modification-response")
       public ResponseEntity<ApiResponse<FinalSpecialContractDocument>> respondToModificationRequest(
               @PathVariable Long contractChatId,
@@ -759,7 +759,7 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("INTERNAL_ERROR", "응답 처리 중 오류가 발생했습니다."));
           }
       }
-
+      @Override
       @GetMapping("/final-contract/{contractChatId}/modification-request/{clauseOrder}")
       public ResponseEntity<ApiResponse<ModificationRequestData>> getPendingModificationRequest(
               @PathVariable Long contractChatId,
@@ -913,7 +913,7 @@ public class ContractChatControllerImpl implements ContractChatController {
                       .body(ApiResponse.error("최종 특약 삭제 요청에 실패했습니다: " + e.getMessage()));
           }
       }
-
+      @Override
       @PostMapping("/final-contract/{contractChatId}/deletion-response")
       public ResponseEntity<ApiResponse<Map<String, Object>>> respondToFinalContractDeletion(
               @PathVariable Long contractChatId,

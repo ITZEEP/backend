@@ -205,4 +205,16 @@ public interface ContractChatController {
       @GetMapping("/{contractChatId}/status")
       ResponseEntity<ApiResponse<String>> getContractStatus(
               @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "전체 라운드 특약 문서 조회", notes = "모든 라운드의 특약 문서를 조회합니다.")
+      @GetMapping("/special-contract/{contractChatId}/all-rounds")
+      ResponseEntity<ApiResponse<Map<String, Object>>> getAllRoundsSpecialContract(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 삭제 요청 응답", notes = "임차인이 삭제 요청을 수락 또는 거절합니다.")
+      @PostMapping("/final-contract/{contractChatId}/deletion-response")
+      ResponseEntity<ApiResponse<Map<String, Object>>> respondToFinalContractDeletion(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
+              Authentication authentication);
 }
