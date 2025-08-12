@@ -1879,9 +1879,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
               } catch (Exception e) {
                   log.error("최종 특약 자동 저장 실패", e);
-                  AiMessage(
-                          contractChatId,
-                          "모든 특약 협상이 완료되었지만 최종 특약서 생성 중 오류가 발생했습니다. " + "관리자에게 문의해주세요.");
               }
           } else {
               log.info("아직 4차 라운드의 모든 특약이 작성되지 않음");
