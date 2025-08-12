@@ -390,20 +390,34 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       public void toggleHomeLike(Integer userId, Integer homeId) {
+          log.info("찜 토글 요청: userId={}, homeId={}", userId, homeId);
+
+          // 찜 상태 확인
           int exists = homeMapper.selectHomeLikeExists(userId, homeId);
+          log.info("찜 상태 확인 결과: exists={}", exists);
 
           if (exists > 0) {
-              homeMapper.deleteHomeLike(userId, homeId);
-              log.info("찜 해제: userId={}, homeId={}", userId, homeId);
+              // 찜 상태인 경우, 찜 삭제
+              int deleteCount = homeMapper.deleteHomeLike(userId, homeId);
+              if (deleteCount > 0) {
+                  log.info("찜 해제 성공: userId={}, homeId={}", userId, homeId);
+              } else {
+                  log.warn("찜 해제 실패: userId={}, homeId={}", userId, homeId);
+              }
           } else {
+              // 찜 상태가 아닌 경우, 찜 등록
               HomeLikeVO homeLike =
                       HomeLikeVO.builder()
                               .userId(userId)
                               .homeId(homeId)
                               .likedAt(LocalDate.now())
                               .build();
-              homeMapper.insertHomeLike(homeLike);
-              log.info("찜 등록: userId={}, homeId={}", userId, homeId);
+              int insertCount = homeMapper.insertHomeLike(homeLike);
+              if (insertCount > 0) {
+                  log.info("찜 등록 성공: userId={}, homeId={}", userId, homeId);
+              } else {
+                  log.warn("찜 등록 실패: userId={}, homeId={}", userId, homeId);
+              }
           }
       }
 
