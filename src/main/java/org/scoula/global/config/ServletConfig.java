@@ -1,10 +1,14 @@
 package org.scoula.global.config;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.multipart.MultipartResolver;
@@ -70,5 +74,20 @@ public class ServletConfig implements WebMvcConfigurer {
           MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
           converter.setObjectMapper(objectMapper);
           converters.add(converter);
+      }
+
+      @Override
+      public void addFormatters(FormatterRegistry registry) {
+          // LocalDate converter for form data
+          registry.addConverter(
+                  new Converter<String, LocalDate>() {
+                      @Override
+                      public LocalDate convert(String source) {
+                          if (source == null || source.trim().isEmpty()) {
+                              return null;
+                          }
+                          return LocalDate.parse(source, DateTimeFormatter.ISO_LOCAL_DATE);
+                      }
+                  });
       }
 }
