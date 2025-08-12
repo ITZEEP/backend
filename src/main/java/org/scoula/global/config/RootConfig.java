@@ -53,6 +53,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
               "org.scoula.domain.verification.service",
               "org.scoula.domain.home.service",
               "org.scoula.domain.mypage.service",
+              "org.scoula.domain.contract.service"
           })
 public class RootConfig {
       // 각 도메인별 설정은 별도의 Config 클래스로 분리됨
