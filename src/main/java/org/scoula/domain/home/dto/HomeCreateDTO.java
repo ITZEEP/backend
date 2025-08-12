@@ -57,8 +57,6 @@ public class HomeCreateDTO {
 
       private List<MaintenanceFeeDTO> maintenanceFees;
 
-      private List<String> imageUrls;
-
       @Data
       @NoArgsConstructor
       @AllArgsConstructor
