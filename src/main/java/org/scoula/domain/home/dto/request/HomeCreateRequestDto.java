@@ -34,6 +34,8 @@ public class HomeCreateRequestDto {
 
       private Float supplyArea; // 공급면적
       private Float exclusiveArea; // 전용면적
+      private Float area;
+      private String landCategory;
 
       private String homeFloor; // 층 정보 (예: "5층 / 15층" 등)
 

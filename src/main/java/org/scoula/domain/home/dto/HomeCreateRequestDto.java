@@ -61,6 +61,12 @@ public class HomeCreateRequestDto {
       @ApiModelProperty(value = "전용 면적 (㎡)", example = "59.8")
       private Float exclusiveArea;
 
+      @ApiModelProperty(value = "면적 (㎡)", example = "62.4")
+      private Float area;
+
+      @ApiModelProperty(value = "토지 지목", example = "대,전,답")
+      private String landCategory;
+
       @ApiModelProperty(value = "준공일", example = "2020-03-15")
       private LocalDate buildDate;
 

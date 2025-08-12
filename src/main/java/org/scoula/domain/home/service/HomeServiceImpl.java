@@ -77,6 +77,8 @@ public class HomeServiceImpl implements HomeService {
                               .bathroomCnt(createDTO.getBathroomCnt())
                               .isPet(createDTO.getIsPet())
                               .isParking(createDTO.getIsParking())
+                              .area(createDTO.getArea())
+                              .landCategory(createDTO.getLandCategory())
                               .build();
 
               int detailResult = homeMapper.insertHomeDetail(homeDetail);

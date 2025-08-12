@@ -38,6 +38,10 @@ public class HomeCreateDTO {
 
       private Float supplyArea;
 
+      private Float area;
+
+      private String landCategory;
+
       private Float exclusiveArea;
 
       private LocalDate buildDate;
