@@ -1011,7 +1011,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                               saveFinalSpecialContract(contractChatId);
 
                       AiMessage(contractChatId, "모든 특약에 동의하셨습니다! 최종 특약서가 생성되었습니다.");
-                      contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.ROUND4);
+                      contractChatMapper.updateStatus(
+                              contractChatId, ContractChat.ContractStatus.ROUND4);
 
                       log.info("초안에서 최종 특약 저장 완료 - finalContractId: {}", finalContract.getId());
 
@@ -1059,7 +1060,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                               saveFinalSpecialContract(contractChatId);
 
                       AiMessageNext(contractChatId, "🎉 모든 특약 협상이 완료되었습니다! 최종 특약서가 생성되었습니다.");
-                      contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.ROUND4);
+                      contractChatMapper.updateStatus(
+                              contractChatId, ContractChat.ContractStatus.ROUND4);
 
                       return Map.of(
                               "message",
@@ -1958,8 +1960,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   return "?step=3&round=2";
               case ROUND3:
                   return "?step=3&round=3";
-                  case ROUND4:
-                      return "?step=3&round=4";
+              case ROUND4:
+                  return "?step=3&round=4";
               default:
                   return null;
           }

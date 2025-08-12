@@ -187,12 +187,9 @@ public interface ContractChatController {
       @ApiOperation(value = "최종 특약 확정 수락 (임차인)", notes = "임차인이 임대인의 최종 특약서 확정 요청을 수락합니다.")
       @PostMapping("/{contractChatId}/final-contract/accept-confirmation")
       ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractConfirmation(
-              @PathVariable Long contractChatId, Authentication authentication);
-
-      @ApiOperation(value = "최종 특약 확정 거절 (임차인)", notes = "임차인이 임대인의 최종 특약서 확정 요청을 거절합니다.")
-      @PostMapping("/{contractChatId}/final-contract/reject-confirmation")
-      ResponseEntity<ApiResponse<String>> rejectFinalContractConfirmation(
-              @PathVariable Long contractChatId, Authentication authentication);
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
+              Authentication authentication);
 
       @ApiOperation(value = "최종 특약 삭제 요청 (임대인)", notes = "임대인이 최종 특약서의 특정 조항 삭제를 요청합니다.")
       @PostMapping("/final-contract/{contractChatId}/deletion-request/{clauseOrder}")
