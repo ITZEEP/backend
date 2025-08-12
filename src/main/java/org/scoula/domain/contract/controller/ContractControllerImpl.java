@@ -1,7 +1,7 @@
 package org.scoula.domain.contract.controller;
 
-import javax.servlet.http.HttpServletResponse;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.scoula.domain.contract.dto.*;
 import org.scoula.domain.contract.service.ContractService;
 import org.scoula.global.auth.dto.CustomUserDetails;
@@ -9,10 +9,6 @@ import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
 
 @RestController
 @Log4j2

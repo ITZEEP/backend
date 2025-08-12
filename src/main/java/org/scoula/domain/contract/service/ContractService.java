@@ -1,9 +1,6 @@
 package org.scoula.domain.contract.service;
 
-import javax.servlet.http.HttpServletResponse;
-
 import org.scoula.domain.contract.dto.*;
-import org.springframework.web.multipart.MultipartFile;
 
 public interface ContractService {
 
