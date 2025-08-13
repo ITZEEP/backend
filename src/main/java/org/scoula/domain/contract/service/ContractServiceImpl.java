@@ -56,10 +56,7 @@ public class ContractServiceImpl implements ContractService {
           // 이미 생성된 계약 문서가 있으면 저장 대신 안내 메시지 전송 후 종료
           ContractMongoDocument existing = repository.getContract(contractChatId);
           if (existing != null) {
-              contractChatService.AiMessage(contractChatId, """
-            이미 생성된 계약서가 있어요.
-            기존 계약서를 불러올게요.
-            """);
+              contractChatService.AiMessage(contractChatId, " 이미 생성된 계약서가 있어요.\n" + "기존 계약서를 불러올게요.");
               return null;
           }
 
@@ -94,32 +91,12 @@ public class ContractServiceImpl implements ContractService {
       }
 
       /** {@inheritDoc} */
+      // 계약서 조회하기
       @Override
       public ContractDTO getContract(Long contractChatId, Long userId) {
 
           // userId 검증
           validateUserId(contractChatId, userId);
-
-
-          // 스텝 변경
-//          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
-
-          // 다음 단계 메세지 보내기
-//          contractChatService.AiMessage(contractChatId, "이번 단계는 '정보 확인' 단계입니다");
-
-          ContractMongoDocument doc = repository.getContract(contractChatId);
-          AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
-
-          // 시작 메세지 보내기
-          contractChatService.AiMessage(
-                  contractChatId,
-                  """
-        👋🏻 안녕하세요!
-        이 계약은 임대인 %s님과 임차인 %s님의 계약입니다. 시작하기 전, 정보를 먼저 확인할게요.
-
-        제출된 정보를 토대로 계약서를 추출할게요.
-        """.formatted(aiDto.getOwnerName(), aiDto.getBuyerName())
-          );
 
           // id로 Repository에서 값을 찾는다
           ContractMongoDocument document = repository.getContract(contractChatId);
@@ -130,27 +107,36 @@ public class ContractServiceImpl implements ContractService {
           // 찾은 값을 Dto에 넣고 반환하기
           ContractDTO dto = ContractDTO.toDTO(document);
 
-          boolean deposit = contractMapper.getDepositAdjustment(contractChatId);
-
-          if (!deposit) {
-              contractChatService.AiMessageBtn(contractChatId, """
-                      다음은 2단계 '금액 조율' 단계입니다.
-                      
-                      두 분 모두 금액 조율 의사가 없으므로,
-                      다음 단계로 자동으로 넘어갑니다.
-                      """);
-          }
-
           return dto;
       }
 
     @Override
+    // 해당 스텝 메세지 & 다음 단계로 넘어가는지
     public Void getContractNext(Long contractChatId, Long userId) {
+
         // userId 검증
         validateUserId(contractChatId, userId);
 
         ContractMongoDocument doc = repository.getContract(contractChatId);
         AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
+
+        // 시작 메세지 보내기
+        contractChatService.AiMessage(
+                contractChatId,
+                """
+      👋🏻 안녕하세요!
+      이 계약은 임대인 %s님과 임차인 %s님의 계약입니다. 
+      시작하기 전, 정보를 먼저 확인할게요.
+      제출된 정보를 토대로 계약서를 추출할게요.
+      """.formatted(aiDto.getOwnerName(), aiDto.getBuyerName())
+        );
+
+        // 2초 대기
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
           contractChatService.AiMessageBtn(contractChatId, """
                   %s님과 %s님이 작성한 사전 조사를 토대로
@@ -158,6 +144,7 @@ public class ContractServiceImpl implements ContractService {
                   매물 정보, 조건을 확인하셨나요?
                   다음 단계로 넘어갈까요?
                   """.formatted(aiDto.getBuyerName(), aiDto.getOwnerName()));
+
         return null;
     }
 
@@ -198,6 +185,25 @@ public class ContractServiceImpl implements ContractService {
         } catch (Exception e) {
             throw new BusinessException(ContractException.CONTRACT_REDIS, e);
         }
+
+
+        boolean deposit = contractMapper.getDepositAdjustment(contractChatId);
+
+        if (!deposit) {
+            contractChatService.AiMessageBtn(contractChatId, """
+                      다음은 2단계 '금액 조율' 단계입니다.
+                      
+                      두 분 모두 금액 조율 의사가 없으므로,
+                      다음 단계로 자동으로 넘어갑니다.
+                      """);
+        }
+
+        // 스텝 변경
+//          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
+
+        // 다음 단계 메세지 보내기
+//          contractChatService.AiMessage(contractChatId, "이번 단계는 '정보 확인' 단계입니다");
+
     }
 
     /** {@inheritDoc} */

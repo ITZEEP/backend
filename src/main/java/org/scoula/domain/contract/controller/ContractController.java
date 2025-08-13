@@ -15,24 +15,24 @@ import io.swagger.annotations.ApiOperation;
 public interface ContractController {
 
       // step 1 (init)
-      @ApiOperation(value = "계약서 몽고DB에 저장", notes = "계약서에 필요한 항목들을 가져와서 몽고 DB에 계약서 만들기")
+      @ApiOperation(value = "[계약전_임차인] 계약서를 몽고DB에 저장", notes = "계약서에 필요한 항목들을 가져와서 몽고 DB에 계약서 만들기")
       ResponseEntity<ApiResponse<Void>> saveContractMongo(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
       // step 1 : start
-      @ApiOperation(value = "계약서 전체 조회", notes = "계약서 가져오기")
+      @ApiOperation(value = "[계약서 _ 정보 조회 1] 계약서 전체 조회", notes = "계약서 가져오기")
       ResponseEntity<ApiResponse<ContractDTO>> getContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "정보조회 다음 단계로 넘어가기 Message", notes = "정보조회 마지막 단계에서 다음 단계로 넘어가기 Message")
+      @ApiOperation(value = "[채팅 _ 정보 조회 1] 정보 조회 시작", notes = "정보조회 마지막 단계에서 다음 단계로 넘어가기 Message")
       ResponseEntity<ApiResponse<Void>> getContractNext(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
       // step 1 : finish
-      @ApiOperation(value = "다음 단계로 넘어가기", notes = "다음 단계 여부(true/false)를 받아서 다음 단계로 넘어가기")
+      @ApiOperation(value = "[채팅 _ 정보 조회 2] 정보 조회에서 다음단계로 가기", notes = "다음 단계 여부(true/false)를 받아서 다음 단계로 넘어가기")
       ResponseEntity<ApiResponse<Boolean>> nextStep(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
