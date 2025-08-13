@@ -36,4 +36,5 @@ public class HomeVO {
       private Float exclusiveArea;
       private Float area;
       private String landCategory;
+      private Integer homeFloor;
 }

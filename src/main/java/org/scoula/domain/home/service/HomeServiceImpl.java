@@ -297,6 +297,8 @@ public class HomeServiceImpl implements HomeService {
                                       .likeCnt(home.getLikeCnt())
                                       .roomCnt(home.getRoomCnt())
                                       .supplyArea(home.getSupplyArea())
+                                      .exclusiveArea(home.getExclusiveArea())
+                                      .homeFloor(home.getHomeFloor())
                                       .imageUrls(
                                               mainImageUrl != null
                                                       ? List.of(mainImageUrl)
