@@ -151,58 +151,29 @@ public class ContractServiceImpl implements ContractService {
     @Override
     public Boolean nextStep(Long contractChatId, Long userId, NextStepDTO dto) {
 
-        ContractChat.ContractStatus step = contractChatMapper.getStatus(contractChatId);
-        // Redis Key: 계약별 step 상태를 저장
-        String redisKey = String.format("contract:%s:%d", step.name(), contractChatId);
+        // userId 검증
+        validateUserId(contractChatId, userId);
 
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
+        Boolean nextSteps = nextSteps(contractChatId, userId, dto);
 
-            // 1) 기존 상태 로드 (없으면 기본값 생성)
-            String currentJson = stringRedisTemplate.opsForValue().get(redisKey);
-            NextStepDTO state = (currentJson != null)
-                    ? objectMapper.readValue(currentJson, NextStepDTO.class)
-                    : new NextStepDTO();
+        if (nextSteps) {
+            boolean deposit = contractMapper.getDepositAdjustment(contractChatId);
 
-            // 2) 이번 요청 값 반영 (이제 step은 DTO에서 받지 않음, DB 상태는 필요 시 별도 조회)
-            if (dto.isOwner()) {
-                state.setOwner(true);
+            if (deposit) {
+                contractChatService.AiMessage(contractChatId, "다음 단계는 '금액 조율' 단계입니다");
+            } else if (!deposit) {
+                contractChatService.AiMessageBtn(contractChatId, """
+                        다음은 2단계 '금액 조율' 단계입니다.
+                                              
+                        두 분 모두 금액 조율 의사가 없으므로,
+                        다음 단계로 자동으로 넘어갑니다.
+                        """);
             }
-            if (dto.isBuyer()) {
-                state.setBuyer(true);
-            }
-
-            // 3) 두 사람이 모두 true면 -> 키 삭제하고 true 반환
-            if (state.isOwner() && state.isBuyer()) {
-                stringRedisTemplate.delete(redisKey);
-                return true;
-            }
-
-            // 4) 아직 한쪽만 true면 -> 상태 저장하고 false 반환
-            String updatedJson = objectMapper.writeValueAsString(state);
-            stringRedisTemplate.opsForValue().set(redisKey, updatedJson);
-            return false;
-        } catch (Exception e) {
-            throw new BusinessException(ContractException.CONTRACT_REDIS, e);
+            // 스텝 변경
+            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
         }
 
-
-        boolean deposit = contractMapper.getDepositAdjustment(contractChatId);
-
-        if (!deposit) {
-            contractChatService.AiMessageBtn(contractChatId, """
-                      다음은 2단계 '금액 조율' 단계입니다.
-                      
-                      두 분 모두 금액 조율 의사가 없으므로,
-                      다음 단계로 자동으로 넘어갑니다.
-                      """);
-        }
-
-        // 스텝 변경
-//          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
-
-        // 다음 단계 메세지 보내기
-//          contractChatService.AiMessage(contractChatId, "이번 단계는 '정보 확인' 단계입니다");
+        return nextSteps;
 
     }
 
@@ -460,6 +431,43 @@ public class ContractServiceImpl implements ContractService {
               throw new BusinessException(PreContractErrorCode.TENANT_USER);
           }
       }
+
+    public Boolean nextSteps(Long contractChatId, Long userId, NextStepDTO dto) {
+        ContractChat.ContractStatus step = contractChatMapper.getStatus(contractChatId);
+        // Redis Key: 계약별 step 상태를 저장
+        String redisKey = String.format("contract:%s:%d", step.name(), contractChatId);
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            // 1) 기존 상태 로드 (없으면 기본값 생성)
+            String currentJson = stringRedisTemplate.opsForValue().get(redisKey);
+            NextStepDTO state = (currentJson != null)
+                    ? objectMapper.readValue(currentJson, NextStepDTO.class)
+                    : new NextStepDTO();
+
+            // 2) 이번 요청 값 반영 (이제 step은 DTO에서 받지 않음, DB 상태는 필요 시 별도 조회)
+            if (dto.isOwner()) {
+                state.setOwner(true);
+            }
+            if (dto.isBuyer()) {
+                state.setBuyer(true);
+            }
+
+            // 3) 두 사람이 모두 true면 -> 키 삭제하고 true 반환
+            if (state.isOwner() && state.isBuyer()) {
+                stringRedisTemplate.delete(redisKey);
+                return true;
+            }
+
+            // 4) 아직 한쪽만 true면 -> 상태 저장하고 false 반환
+            String updatedJson = objectMapper.writeValueAsString(state);
+            stringRedisTemplate.opsForValue().set(redisKey, updatedJson);
+            return false;
+        } catch (Exception e) {
+            throw new BusinessException(ContractException.CONTRACT_REDIS, e);
+        }
+    }
 
     private static String formatWonShort(int amount) {
         if (amount == 0) return "0원";
