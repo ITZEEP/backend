@@ -77,14 +77,7 @@ public class ContractChatControllerImpl implements ContractChatController {
       @GetMapping("/{chatRoomId}/moveContractChat")
       public ResponseEntity<ApiResponse<String>> moveContractChat(
               @PathVariable Long chatRoomId, Authentication authentication) {
-          String currentUserEmail = authentication.getName();
-          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
-
-          if (currentUserOpt.isEmpty()) {
-              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-          }
-          User currentUser = currentUserOpt.get();
-          Long userId = currentUser.getUserId();
+          Long userId = getUserIdFromAuthentication(authentication);
           String url = contractChatService.getContractChatRoomUrl(chatRoomId);
           return ResponseEntity.ok(ApiResponse.success(url));
       }
@@ -853,6 +846,7 @@ public class ContractChatControllerImpl implements ContractChatController {
       }
 
       @Override
+      @PostMapping("/final-contract/{contractChatId}/deletion-request/{clauseOrder}")
       public ResponseEntity<ApiResponse<String>> requestFinalContractDeletion(
               Long contractChatId, Integer clauseOrder, Authentication authentication) {
           try {
