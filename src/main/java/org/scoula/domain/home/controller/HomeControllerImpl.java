@@ -45,12 +45,6 @@ public class HomeControllerImpl implements HomeController {
           // 이미지 파일 리스트 처리
           List<MultipartFile> imageList = requestDto.getImages();
 
-          log.info(
-                  "매물 등록 요청: userId={}, residenceType={}, 이미지 개수={}",
-                  userId,
-                  requestDto.getResidenceType(),
-                  imageList.size());
-
           // HomeCreateRequestDto를 HomeCreateDTO로 변환
           HomeCreateDTO createDTO =
                   HomeCreateDTO.builder()
