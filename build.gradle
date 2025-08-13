@@ -166,6 +166,9 @@ dependencies {
     //FireBase 설정 추가
     implementation 'com.google.firebase:firebase-admin:9.2.0'
 
+    // PDF 처리 - iText
+    implementation 'com.itextpdf:itext7-core:7.2.5'
+
 }
 
 test {
