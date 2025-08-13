@@ -27,7 +27,7 @@ import lombok.extern.log4j.Log4j2;
 @Service
 @RequiredArgsConstructor
 @Log4j2
-public class PreContractServiceImpl implements PreContractService {
+public class TenantPreContractServiceImpl implements TenantPreContractService {
 
       private final TenantPreContractMapper tenantMapper;
       private final TenantMongoRepository mongoRepository;

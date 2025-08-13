@@ -14,12 +14,6 @@ import io.swagger.annotations.ApiOperation;
 @Api(tags = "계약서 API", description = "계약서 : 정보확인 / 금액 조율 / 적법성 확인")
 public interface ContractController {
 
-      // step 0
-      @ApiOperation(value = "임차인 대기 메세지", notes = "step0의 AI 메세지")
-      ResponseEntity<ApiResponse<Void>> standByContract(
-              @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails);
-
       // step 1 (init)
       @ApiOperation(value = "계약서 몽고DB에 저장", notes = "계약서에 필요한 항목들을 가져와서 몽고 DB에 계약서 만들기")
       ResponseEntity<ApiResponse<Void>> saveContractMongo(

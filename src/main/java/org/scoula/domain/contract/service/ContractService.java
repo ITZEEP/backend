@@ -5,14 +5,6 @@ import org.scoula.domain.contract.dto.*;
 public interface ContractService {
 
       /**
-       * step0. 임차인이 임대인을 기다릴때
-       *
-       * @param contractChatId 채팅방 아이디
-       * @param userId 유저 아이디
-       */
-      Void standByContract(Long contractChatId, Long userId);
-
-      /**
        * step1 (init) 계약서에 필요한 항목들을 가져와서 몽고 DB에 계약서 만들기
        *
        * @param contractChatId 채팅방 아이디

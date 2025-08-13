@@ -49,37 +49,6 @@ public class ContractServiceImpl implements ContractService {
 
       /** {@inheritDoc} */
       @Override
-      public Void standByContract(Long contractChatId, Long userId) {
-
-          // 시작 메세지 보내기
-          contractChatService.AiMessage(contractChatId, """
-          안녕하세요!
-          임대인이 입장하면 바로 계약서 작성을 시작할게요.
-          """);
-
-          // 2초
-          // 잠깐의 텀 (2초)
-          try {
-              Thread.sleep(2000);
-          } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              log.warn("standByContract sleep interrupted", ie);
-          }
-
-
-          contractChatService.AiMessageBtn(contractChatId, """
-          기다리는 동안
-          어려운 법률 용어와 법률 팁을 알아볼까요?
-          """);
-
-          // contract에 매퍼로 스텝 추가하기
-          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP0);
-
-          return null;
-      }
-
-      /** {@inheritDoc} */
-      @Override
       public Void saveContractMongo(Long contractChatId, Long userId) {
           // userId 검증
           validateIsOwner(contractChatId, userId);

@@ -20,16 +20,6 @@ public class ContractControllerImpl implements ContractController {
       private final ContractService service;
 
       @Override
-      @PostMapping("/standBy")
-      public ResponseEntity<ApiResponse<Void>> standByContract(
-              @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails) {
-          return ResponseEntity.ok(
-                  ApiResponse.success(
-                          service.standByContract(contractChatId, userDetails.getUserId())));
-      }
-
-      @Override
       @PostMapping("")
       public ResponseEntity<ApiResponse<Void>> saveContractMongo(
               @PathVariable Long contractChatId,

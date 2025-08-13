@@ -443,6 +443,7 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           contractChatService.AiMessage(
                   contractChatId, "\uD83D\uDC4B 임대인께서 입장하셨습니다!  \n" + "지금부터 계약을 진행하겠습니다.");
           contractService.saveContractMongo(contractChatId, userId);
+          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP0);
           return null;
       }
 
