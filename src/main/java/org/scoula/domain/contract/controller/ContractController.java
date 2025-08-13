@@ -32,7 +32,9 @@ public interface ContractController {
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
       // step 1 : finish
-      @ApiOperation(value = "[채팅 _ 정보 조회 2] 정보 조회에서 다음단계로 가기", notes = "다음 단계 여부(true/false)를 받아서 다음 단계로 넘어가기")
+      @ApiOperation(
+              value = "[채팅 _ 정보 조회 2] 정보 조회에서 다음단계로 가기",
+              notes = "다음 단계 여부(true/false)를 받아서 다음 단계로 넘어가기")
       ResponseEntity<ApiResponse<Boolean>> nextStep(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,

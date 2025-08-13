@@ -8,7 +8,8 @@ import org.scoula.domain.contract.dto.ContractDTO;
 public interface ContractMapper {
 
       Long getOwnerId(@Param("contractChatId") Long contractChatId);
-      Long getBuyerId (@Param("contractChatId") Long contractChatId);
+
+      Long getBuyerId(@Param("contractChatId") Long contractChatId);
 
       ContractDTO getContract(@Param("contractChatId") Long contractChatId);
 
