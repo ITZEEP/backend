@@ -16,6 +16,7 @@ import org.scoula.domain.precontract.vo.TenantJeonseInfoVO;
 import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
 import org.scoula.domain.precontract.vo.TenantWolseInfoVO;
 import org.scoula.global.common.exception.BusinessException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,9 @@ public class PreContractServiceImpl implements PreContractService {
       private final ChatServiceInterface chatService;
       private final ContractChatMapper contractChatMapper;
       private final ContractChatServiceInterface contractChatService;
+
+      @Value("${app.url.contract.precontract.owner}")
+      private String URL;
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
@@ -353,8 +357,8 @@ public class PreContractServiceImpl implements PreContractService {
 
           ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
 
-          String contractChatUrls =
-                  "http://localhost:5173/pre-contract/" + contractChatId.toString() + "/owner?step=1";
+          String contractChatUrls = URL.replace("{contractChatId}", contractChatId.toString());
+
           ChatMessageRequestDto linkMessages =
                   ChatMessageRequestDto.builder()
                           .chatRoomId(contractChatId)

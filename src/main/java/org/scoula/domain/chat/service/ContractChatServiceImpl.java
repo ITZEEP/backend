@@ -21,6 +21,7 @@ import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,9 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final RedisTemplate<String, String> stringRedisTemplate;
       private final ObjectMapper objectMapper = new ObjectMapper();
       @Autowired private SpecialContractMongoRepository specialContractMongoRepository;
+
+      @Value("${url.contract.url}")
+      private String contractUrl;
 
       /** {@inheritDoc} */
       @Override
@@ -2547,6 +2551,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           Long contractChatRoomId = contractChatId.getContractChatId();
           String param = getContractChatStatus(contractChatId.getStatus());
-          return "http://localhost:5173/contract/" + contractChatRoomId + param;
+          return contractUrl + contractChatRoomId + param;
       }
 }

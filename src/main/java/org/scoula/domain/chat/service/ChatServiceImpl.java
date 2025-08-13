@@ -20,6 +20,7 @@ import org.scoula.domain.user.service.UserServiceInterface;
 import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.file.service.S3ServiceInterface;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,9 @@ public class ChatServiceImpl implements ChatServiceInterface {
 
       private final ContractChatMapper contractChatMapper;
       private final RedisTemplate<String, String> stringRedisTemplate;
+
+      @Value("${app.url.contract.precontract.buyer}")
+      private String URL;
 
       /** {@inheritDoc} */
       @Override
@@ -100,7 +104,20 @@ public class ChatServiceImpl implements ChatServiceInterface {
 
               mongoRepository.saveMessage(dto.getChatRoomId(), message);
 
-              String preview = dto.getType().equals("TEXT") ? dto.getContent() : "[파일]";
+              String preview;
+              switch (dto.getType()) {
+                  case "TEXT":
+                      preview = dto.getContent();
+                      break;
+                  case "URLLINK":
+                      preview = "[링크]";
+                      break;
+                  case "FILE":
+                      preview = "[파일]";
+                      break;
+                  default:
+                      preview = "[메시지]";
+              }
               LocalDateTime now = LocalDateTime.now();
 
               chatRoomMapper.updateLastMessage(dto.getChatRoomId(), preview, now);
@@ -819,10 +836,7 @@ public class ChatServiceImpl implements ChatServiceInterface {
                           .build();
 
           handleChatMessage(acceptMessage);
-          String contractChatUrl =
-                  "http://localhost:5173/pre-contract/"
-                          + contractChatRoomId.toString()
-                          + "/buyer?step=1";
+          String contractChatUrl = URL.replace("{contractChatId}", contractChatRoomId.toString());
 
           ChatMessageRequestDto linkMessage =
                   ChatMessageRequestDto.builder()
