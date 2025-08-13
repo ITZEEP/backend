@@ -46,6 +46,8 @@ public class ContractChat {
                   return 3L;
               case ROUND3:
                   return 4L;
+              case ROUND4:
+                  return 5L;
               default:
                   return 1L;
           }
@@ -57,6 +59,7 @@ public class ContractChat {
                   && (status == ContractStatus.ROUND0
                           || status == ContractStatus.ROUND1
                           || status == ContractStatus.ROUND2
-                          || status == ContractStatus.ROUND3);
+                          || status == ContractStatus.ROUND3
+                          || status == ContractStatus.ROUND4);
       }
 }
