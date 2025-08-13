@@ -9,8 +9,7 @@ import java.util.Optional;
 import org.scoula.domain.chat.document.ContractChatDocument;
 import org.scoula.domain.chat.document.FinalSpecialContractDocument;
 import org.scoula.domain.chat.document.SpecialContractFixDocument;
-import org.scoula.domain.chat.dto.ContractChatMessageRequestDto;
-import org.scoula.domain.chat.dto.SpecialContractUserViewDto;
+import org.scoula.domain.chat.dto.*;
 import org.scoula.domain.chat.dto.ai.ClauseImproveResponseDto;
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
@@ -72,6 +71,15 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
 
           return currentUserOpt.get().getUserId();
+      }
+
+      @Override
+      @GetMapping("/{chatRoomId}/moveContractChat")
+      public ResponseEntity<ApiResponse<String>> moveContractChat(
+              @PathVariable Long chatRoomId, Authentication authentication) {
+          Long userId = getUserIdFromAuthentication(authentication);
+          String url = contractChatService.getContractChatRoomUrl(chatRoomId);
+          return ResponseEntity.ok(ApiResponse.success(url));
       }
 
       @Override
@@ -152,7 +160,6 @@ public class ContractChatControllerImpl implements ContractChatController {
           User currentUser = currentUserOpt.get();
           Long userId = currentUser.getUserId();
 
-          // 권한 확인을 컨트롤러에서 직접 수행
           if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
@@ -283,13 +290,6 @@ public class ContractChatControllerImpl implements ContractChatController {
 
               boolean importClause =
                       contractChatService.setEndPointAndExport(contractChatId, userId, order);
-              //
-              //              log.info("메시지 내용:");
-              //              System.out.println(importClause);
-              //
-              //              ApiResponse<String> response =
-              //                      ApiResponse.success(importClause, "특약 대화가 성공적으로 내보내졌습니다.");
-
               return ResponseEntity.ok(ApiResponse.success());
           } catch (Exception e) {
               log.error("특약 대화 내보내기 실패", e);
@@ -449,9 +449,6 @@ public class ContractChatControllerImpl implements ContractChatController {
       }
 
       // 특약 관련 메서드
-      // 수정된 ContractChatControllerImpl.java 구현 메서드들
-      // ApiResponse 사용법을 기존 프로젝트에 맞게 수정
-
       @Override
       @PostMapping("/special-contracts/{contractChatId}/submit-selection")
       public ResponseEntity<ApiResponse<Object>> submitSpecialContractSelection(
@@ -497,6 +494,7 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
+      @Override
       @GetMapping("/special-contract/{contractChatId}/all-rounds")
       public ResponseEntity<ApiResponse<Map<String, Object>>> getAllRoundsSpecialContract(
               @PathVariable Long contractChatId, Authentication authentication) {
@@ -548,6 +546,7 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
+      @Override
       @PutMapping("/special-contract/{contractChatId}/recent")
       public ResponseEntity<ApiResponse<SpecialContractFixDocument>> updateRecentData(
               @PathVariable Long contractChatId,
@@ -646,7 +645,6 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
-      // 컨트롤러에 추가
       @Override
       @GetMapping("/special-contract/{contractChatId}/incomplete")
       public ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>>
@@ -659,6 +657,25 @@ public class ContractChatControllerImpl implements ContractChatController {
                       contractChatService.getIncompleteSpecialContractsByChat(contractChatId, userId);
 
               return ResponseEntity.ok(ApiResponse.success(result, "미완료 특약 목록 조회 성공"));
+          } catch (Exception e) {
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "미완료 특약 목록 조회 중 오류가 발생했습니다."));
+          }
+      }
+
+      @Override
+      @GetMapping("/special-contract/{contractChatId}/incomplete/now")
+      public ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>>
+              getIncompleteSpecialContractsWithoutMessage(
+                      @PathVariable Long contractChatId, Authentication authentication) {
+
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              List<SpecialContractFixDocument> result =
+                      contractChatService.getIncompleteSpecialContractsWithoutMessage(
+                              contractChatId, userId);
+
+              return ResponseEntity.ok(ApiResponse.success(result, "메시지가 없는 미완료 특약 목록 조회 성공"));
           } catch (Exception e) {
               return ResponseEntity.internalServerError()
                       .body(ApiResponse.error("INTERNAL_ERROR", "미완료 특약 목록 조회 중 오류가 발생했습니다."));
@@ -702,5 +719,247 @@ public class ContractChatControllerImpl implements ContractChatController {
               return ResponseEntity.internalServerError()
                       .body(ApiResponse.error("INTERNAL_ERROR", "최종 특약서 조회 중 오류가 발생했습니다."));
           }
+      }
+
+      @Override
+      @PostMapping("/final-contract/{contractChatId}/modification-request")
+      public ResponseEntity<ApiResponse<ModificationRequestData>> requestFinalContractModification(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractModificationRequestDto requestDto,
+              Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+
+              ModificationRequestData result =
+                      contractChatService.requestFinalContractModification(
+                              contractChatId, userId, requestDto);
+
+              return ResponseEntity.ok(ApiResponse.success(result, "수정 요청이 성공적으로 전송되었습니다."));
+
+          } catch (IllegalArgumentException e) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("REQUEST_FAILED", e.getMessage()));
+          } catch (Exception e) {
+              log.error("최종 특약서 수정 요청 실패", e);
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "수정 요청 중 오류가 발생했습니다."));
+          }
+      }
+
+      @Override
+      @PostMapping("/final-contract/{contractChatId}/modification-response")
+      public ResponseEntity<ApiResponse<FinalSpecialContractDocument>> respondToModificationRequest(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractModificationResponseDto responseDto,
+              Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+
+              FinalSpecialContractDocument result =
+                      contractChatService.respondToModificationRequest(
+                              contractChatId, userId, responseDto);
+
+              String message = responseDto.isAccepted() ? "수정 요청을 수락했습니다." : "수정 요청을 거절했습니다.";
+
+              return ResponseEntity.ok(ApiResponse.success(result, message));
+
+          } catch (IllegalArgumentException e) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("RESPONSE_FAILED", e.getMessage()));
+          } catch (Exception e) {
+              log.error("수정 요청 응답 실패", e);
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "응답 처리 중 오류가 발생했습니다."));
+          }
+      }
+
+      @Override
+      @GetMapping("/final-contract/{contractChatId}/modification-request/{clauseOrder}")
+      public ResponseEntity<ApiResponse<ModificationRequestData>> getPendingModificationRequest(
+              @PathVariable Long contractChatId,
+              @PathVariable Integer clauseOrder,
+              Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+
+              if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
+                  return ResponseEntity.badRequest()
+                          .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
+              }
+
+              ModificationRequestData result =
+                      contractChatService.getPendingModificationRequest(contractChatId, clauseOrder);
+
+              if (result == null) {
+                  return ResponseEntity.ok(ApiResponse.success(null, "대기중인 수정 요청이 없습니다."));
+              }
+
+              return ResponseEntity.ok(ApiResponse.success(result, "수정 요청 조회 성공"));
+
+          } catch (Exception e) {
+              log.error("수정 요청 조회 실패", e);
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "조회 중 오류가 발생했습니다."));
+          }
+      }
+
+      @Override
+      @GetMapping("/final-contract/{contractChatId}/has-pending-request/{clauseOrder}")
+      public ResponseEntity<ApiResponse<Boolean>> hasPendingModificationRequest(
+              @PathVariable Long contractChatId,
+              @PathVariable Integer clauseOrder,
+              Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+
+              if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
+                  return ResponseEntity.badRequest()
+                          .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
+              }
+
+              boolean hasPending =
+                      contractChatService.hasPendingModificationRequest(contractChatId, clauseOrder);
+
+              return ResponseEntity.ok(ApiResponse.success(hasPending, "대기중인 수정 요청 확인 완료"));
+
+          } catch (Exception e) {
+              log.error("대기중인 수정 요청 확인 실패", e);
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "확인 중 오류가 발생했습니다."));
+          }
+      }
+
+      @Override
+      @PostMapping("/{contractChatId}/final-contract/request-confirmation")
+      public ResponseEntity<ApiResponse<String>> requestFinalContractConfirmation(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              contractChatService.requestFinalContractConfirmation(contractChatId, userId);
+
+              return ResponseEntity.ok(ApiResponse.success("최종 특약 확정 요청이 임차인에게 전송되었습니다."));
+          } catch (Exception e) {
+              log.error("최종 특약 확정 요청 실패", e);
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("최종 특약 확정 요청에 실패했습니다: " + e.getMessage()));
+          }
+      }
+
+      @Override
+      @PostMapping("/final-contract/{contractChatId}/deletion-request/{clauseOrder}")
+      public ResponseEntity<ApiResponse<String>> requestFinalContractDeletion(
+              Long contractChatId, Integer clauseOrder, Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              contractChatService.requestFinalContractDeletion(contractChatId, userId, clauseOrder);
+
+              return ResponseEntity.ok(
+                      ApiResponse.success(
+                              String.format("특약 %d번 삭제 요청이 임차인에게 전송되었습니다.", clauseOrder)));
+          } catch (Exception e) {
+              log.error("최종 특약 삭제 요청 실패", e);
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("최종 특약 삭제 요청에 실패했습니다: " + e.getMessage()));
+          }
+      }
+
+      @Override
+      @PostMapping("/final-contract/{contractChatId}/deletion-response")
+      public ResponseEntity<ApiResponse<Map<String, Object>>> respondToFinalContractDeletion(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
+              Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+
+              Map<String, Object> result =
+                      contractChatService.respondToFinalContractDeletionRequest(
+                              contractChatId, userId, responseDto);
+
+              String message = responseDto.isAccepted() ? "삭제 요청을 수락했습니다." : "삭제 요청을 거절했습니다.";
+
+              return ResponseEntity.ok(ApiResponse.success(result, message));
+
+          } catch (IllegalArgumentException e) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("RESPONSE_FAILED", e.getMessage()));
+          } catch (Exception e) {
+              log.error("삭제 요청 응답 실패", e);
+              return ResponseEntity.internalServerError()
+                      .body(ApiResponse.error("INTERNAL_ERROR", "응답 처리 중 오류가 발생했습니다."));
+          }
+      }
+
+      @Override
+      @PostMapping("/{contractChatId}/final-contract/accept-confirmation")
+      public ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractConfirmation(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
+              Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              ContractChat contractChat =
+                      contractChatService.getContractChatInfo(contractChatId, userId);
+              Long buyerId = contractChat.getBuyerId();
+              Long ownerId = contractChat.getOwnerId();
+
+              if (!userId.equals(buyerId)) {
+                  throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+              }
+
+              String redisKey = "final-contract:confirmation:" + contractChatId;
+              String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+
+              if (storedOwnerId == null || !storedOwnerId.equals(ownerId.toString())) {
+                  throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+              }
+
+              Map<String, Object> result;
+              String message;
+
+              if (responseDto.isAccepted()) {
+                  result =
+                          contractChatService.acceptFinalContractConfirmation(contractChatId, userId);
+                  message = "최종 특약서가 확정되었습니다.";
+              } else {
+                  contractChatService.rejectFinalContractConfirmation(contractChatId, userId);
+                  result =
+                          Map.of(
+                                  "message", "최종 특약 확정을 거절했습니다.",
+                                  "status", "REJECTED");
+                  message = "최종 특약 확정을 거절했습니다.";
+              }
+
+              return ResponseEntity.ok(ApiResponse.success(result, message));
+          } catch (Exception e) {
+              log.error("최종 특약 확정 응답 실패", e);
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("최종 특약 확정 응답에 실패했습니다: " + e.getMessage()));
+          }
+      }
+
+      @Override
+      @GetMapping("/{contractChatId}/status")
+      public ResponseEntity<ApiResponse<String>> getContractStatus(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          Long userId = getUserIdFromAuthentication(authentication);
+          if (!contractChatService.isUserInContractChat(contractChatId, userId)) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("ACCESS_DENIED", "해당 계약 채팅방에 접근 권한이 없습니다."));
+          }
+
+          ContractChat contractChat = contractChatService.getContractChatInfo(contractChatId, userId);
+          if (contractChat == null) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("NOT_FOUND", "해당 계약 채팅방을 찾을 수 없습니다."));
+          }
+
+          String statusParam = contractChatService.getContractStatusParam(contractChatId, userId);
+          if (statusParam == null) {
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("INVALID_STATUS", "유효하지 않은 계약 상태입니다."));
+          }
+
+          return ResponseEntity.ok(ApiResponse.success(statusParam, "계약 상태 조회 성공"));
       }
 }

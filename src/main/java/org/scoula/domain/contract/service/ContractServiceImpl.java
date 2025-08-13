@@ -82,7 +82,7 @@ public class ContractServiceImpl implements ContractService {
       @Override
       public Void saveContractMongo(Long contractChatId, Long userId) {
           // userId 검증
-          validateUserId(contractChatId, userId);
+          validateIsOwner(contractChatId, userId);
 
           // 이미 생성된 계약 문서가 있으면 저장 대신 안내 메시지 전송 후 종료
           ContractMongoDocument existing = repository.getContract(contractChatId);
@@ -469,6 +469,14 @@ public class ContractServiceImpl implements ContractService {
                           .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
 
           if (!userId.equals(buyerId)) {
+              throw new BusinessException(PreContractErrorCode.TENANT_USER);
+          }
+      }
+
+      public void validateIsOwner(Long contractChatId, Long userId) {
+          Long ownerId=
+                  tenantMapper.selectContractOwnerId(contractChatId).orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+          if (!userId.equals(ownerId)) {
               throw new BusinessException(PreContractErrorCode.TENANT_USER);
           }
       }
