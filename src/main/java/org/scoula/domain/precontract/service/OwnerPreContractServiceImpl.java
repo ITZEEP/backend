@@ -7,6 +7,11 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.scoula.domain.chat.document.SpecialContractDocument;
+import org.scoula.domain.chat.dto.ChatMessageRequestDto;
+import org.scoula.domain.chat.mapper.ContractChatMapper;
+import org.scoula.domain.chat.service.ChatServiceInterface;
+import org.scoula.domain.chat.service.ContractChatServiceInterface;
+import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.document.OwnerMongoDocument;
 import org.scoula.domain.precontract.dto.ai.ClauseRecommendRequestDto;
@@ -52,6 +57,9 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       private final MongoTemplate mongoTemplate;
       private final ObjectMapper objectMapper;
       private final AesCryptoUtil aesCryptoUtil;
+      private final ChatServiceInterface chatService;
+      private final ContractChatServiceInterface contractChatService;
+      private final ContractChatMapper contractChatMapper;
 
       @Override
       public Void requireVerification(
@@ -410,6 +418,19 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
 
           saveOwnerDocument(dto);
           processAiClauseRecommendation(contractChatId, userId, dto);
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          contractChatService.getContractChatStatus(contractChat.getStatus());
+          String contractChatUrls = "http://localhost:5173/contract/" + contractChatId.toString();
+          ChatMessageRequestDto linkMessages =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(contractChatId)
+                          .senderId(contractChat.getBuyerId())
+                          .receiverId(contractChat.getOwnerId())
+                          .content(contractChatUrls)
+                          .type("URLLINK")
+                          .build();
+          chatService.handleChatMessage(linkMessages);
 
           return null;
       }

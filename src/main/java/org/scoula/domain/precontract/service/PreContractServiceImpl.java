@@ -2,6 +2,11 @@ package org.scoula.domain.precontract.service;
 
 import java.util.Optional;
 
+import org.scoula.domain.chat.dto.ChatMessageRequestDto;
+import org.scoula.domain.chat.mapper.ContractChatMapper;
+import org.scoula.domain.chat.service.ChatServiceInterface;
+import org.scoula.domain.chat.service.ContractChatServiceInterface;
+import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
@@ -25,6 +30,9 @@ public class PreContractServiceImpl implements PreContractService {
 
       private final TenantPreContractMapper tenantMapper;
       private final TenantMongoRepository mongoRepository;
+      private final ChatServiceInterface chatService;
+      private final ContractChatMapper contractChatMapper;
+      private final ContractChatServiceInterface contractChatService;
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
@@ -342,6 +350,22 @@ public class PreContractServiceImpl implements PreContractService {
           } catch (DataAccessException e) {
               throw new BusinessException(PreContractErrorCode.TENANT_INSERT, e);
           }
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+
+          String contractChatUrls =
+                  "http://localhost:5173/pre-contract/" + contractChatId.toString() + "/owner?step=1";
+          ChatMessageRequestDto linkMessages =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(contractChatId)
+                          .senderId(contractChat.getBuyerId())
+                          .receiverId(contractChat.getOwnerId())
+                          .content(contractChatUrls)
+                          .type("URLLINK")
+                          .build();
+          contractChatService.AiMessage(contractChatId, "안녕하세요!\n" + "임대인이 입장하면 바로 계약서 작성을 시작할게요.");
+          contractChatService.AiMessageBtn(contractChatId, "기다리는 동안 \n" + "어려운 법률 용어와 법률 팁을 알아볼까요?");
+          chatService.handleChatMessage(linkMessages);
 
           return null;
       }
