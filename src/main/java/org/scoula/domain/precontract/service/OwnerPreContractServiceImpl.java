@@ -8,10 +8,13 @@ import java.util.stream.Collectors;
 
 import org.scoula.domain.chat.document.SpecialContractDocument;
 import org.scoula.domain.chat.dto.ChatMessageRequestDto;
+import org.scoula.domain.chat.mapper.ChatRoomMapper;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.service.ChatServiceInterface;
 import org.scoula.domain.chat.service.ContractChatServiceInterface;
+import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
+import org.scoula.domain.contract.service.ContractService;
 import org.scoula.domain.precontract.document.ContractDocumentMongoDocument;
 import org.scoula.domain.precontract.document.OwnerMongoDocument;
 import org.scoula.domain.precontract.dto.ai.ClauseRecommendRequestDto;
@@ -60,6 +63,8 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
       private final ChatServiceInterface chatService;
       private final ContractChatServiceInterface contractChatService;
       private final ContractChatMapper contractChatMapper;
+      private final ContractService contractService;
+      private final ChatRoomMapper chatRoomMapper;
 
       @Override
       public Void requireVerification(
@@ -420,18 +425,23 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           processAiClauseRecommendation(contractChatId, userId, dto);
 
           ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          ChatRoom chatRoom =
+                  chatRoomMapper.findByUserAndHome(
+                          contractChat.getOwnerId(),
+                          contractChat.getBuyerId(),
+                          contractChat.getHomeId());
           contractChatService.getContractChatStatus(contractChat.getStatus());
-          String contractChatUrls = "http://localhost:5173/contract/" + contractChatId.toString();
           ChatMessageRequestDto linkMessages =
                   ChatMessageRequestDto.builder()
-                          .chatRoomId(contractChatId)
+                          .chatRoomId(chatRoom.getChatRoomId())
                           .senderId(contractChat.getBuyerId())
                           .receiverId(contractChat.getOwnerId())
-                          .content(contractChatUrls)
+                          .content("계약 채팅방 URL")
                           .type("URLLINK")
                           .build();
           chatService.handleChatMessage(linkMessages);
-
+          contractChatService.AiMessage(contractChatId, "임대인꼐서 입장하셨습니다! \uD83E\uDD1D 이제 계약을 시작합니다.");
+          contractService.saveContractMongo(contractChatId, userId);
           return null;
       }
 
@@ -592,19 +602,17 @@ public class OwnerPreContractServiceImpl implements OwnerPreContractService {
           ClauseRecommendRequestDto.OwnerData ownerRequestData = buildOwnerData(ownerData);
           ClauseRecommendRequestDto.TenantData tenantData = buildTenantData(ownerData);
 
-          return null;
+          return ClauseRecommendRequestDto.builder()
+                  .ocrData(ocrData)
+                  .ownerData(ownerRequestData)
+                  .tenantData(tenantData)
+                  .build();
       }
 
       private ClauseRecommendRequestDto.OcrData buildOcrData(
               ContractDocumentMongoDocument contractDocument) {
           if (contractDocument == null) {
-              return ClauseRecommendRequestDto.OcrData.builder()
-                      .extractedAt(null)
-                      .fileName(null)
-                      .rawText(null)
-                      .source(null)
-                      .specialTerms(null)
-                      .build();
+              return null;
           }
 
           return ClauseRecommendRequestDto.OcrData.builder()
