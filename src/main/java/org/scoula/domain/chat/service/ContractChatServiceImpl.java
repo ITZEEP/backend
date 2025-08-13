@@ -50,8 +50,10 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final ObjectMapper objectMapper = new ObjectMapper();
       @Autowired private SpecialContractMongoRepository specialContractMongoRepository;
 
-      @Value("${url.contract.url}")
-      private String contractUrl;
+      @Value("${front.base.url}")
+      private String baseUrl;
+
+      private String contractChatUrl = "/contract/";
 
       /** {@inheritDoc} */
       @Override
@@ -2551,6 +2553,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           Long contractChatRoomId = contractChatId.getContractChatId();
           String param = getContractChatStatus(contractChatId.getStatus());
-          return contractUrl + contractChatRoomId + param;
+
+          return baseUrl + contractChatUrl + contractChatRoomId.toString() + param;
       }
 }

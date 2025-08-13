@@ -53,8 +53,11 @@ public class ChatServiceImpl implements ChatServiceInterface {
       private final ContractChatMapper contractChatMapper;
       private final RedisTemplate<String, String> stringRedisTemplate;
 
-      @Value("${app.url.contract.precontract.buyer}")
+      @Value("${front.base.url}")
       private String URL;
+
+      private String PRECONTRACTURL = "/pre-contract/";
+      private String BUYERURL = "/buyer?step=1";
 
       /** {@inheritDoc} */
       @Override
@@ -836,7 +839,7 @@ public class ChatServiceImpl implements ChatServiceInterface {
                           .build();
 
           handleChatMessage(acceptMessage);
-          String contractChatUrl = URL.replace("{contractChatId}", contractChatRoomId.toString());
+          String contractChatUrl = URL + PRECONTRACTURL + (contractChatRoomId.toString()) + BUYERURL;
 
           ChatMessageRequestDto linkMessage =
                   ChatMessageRequestDto.builder()

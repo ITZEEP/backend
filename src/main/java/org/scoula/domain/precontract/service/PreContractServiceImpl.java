@@ -35,8 +35,11 @@ public class PreContractServiceImpl implements PreContractService {
       private final ContractChatMapper contractChatMapper;
       private final ContractChatServiceInterface contractChatService;
 
-      @Value("${app.url.contract.precontract.owner}")
+      @Value("${front.base.url}")
       private String URL;
+
+      private String precontractUrl = "/pre-contract/";
+      private String ownerUrl = "/owner?step=1";
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
@@ -357,7 +360,7 @@ public class PreContractServiceImpl implements PreContractService {
 
           ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
 
-          String contractChatUrls = URL.replace("{contractChatId}", contractChatId.toString());
+          String contractChatUrls = URL + precontractUrl + (contractChatId.toString()) + ownerUrl;
 
           ChatMessageRequestDto linkMessages =
                   ChatMessageRequestDto.builder()
