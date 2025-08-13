@@ -21,7 +21,6 @@ import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -41,7 +40,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final ChatRoomMapper chatRoomMapper;
       private final ContractChatMessageRepository contractChatMessageRepository;
       private final SimpMessagingTemplate messagingTemplate;
-      @Lazy private final ChatServiceInterface chatService;
+      private final ChatServiceInterface chatService;
       private final AiClauseImproveService aiClauseImproveService;
       private final PreContractDataService preContractDataService;
 
@@ -1947,7 +1946,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
       }
 
-      private String getContractChatStatus(ContractChat.ContractStatus status) {
+      public String getContractChatStatus(ContractChat.ContractStatus status) {
           switch (status) {
               case STEP0:
                   return "?step=1";
@@ -2345,7 +2344,12 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
-          AiMessageNext(contractChatId, confirmationMessage);
+          AiMessage(contractChatId, confirmationMessage);
+          AiMessageNext(
+                  contractChatId,
+                  "다음은 마지막 4단계: ‘적법성 검토' 단계입니다.\n"
+                          + "\n"
+                          + "해당 계약 내용을 기준으로 법률적 적합성을 분석할게요. 잠시만 기다려주세요.");
 
           return Map.of(
                   "message",
@@ -2526,5 +2530,23 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           AiMessage(contractChatId, rejectionMessage);
 
           log.info("특약 {}번 삭제 거절 완료 - contractChatId: {}", clauseOrder, contractChatId);
+      }
+
+      public String getContractChatRoomUrl(Long chatRoomId) {
+          ChatRoom chatRoom = chatRoomMapper.findById(chatRoomId);
+          if (chatRoom == null) {
+              log.error("채팅방을 찾을 수 없음: {}", chatRoomId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+          }
+          ContractChat contractChatId =
+                  contractChatMapper.findByUserAndHome(
+                          chatRoom.getOwnerId(), chatRoom.getBuyerId(), chatRoom.getHomeId());
+          if (contractChatId == null) {
+              log.error("채팅방을 찾을 수 없음: {}", chatRoomId);
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+          }
+          Long contractChatRoomId = contractChatId.getContractChatId();
+          String param = getContractChatStatus(contractChatId.getStatus());
+          return "http://localhost:5173/contract/" + contractChatRoomId + param;
       }
 }

@@ -262,6 +262,8 @@ public interface ContractChatServiceInterface {
 
       void AiMessageBtn(Long contractChatId, String content);
 
+      void AiMessageNext(Long contractChatId, String content);
+
       ModificationRequestData requestFinalContractModification(
               Long contractChatId, Long ownerId, FinalContractModificationRequestDto requestDto);
 
@@ -295,4 +297,8 @@ public interface ContractChatServiceInterface {
 
       Map<String, Object> respondToFinalContractDeletionRequest(
               Long contractChatId, Long buyerId, FinalContractDeletionResponseDto responseDto);
+
+      String getContractChatRoomUrl(Long chatRoomId);
+
+      String getContractChatStatus(ContractChat.ContractStatus status);
 }
