@@ -38,23 +38,23 @@ public interface ContractController {
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody NextStepDTO dto);
 
-      @ApiOperation(value = "금액 조회", notes = "금액을 조율하기 위해 금액을 조회")
+      @ApiOperation(value = "[채팅 _ 금액 조회 1]", notes = "금액을 조율하기 위해 금액을 조회")
       ResponseEntity<ApiResponse<PaymentDTO>> getDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "금액 요청", notes = "임대인이 금액을 요청")
+      @ApiOperation(value = "[채팅 _ 금액 요청 2]", notes = "임대인이 금액을 요청")
       ResponseEntity<ApiResponse<Void>> saveDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody PaymentDTO dto);
 
-      @ApiOperation(value = "금액 거절 ", notes = "임차인이 금액을 거절")
+      @ApiOperation(value = "[채팅 _ 금액 거절 3]", notes = "임차인이 금액을 거절")
       ResponseEntity<ApiResponse<Void>> deleteDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "금액 수락", notes = "임대인과 임차인 모두 동의")
+      @ApiOperation(value = "[채팅 _ 금액 수락 4]", notes = "임대인과 임차인 모두 동의")
       ResponseEntity<ApiResponse<Void>> updateDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);

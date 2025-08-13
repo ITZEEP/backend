@@ -168,6 +168,16 @@ public class ContractServiceImpl implements ContractService {
                         두 분 모두 금액 조율 의사가 없으므로,
                         다음 단계로 자동으로 넘어갑니다.
                         """);
+
+                // 2초 대기
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // 다음 단계 메세지 보내기
+                contractChatService.AiMessage(contractChatId, "이번 단계는 '금액 조율' 단계입니다");
             }
             // 스텝 변경
             contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
@@ -181,11 +191,8 @@ public class ContractServiceImpl implements ContractService {
       @Override
       public PaymentDTO getDepositPrice(Long contractChatId, Long userId) {
 
-          // 스텝 변경
-          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
-
-          // 다음 단계 메세지 보내기
-          contractChatService.AiMessage(contractChatId, "이번 단계는 '금액 조율' 단계입니다");
+          // userId 검증
+          validateUserId(contractChatId, userId);
 
           ContractMongoDocument doc = repository.getContract(contractChatId);
           AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
@@ -193,6 +200,7 @@ public class ContractServiceImpl implements ContractService {
           long contract = ChronoUnit.YEARS.between(aiDto.getContractStartDate(), aiDto.getContractEndDate());
           String rentType = tenantMapper.selectRentType(contractChatId, userId)
                   .orElseThrow(() -> new BusinessException(ContractException.CONTRACT_GET, "전/월세 타입 조회 실패"));
+
           // 시작 메세지 보내기
           contractChatService.AiMessage(
                   contractChatId,
@@ -208,13 +216,17 @@ public class ContractServiceImpl implements ContractService {
                           formatWonShort(aiDto.getDepositPrice()),
                           formatWonShort(aiDto.getMaintenanceFee())));
 
+          // 대기
+          try {
+              Thread.sleep(1000);
+          } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+          }
+
           contractChatService.AiMessage(
                   contractChatId, """
           자유롭게 채팅 후 임대인(%s)님께서 금액을 조정해주세요. 임차인(%s)님이 수락 후 해당 조건의 확정이 가능합니다.
           """.formatted(aiDto.getBuyerName(), aiDto.getOwnerName()));
-
-          // userId 검증
-          validateUserId(contractChatId, userId);
 
           // MongoDB에서 보증금, 계약금, 잔금, 월세를 조회한다
           ContractMongoDocument document = repository.getDepositPrice(contractChatId);
@@ -299,6 +311,12 @@ public class ContractServiceImpl implements ContractService {
           } catch (Exception e) {
               throw new BusinessException(ContractException.CONTRACT_UPDATE, e);
           }
+
+          // 스텝 변경
+          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
+
+          // 다음 단계 메세지 보내기
+          contractChatService.AiMessage(contractChatId, "이번 단계는 '특약 조율' 단계입니다");
 
           return null;
       }
