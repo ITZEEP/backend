@@ -66,19 +66,6 @@ public class ContractServiceImpl implements ContractService {
           // 계약서에 들어갈 내용들을 mapper로 가져오기
           ContractDTO dto = contractMapper.getContract(contractChatId);
 
-//          // 특약이 null이면 빈 리스트로 세팅
-//          if (dto.getSpecialContracts() == null) {
-//              dto.setSpecialContracts(Collections.emptyList());
-//          }
-//
-//          // 전화번호가 null이면 빈 문자열로 세팅
-//          if (dto.getOwnerPhoneNum() == null) {
-//              dto.setOwnerPhoneNum("");
-//          }
-//          if (dto.getBuyerPhoneNum() == null) {
-//              dto.setBuyerPhoneNum("");
-//          }
-
           // 계약 끝나는 기간
           String durationStr = contractMapper.getDuration(contractChatId);
           ContractDuration duration = ContractDuration.valueOf(durationStr);
@@ -110,11 +97,15 @@ public class ContractServiceImpl implements ContractService {
       @Override
       public ContractDTO getContract(Long contractChatId, Long userId) {
 
+          // userId 검증
+          validateUserId(contractChatId, userId);
+
+
           // 스텝 변경
-          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
+//          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
 
           // 다음 단계 메세지 보내기
-          contractChatService.AiMessage(contractChatId, "이번 단계는 '정보 확인' 단계입니다");
+//          contractChatService.AiMessage(contractChatId, "이번 단계는 '정보 확인' 단계입니다");
 
           ContractMongoDocument doc = repository.getContract(contractChatId);
           AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
@@ -129,9 +120,6 @@ public class ContractServiceImpl implements ContractService {
         제출된 정보를 토대로 계약서를 추출할게요.
         """.formatted(aiDto.getOwnerName(), aiDto.getBuyerName())
           );
-
-          // userId 검증
-          validateUserId(contractChatId, userId);
 
           // id로 Repository에서 값을 찾는다
           ContractMongoDocument document = repository.getContract(contractChatId);
@@ -432,14 +420,31 @@ public class ContractServiceImpl implements ContractService {
 
       // Userid 검증
       public void validateUserId(Long contractChatId, Long userId) {
-          Long buyerId =
-                  tenantMapper
-                          .selectContractBuyerId(contractChatId)
-                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
 
-          if (!userId.equals(buyerId)) {
+          if (userId == null) {
               throw new BusinessException(PreContractErrorCode.TENANT_USER);
           }
+
+          Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+          Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+
+          if (userId.equals(ownerContractId)) {
+              validateIsOwner(contractChatId, userId);
+              return;
+          }
+
+          if (userId.equals(buyerContractId)) {
+              Long buyerId = tenantMapper
+                      .selectContractBuyerId(contractChatId)
+                      .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+              if (!userId.equals(buyerId)) {
+                  throw new BusinessException(PreContractErrorCode.TENANT_USER);
+              }
+              return;
+          }
+
+          throw new BusinessException(PreContractErrorCode.TENANT_USER);
       }
 
       public void validateIsOwner(Long contractChatId, Long userId) {

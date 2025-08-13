@@ -4,6 +4,18 @@
 
 <mapper namespace="org.scoula.domain.contract.mapper.ContractMapper">
 
+    <select id="getOwnerId" resultType="Long">
+        SELECT owner_id
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
+    <select id="getBuyerId" resultType="Long">
+        SELECT buyer_id
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
     <select id="getContract" resultType="org.scoula.domain.contract.dto.ContractDTO">
         SELECT
             cc.contract_chat_id,
