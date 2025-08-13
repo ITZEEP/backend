@@ -51,6 +51,9 @@ public class RiskCheckSummaryResponse {
       @ApiModel(description = "분석 상세 항목")
       public static class DetailItem {
 
+          @ApiModelProperty(value = "위험도", example = "DANGER")
+          private String riskLevel;
+
           @ApiModelProperty(value = "항목 제목", example = "건축물 적법성 확인 필요")
           private String title;
 
