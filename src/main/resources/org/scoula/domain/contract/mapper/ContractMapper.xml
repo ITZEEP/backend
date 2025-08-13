@@ -4,25 +4,33 @@
 
 <mapper namespace="org.scoula.domain.contract.mapper.ContractMapper">
 
+    <select id="getOwnerId" resultType="Long">
+        SELECT owner_id
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
+    <select id="getBuyerId" resultType="Long">
+        SELECT buyer_id
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
     <select id="getContract" resultType="org.scoula.domain.contract.dto.ContractDTO">
         SELECT
             cc.contract_chat_id,
-            ou.nickname AS ownerName, CONCAT_WS(' ', oiv.addr1, oiv.addr2) AS ownerAddr, oiv.phone_number AS ownerPhoneNum,
-               bu.nickname AS buyerName, CONCAT_WS(' ', biv.addr1, biv.addr2) AS buyerAddr, biv.phone_number AS buyerPhoneNum,
+            oiv.name AS ownerName, CONCAT_WS(' ', oiv.addr1, oiv.addr2) AS ownerAddr, oiv.phone_number AS ownerPhoneNum,
+               biv.name AS buyerName, CONCAT_WS(' ', biv.addr1, biv.addr2) AS buyerAddr, biv.phone_number AS buyerPhoneNum,
         h.addr1 AS homeAddr1, h.addr2 AS homeAddr2, h.residence_type, h.exclusive_area,
         h.deposit_price, h.monthly_rent, h.maintenance_fee,
         hd.home_floor,
         tpc.expected_move_in_date AS contractStartDate
         FROM contract_chat cc
-        LEFT JOIN user ou
-            ON cc.owner_id = ou.user_id
         LEFT JOIN identity_verification oiv
-            ON oiv.user_id = ou.user_id
+            ON oiv.user_id = cc.owner_id
             AND oiv.contract_id = cc.contract_chat_id
-        LEFT JOIN user bu
-            ON cc.buyer_id = bu.user_id
         LEFT JOIN identity_verification biv
-            ON biv.user_id = bu.user_id
+            ON biv.user_id = cc.buyer_id
             AND biv.contract_id = cc.contract_chat_id
         LEFT JOIN home h
             ON cc.home_id = h.home_id

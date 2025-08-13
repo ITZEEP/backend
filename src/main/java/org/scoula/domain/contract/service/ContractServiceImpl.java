@@ -49,37 +49,6 @@ public class ContractServiceImpl implements ContractService {
 
       /** {@inheritDoc} */
       @Override
-      public Void standByContract(Long contractChatId, Long userId) {
-
-          // 시작 메세지 보내기
-          contractChatService.AiMessage(contractChatId, """
-          안녕하세요!
-          임대인이 입장하면 바로 계약서 작성을 시작할게요.
-          """);
-
-          // 2초
-          // 잠깐의 텀 (2초)
-          try {
-              Thread.sleep(2000);
-          } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              log.warn("standByContract sleep interrupted", ie);
-          }
-
-
-          contractChatService.AiMessageBtn(contractChatId, """
-          기다리는 동안
-          어려운 법률 용어와 법률 팁을 알아볼까요?
-          """);
-
-          // contract에 매퍼로 스텝 추가하기
-          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP0);
-
-          return null;
-      }
-
-      /** {@inheritDoc} */
-      @Override
       public Void saveContractMongo(Long contractChatId, Long userId) {
           // userId 검증
           validateIsOwner(contractChatId, userId);
@@ -87,28 +56,12 @@ public class ContractServiceImpl implements ContractService {
           // 이미 생성된 계약 문서가 있으면 저장 대신 안내 메시지 전송 후 종료
           ContractMongoDocument existing = repository.getContract(contractChatId);
           if (existing != null) {
-              contractChatService.AiMessage(contractChatId, """
-            이미 생성된 계약서가 있어요.
-            기존 계약서를 불러올게요.
-            """);
+              contractChatService.AiMessage(contractChatId, " 이미 생성된 계약서가 있어요.\n" + "기존 계약서를 불러올게요.");
               return null;
           }
 
           // 계약서에 들어갈 내용들을 mapper로 가져오기
           ContractDTO dto = contractMapper.getContract(contractChatId);
-
-//          // 특약이 null이면 빈 리스트로 세팅
-//          if (dto.getSpecialContracts() == null) {
-//              dto.setSpecialContracts(Collections.emptyList());
-//          }
-//
-//          // 전화번호가 null이면 빈 문자열로 세팅
-//          if (dto.getOwnerPhoneNum() == null) {
-//              dto.setOwnerPhoneNum("");
-//          }
-//          if (dto.getBuyerPhoneNum() == null) {
-//              dto.setBuyerPhoneNum("");
-//          }
 
           // 계약 끝나는 기간
           String durationStr = contractMapper.getDuration(contractChatId);
@@ -138,28 +91,9 @@ public class ContractServiceImpl implements ContractService {
       }
 
       /** {@inheritDoc} */
+      // 계약서 조회하기
       @Override
       public ContractDTO getContract(Long contractChatId, Long userId) {
-
-          // 스텝 변경
-          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
-
-          // 다음 단계 메세지 보내기
-          contractChatService.AiMessage(contractChatId, "이번 단계는 '정보 확인' 단계입니다");
-
-          ContractMongoDocument doc = repository.getContract(contractChatId);
-          AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
-
-          // 시작 메세지 보내기
-          contractChatService.AiMessage(
-                  contractChatId,
-                  """
-        👋🏻 안녕하세요!
-        이 계약은 임대인 %s님과 임차인 %s님의 계약입니다. 시작하기 전, 정보를 먼저 확인할게요.
-
-        제출된 정보를 토대로 계약서를 추출할게요.
-        """.formatted(aiDto.getOwnerName(), aiDto.getBuyerName())
-          );
 
           // userId 검증
           validateUserId(contractChatId, userId);
@@ -173,27 +107,36 @@ public class ContractServiceImpl implements ContractService {
           // 찾은 값을 Dto에 넣고 반환하기
           ContractDTO dto = ContractDTO.toDTO(document);
 
-          boolean deposit = contractMapper.getDepositAdjustment(contractChatId);
-
-          if (!deposit) {
-              contractChatService.AiMessageBtn(contractChatId, """
-                      다음은 2단계 '금액 조율' 단계입니다.
-                      
-                      두 분 모두 금액 조율 의사가 없으므로,
-                      다음 단계로 자동으로 넘어갑니다.
-                      """);
-          }
-
           return dto;
       }
 
     @Override
+    // 해당 스텝 메세지 & 다음 단계로 넘어가는지
     public Void getContractNext(Long contractChatId, Long userId) {
+
         // userId 검증
         validateUserId(contractChatId, userId);
 
         ContractMongoDocument doc = repository.getContract(contractChatId);
         AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
+
+        // 시작 메세지 보내기
+        contractChatService.AiMessage(
+                contractChatId,
+                """
+      👋🏻 안녕하세요!
+      이 계약은 임대인 %s님과 임차인 %s님의 계약입니다. 
+      시작하기 전, 정보를 먼저 확인할게요.
+      제출된 정보를 토대로 계약서를 추출할게요.
+      """.formatted(aiDto.getOwnerName(), aiDto.getBuyerName())
+        );
+
+        // 2초 대기
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
           contractChatService.AiMessageBtn(contractChatId, """
                   %s님과 %s님이 작성한 사전 조사를 토대로
@@ -201,57 +144,55 @@ public class ContractServiceImpl implements ContractService {
                   매물 정보, 조건을 확인하셨나요?
                   다음 단계로 넘어갈까요?
                   """.formatted(aiDto.getBuyerName(), aiDto.getOwnerName()));
+
         return null;
     }
 
     @Override
     public Boolean nextStep(Long contractChatId, Long userId, NextStepDTO dto) {
 
-        ContractChat.ContractStatus step = contractChatMapper.getStatus(contractChatId);
-        // Redis Key: 계약별 step 상태를 저장
-        String redisKey = String.format("contract:%s:%d", step.name(), contractChatId);
+        // userId 검증
+        validateUserId(contractChatId, userId);
 
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
+        Boolean nextSteps = nextSteps(contractChatId, userId, dto);
 
-            // 1) 기존 상태 로드 (없으면 기본값 생성)
-            String currentJson = stringRedisTemplate.opsForValue().get(redisKey);
-            NextStepDTO state = (currentJson != null)
-                    ? objectMapper.readValue(currentJson, NextStepDTO.class)
-                    : new NextStepDTO();
+        if (nextSteps) {
+            boolean deposit = contractMapper.getDepositAdjustment(contractChatId);
 
-            // 2) 이번 요청 값 반영 (이제 step은 DTO에서 받지 않음, DB 상태는 필요 시 별도 조회)
-            if (dto.isOwner()) {
-                state.setOwner(true);
+            if (deposit) {
+                contractChatService.AiMessage(contractChatId, "다음 단계는 '금액 조율' 단계입니다");
+            } else if (!deposit) {
+                contractChatService.AiMessageBtn(contractChatId, """
+                        다음은 2단계 '금액 조율' 단계입니다.
+                                              
+                        두 분 모두 금액 조율 의사가 없으므로,
+                        다음 단계로 자동으로 넘어갑니다.
+                        """);
+
+                // 2초 대기
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // 다음 단계 메세지 보내기
+                contractChatService.AiMessage(contractChatId, "이번 단계는 '금액 조율' 단계입니다");
             }
-            if (dto.isBuyer()) {
-                state.setBuyer(true);
-            }
-
-            // 3) 두 사람이 모두 true면 -> 키 삭제하고 true 반환
-            if (state.isOwner() && state.isBuyer()) {
-                stringRedisTemplate.delete(redisKey);
-                return true;
-            }
-
-            // 4) 아직 한쪽만 true면 -> 상태 저장하고 false 반환
-            String updatedJson = objectMapper.writeValueAsString(state);
-            stringRedisTemplate.opsForValue().set(redisKey, updatedJson);
-            return false;
-        } catch (Exception e) {
-            throw new BusinessException(ContractException.CONTRACT_REDIS, e);
+            // 스텝 변경
+            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
         }
+
+        return nextSteps;
+
     }
 
     /** {@inheritDoc} */
       @Override
       public PaymentDTO getDepositPrice(Long contractChatId, Long userId) {
 
-          // 스텝 변경
-          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
-
-          // 다음 단계 메세지 보내기
-          contractChatService.AiMessage(contractChatId, "이번 단계는 '금액 조율' 단계입니다");
+          // userId 검증
+          validateUserId(contractChatId, userId);
 
           ContractMongoDocument doc = repository.getContract(contractChatId);
           AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
@@ -259,6 +200,7 @@ public class ContractServiceImpl implements ContractService {
           long contract = ChronoUnit.YEARS.between(aiDto.getContractStartDate(), aiDto.getContractEndDate());
           String rentType = tenantMapper.selectRentType(contractChatId, userId)
                   .orElseThrow(() -> new BusinessException(ContractException.CONTRACT_GET, "전/월세 타입 조회 실패"));
+
           // 시작 메세지 보내기
           contractChatService.AiMessage(
                   contractChatId,
@@ -274,13 +216,17 @@ public class ContractServiceImpl implements ContractService {
                           formatWonShort(aiDto.getDepositPrice()),
                           formatWonShort(aiDto.getMaintenanceFee())));
 
+          // 대기
+          try {
+              Thread.sleep(1000);
+          } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+          }
+
           contractChatService.AiMessage(
                   contractChatId, """
           자유롭게 채팅 후 임대인(%s)님께서 금액을 조정해주세요. 임차인(%s)님이 수락 후 해당 조건의 확정이 가능합니다.
           """.formatted(aiDto.getBuyerName(), aiDto.getOwnerName()));
-
-          // userId 검증
-          validateUserId(contractChatId, userId);
 
           // MongoDB에서 보증금, 계약금, 잔금, 월세를 조회한다
           ContractMongoDocument document = repository.getDepositPrice(contractChatId);
@@ -365,6 +311,12 @@ public class ContractServiceImpl implements ContractService {
           } catch (Exception e) {
               throw new BusinessException(ContractException.CONTRACT_UPDATE, e);
           }
+
+          // 스텝 변경
+          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
+
+          // 다음 단계 메세지 보내기
+          contractChatService.AiMessage(contractChatId, "이번 단계는 '특약 조율' 단계입니다");
 
           return null;
       }
@@ -463,14 +415,31 @@ public class ContractServiceImpl implements ContractService {
 
       // Userid 검증
       public void validateUserId(Long contractChatId, Long userId) {
-          Long buyerId =
-                  tenantMapper
-                          .selectContractBuyerId(contractChatId)
-                          .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
 
-          if (!userId.equals(buyerId)) {
+          if (userId == null) {
               throw new BusinessException(PreContractErrorCode.TENANT_USER);
           }
+
+          Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+          Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+
+          if (userId.equals(ownerContractId)) {
+              validateIsOwner(contractChatId, userId);
+              return;
+          }
+
+          if (userId.equals(buyerContractId)) {
+              Long buyerId = tenantMapper
+                      .selectContractBuyerId(contractChatId)
+                      .orElseThrow(() -> new BusinessException(PreContractErrorCode.TENANT_USER));
+
+              if (!userId.equals(buyerId)) {
+                  throw new BusinessException(PreContractErrorCode.TENANT_USER);
+              }
+              return;
+          }
+
+          throw new BusinessException(PreContractErrorCode.TENANT_USER);
       }
 
       public void validateIsOwner(Long contractChatId, Long userId) {
@@ -480,6 +449,43 @@ public class ContractServiceImpl implements ContractService {
               throw new BusinessException(PreContractErrorCode.TENANT_USER);
           }
       }
+
+    public Boolean nextSteps(Long contractChatId, Long userId, NextStepDTO dto) {
+        ContractChat.ContractStatus step = contractChatMapper.getStatus(contractChatId);
+        // Redis Key: 계약별 step 상태를 저장
+        String redisKey = String.format("contract:%s:%d", step.name(), contractChatId);
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            // 1) 기존 상태 로드 (없으면 기본값 생성)
+            String currentJson = stringRedisTemplate.opsForValue().get(redisKey);
+            NextStepDTO state = (currentJson != null)
+                    ? objectMapper.readValue(currentJson, NextStepDTO.class)
+                    : new NextStepDTO();
+
+            // 2) 이번 요청 값 반영 (이제 step은 DTO에서 받지 않음, DB 상태는 필요 시 별도 조회)
+            if (dto.isOwner()) {
+                state.setOwner(true);
+            }
+            if (dto.isBuyer()) {
+                state.setBuyer(true);
+            }
+
+            // 3) 두 사람이 모두 true면 -> 키 삭제하고 true 반환
+            if (state.isOwner() && state.isBuyer()) {
+                stringRedisTemplate.delete(redisKey);
+                return true;
+            }
+
+            // 4) 아직 한쪽만 true면 -> 상태 저장하고 false 반환
+            String updatedJson = objectMapper.writeValueAsString(state);
+            stringRedisTemplate.opsForValue().set(redisKey, updatedJson);
+            return false;
+        } catch (Exception e) {
+            throw new BusinessException(ContractException.CONTRACT_REDIS, e);
+        }
+    }
 
     private static String formatWonShort(int amount) {
         if (amount == 0) return "0원";

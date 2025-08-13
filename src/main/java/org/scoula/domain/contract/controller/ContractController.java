@@ -14,53 +14,49 @@ import io.swagger.annotations.ApiOperation;
 @Api(tags = "계약서 API", description = "계약서 : 정보확인 / 금액 조율 / 적법성 확인")
 public interface ContractController {
 
-      // step 0
-      @ApiOperation(value = "임차인 대기 메세지", notes = "step0의 AI 메세지")
-      ResponseEntity<ApiResponse<Void>> standByContract(
-              @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails);
-
       // step 1 (init)
-      @ApiOperation(value = "계약서 몽고DB에 저장", notes = "계약서에 필요한 항목들을 가져와서 몽고 DB에 계약서 만들기")
+      @ApiOperation(value = "[계약전_임차인] 계약서를 몽고DB에 저장", notes = "계약서에 필요한 항목들을 가져와서 몽고 DB에 계약서 만들기")
       ResponseEntity<ApiResponse<Void>> saveContractMongo(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
       // step 1 : start
-      @ApiOperation(value = "계약서 전체 조회", notes = "계약서 가져오기")
+      @ApiOperation(value = "[계약서 _ 정보 조회 1] 계약서 전체 조회", notes = "계약서 가져오기")
       ResponseEntity<ApiResponse<ContractDTO>> getContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "정보조회 다음 단계로 넘어가기 Message", notes = "정보조회 마지막 단계에서 다음 단계로 넘어가기 Message")
+      @ApiOperation(value = "[채팅 _ 정보 조회 1] 정보 조회 시작", notes = "정보조회 마지막 단계에서 다음 단계로 넘어가기 Message")
       ResponseEntity<ApiResponse<Void>> getContractNext(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
       // step 1 : finish
-      @ApiOperation(value = "다음 단계로 넘어가기", notes = "다음 단계 여부(true/false)를 받아서 다음 단계로 넘어가기")
+      @ApiOperation(
+              value = "[채팅 _ 정보 조회 2] 정보 조회에서 다음단계로 가기",
+              notes = "다음 단계 여부(true/false)를 받아서 다음 단계로 넘어가기")
       ResponseEntity<ApiResponse<Boolean>> nextStep(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody NextStepDTO dto);
 
-      @ApiOperation(value = "금액 조회", notes = "금액을 조율하기 위해 금액을 조회")
+      @ApiOperation(value = "[채팅 _ 금액 조회 1]", notes = "금액을 조율하기 위해 금액을 조회")
       ResponseEntity<ApiResponse<PaymentDTO>> getDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "금액 요청", notes = "임대인이 금액을 요청")
+      @ApiOperation(value = "[채팅 _ 금액 요청 2]", notes = "임대인이 금액을 요청")
       ResponseEntity<ApiResponse<Void>> saveDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody PaymentDTO dto);
 
-      @ApiOperation(value = "금액 거절 ", notes = "임차인이 금액을 거절")
+      @ApiOperation(value = "[채팅 _ 금액 거절 3]", notes = "임차인이 금액을 거절")
       ResponseEntity<ApiResponse<Void>> deleteDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "금액 수락", notes = "임대인과 임차인 모두 동의")
+      @ApiOperation(value = "[채팅 _ 금액 수락 4]", notes = "임대인과 임차인 모두 동의")
       ResponseEntity<ApiResponse<Void>> updateDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
