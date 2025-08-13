@@ -214,4 +214,9 @@ public interface ContractChatController {
               @PathVariable Long contractChatId,
               @RequestBody FinalContractDeletionResponseDto responseDto,
               Authentication authentication);
+
+      @ApiOperation(value = "계약 채팅방 URL 이동", notes = "계약 채팅방 URL로 이동하는 API")
+      @GetMapping("/{chatRoomId}/moveContractChat")
+      ResponseEntity<ApiResponse<String>> moveContractChat(
+              @PathVariable Long chatRoomId, Authentication authentication);
 }

@@ -74,6 +74,22 @@ public class ContractChatControllerImpl implements ContractChatController {
       }
 
       @Override
+      @GetMapping("/{chatRoomId}/moveContractChat")
+      public ResponseEntity<ApiResponse<String>> moveContractChat(
+              @PathVariable Long chatRoomId, Authentication authentication) {
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
+          String url = contractChatService.getContractChatRoomUrl(chatRoomId);
+          return ResponseEntity.ok(ApiResponse.success(url));
+      }
+
+      @Override
       @PostMapping("/rooms")
       public ResponseEntity<ApiResponse<Long>> createContractChat(
               @RequestParam Long chatRoomId, Authentication authentication) {
