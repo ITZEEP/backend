@@ -833,19 +833,6 @@ public class ChatServiceImpl implements ChatServiceInterface {
                           .type("URLLINK")
                           .build();
           handleChatMessage(linkMessage);
-          String contractChatUrls =
-                  "http://localhost:5173/pre-contract/"
-                          + contractChatRoomId.toString()
-                          + "/owner?step=1";
-          ChatMessageRequestDto linkMessages =
-                  ChatMessageRequestDto.builder()
-                          .chatRoomId(chatRoomId)
-                          .senderId(originalChatRoom.getBuyerId())
-                          .receiverId(originalChatRoom.getOwnerId())
-                          .content(contractChatUrls)
-                          .type("URLLINK")
-                          .build();
-          handleChatMessage(linkMessages);
 
           return contractChatRoomId;
       }
