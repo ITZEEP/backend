@@ -362,7 +362,11 @@ public class PreContractServiceImpl implements PreContractService {
           }
 
           ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-          ChatRoom chatRoom=chatRoomMapper.findByUserAndHome(contractChat.getOwnerId(),contractChat.getBuyerId(),contractChat.getHomeId());
+          ChatRoom chatRoom =
+                  chatRoomMapper.findByUserAndHome(
+                          contractChat.getOwnerId(),
+                          contractChat.getBuyerId(),
+                          contractChat.getHomeId());
           String contractChatUrls = URL + precontractUrl + (contractChatId.toString()) + ownerUrl;
           ChatMessageRequestDto linkMessages =
                   ChatMessageRequestDto.builder()
