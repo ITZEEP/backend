@@ -99,6 +99,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           if (!isUserInContractChat(dto.getContractChatId(), dto.getSenderId())) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
+          enterContractChatRoom(dto.getContractChatId(), dto.getSenderId());
 
           ContractChatDocument messageDocument =
                   ContractChatDocument.builder()
@@ -452,11 +453,15 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       @Override
       @Transactional
       public void enterContractChatRoom(Long contractChatId, Long userId) {
+          log.info("=== enterContractChatRoom 시작 ===");
+          log.info("contractChatId: {}, userId: {}", contractChatId, userId);
+
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
 
           setContractChatUserOnline(userId, contractChatId);
+          log.info("=== enterContractChatRoom 완료 ===");
       }
 
       /** {@inheritDoc} */
@@ -469,6 +474,12 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       /** {@inheritDoc} */
       @Override
       public Map<String, Object> getContractChatOnlineStatus(Long contractChatId, Long userId) {
+          log.info("=== getContractChatOnlineStatus 시작 ===");
+          log.info("contractChatId: {}, userId: {}", contractChatId, userId);
+          
+          // 디버깅용 전체 온라인 사용자 출력
+          debugContractChatOnlineUsers(contractChatId);
+          
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
@@ -485,13 +496,34 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           boolean bothInRoom = ownerInContractRoom && buyerInContractRoom;
 
-          return Map.of(
-                  "ownerInContractRoom", ownerInContractRoom,
-                  "buyerInContractRoom", buyerInContractRoom,
-                  "bothInRoom", bothInRoom,
-                  "canChat", bothInRoom,
-                  "ownerId", contractChat.getOwnerId(),
-                  "buyerId", contractChat.getBuyerId());
+          log.info(
+                  "Owner({}) 온라인: {}, Buyer({}) 온라인: {}, 둘 다 온라인: {}",
+                  contractChat.getOwnerId(),
+                  ownerInContractRoom,
+                  contractChat.getBuyerId(),
+                  buyerInContractRoom,
+                  bothInRoom);
+
+          Map<String, Object> result =
+                  Map.of(
+                          "ownerInContractRoom", ownerInContractRoom,
+                          "buyerInContractRoom", buyerInContractRoom,
+                          "bothInRoom", bothInRoom,
+                          "canChat", bothInRoom,
+                          "ownerId", contractChat.getOwnerId(),
+                          "buyerId", contractChat.getBuyerId());
+
+          log.info("=== getContractChatOnlineStatus 완료: {} ===", result);
+          return result;
+      }
+
+      // 디버깅용 메서드 추가
+      public void debugContractChatOnlineUsers(Long contractChatId) {
+          log.info("=== 현재 모든 온라인 사용자 상태 ===");
+          log.info("전체 contractChatOnlineUsers: {}", contractChatOnlineUsers);
+          String key = getContractChatKey(contractChatId);
+          Set<Long> users = contractChatOnlineUsers.get(key);
+          log.info("계약 채팅방 {} 온라인 사용자: {}", contractChatId, users);
       }
 
       /** {@inheritDoc} */
@@ -531,18 +563,25 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       /** {@inheritDoc} */
       private void setContractChatUserOnline(Long userId, Long contractChatId) {
-          String key = "contract-chat-" + contractChatId;
+          String key = getContractChatKey(contractChatId);
           contractChatOnlineUsers
                   .computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet())
                   .add(userId);
+          log.debug(
+                  "사용자 {}가 계약 채팅방 {} 온라인 상태로 설정. 현재 온라인 사용자: {}",
+                  userId,
+                  contractChatId,
+                  contractChatOnlineUsers.get(key));
       }
 
       /** {@inheritDoc} */
       private void setContractChatUserOffline(Long userId, Long contractChatId) {
-          String key = "contract-chat-" + contractChatId;
+          String key = getContractChatKey(contractChatId);
           Set<Long> users = contractChatOnlineUsers.get(key);
           if (users != null) {
               users.remove(userId);
+              log.debug(
+                      "사용자 {}가 계약 채팅방 {} 오프라인 상태로 설정. 현재 온라인 사용자: {}", userId, contractChatId, users);
               if (users.isEmpty()) {
                   contractChatOnlineUsers.remove(key);
               }
@@ -551,10 +590,20 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       /** {@inheritDoc} */
       private boolean isUserInContractChatRoom(Long userId, Long contractChatId) {
-          String key = "contract-chat-" + contractChatId;
+          String key = getContractChatKey(contractChatId);
           Set<Long> users = contractChatOnlineUsers.get(key);
           boolean isOnline = users != null && users.contains(userId);
+          log.debug(
+                  "사용자 {} 계약 채팅방 {} 온라인 상태 확인: {}. 현재 온라인 사용자: {}",
+                  userId,
+                  contractChatId,
+                  isOnline,
+                  users);
           return isOnline;
+      }
+
+      private String getContractChatKey(Long contractChatId) {
+          return "contract-chat-" + contractChatId;
       }
 
       /** {@inheritDoc} */

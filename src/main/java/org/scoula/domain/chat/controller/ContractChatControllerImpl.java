@@ -302,11 +302,20 @@ public class ContractChatControllerImpl implements ContractChatController {
       @MessageMapping("/contract/chat/enter")
       public void enterContractChatRoom(@Payload Map<String, Long> payload, Principal principal) {
           try {
+              log.info("=== WebSocket 계약 채팅방 입장 시작 ===");
+              log.info("payload: {}", payload);
+              log.info("principal: {}", principal != null ? principal.getName() : "null");
+              
               Long userId = payload.get("userId");
               Long contractChatId = payload.get("contractChatId");
+              
+              log.info("추출된 userId: {}, contractChatId: {}", userId, contractChatId);
+              
               contractChatService.enterContractChatRoom(contractChatId, userId);
 
               notifyContractChatOnlineStatus(contractChatId, userId, true);
+              
+              log.info("=== WebSocket 계약 채팅방 입장 완료 ===");
           } catch (Exception e) {
               log.error("계약 채팅방 입장 실패", e);
           }
@@ -938,8 +947,24 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
-      @Override
-      @GetMapping("/{contractChatId}/status")
+      // 디버깅용 임시 엔드포인트
+      @PostMapping("/{contractChatId}/debug/enter")
+      public ResponseEntity<ApiResponse<String>> debugEnterContractChatRoom(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              log.info("=== HTTP 디버그 계약 채팅방 입장 ===");
+              log.info("contractChatId: {}, userId: {}", contractChatId, userId);
+              
+              contractChatService.enterContractChatRoom(contractChatId, userId);
+              
+              return ResponseEntity.ok(ApiResponse.success("입장 완료"));
+          } catch (Exception e) {
+              log.error("디버그 입장 실패", e);
+              return ResponseEntity.badRequest()
+                      .body(ApiResponse.error("입장 실패: " + e.getMessage()));
+          }
+      }
       public ResponseEntity<ApiResponse<String>> getContractStatus(
               @PathVariable Long contractChatId, Authentication authentication) {
           Long userId = getUserIdFromAuthentication(authentication);
