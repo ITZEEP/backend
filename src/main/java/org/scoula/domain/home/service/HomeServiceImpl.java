@@ -257,6 +257,8 @@ public class HomeServiceImpl implements HomeService {
                                       .monthlyRent(home.getMonthlyRent())
                                       .maintenaceFee(home.getMaintenaceFee())
                                       .homeStatus(home.getHomeStatus())
+                                      .exclusiveArea(home.getExclusiveArea())
+                                      .homeFloor(home.getHomeFloor())
                                       .viewCnt(home.getViewCnt())
                                       .likeCnt(home.getLikeCnt())
                                       .roomCnt(home.getRoomCnt())

@@ -31,6 +31,8 @@ public class HomeSearchDTO {
       private Float maxSupplyArea;
       private Integer minRoomCnt;
       private Integer maxRoomCnt;
+      private Float exclusiveArea;
+      private Integer homeFloor;
 
       // 층수 범위
       private Integer minFloor;

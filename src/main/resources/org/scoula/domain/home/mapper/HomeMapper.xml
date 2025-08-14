@@ -129,8 +129,14 @@
             <if test="search.maxRoomCnt != null">
                 AND h.room_cnt &lt;= #{search.maxRoomCnt}
             </if>
+            <if test="search.exclusiveArea != null">
+                AND h.exclusive_area= #{search.exclusiveArea}
+            </if>
             <if test="search.homeDirection != null">
                 AND hd.home_direction = #{search.homeDirection.getKey()}
+            </if>
+            <if test="search.homeFloor != null">
+                AND hd.home_floor = #{search.homeFloor}
             </if>
             <if test="search.minFloor != null">
                 AND hd.home_floor &gt;= #{search.minFloor}
