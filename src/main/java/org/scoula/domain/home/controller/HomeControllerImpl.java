@@ -16,6 +16,8 @@ import org.scoula.domain.home.vo.FacilityItem;
 import org.scoula.domain.user.service.UserServiceInterface;
 import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.dto.ApiResponse;
+import org.scoula.global.common.dto.PageRequest;
+import org.scoula.global.common.dto.PageResponse;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.CommonErrorCode;
 import org.springframework.http.ResponseEntity;
@@ -102,7 +104,7 @@ public class HomeControllerImpl implements HomeController {
 
       @Override
       @GetMapping
-      public ResponseEntity<ApiResponse<List<HomeResponseDTO>>> getHomeList(
+      public ResponseEntity<PageResponse<HomeResponseDTO>> getHomeList(
               @RequestParam(defaultValue = "1") int page,
               @RequestParam(defaultValue = "20") int size) {
 
@@ -111,9 +113,9 @@ public class HomeControllerImpl implements HomeController {
           List<HomeResponseDTO> homes = homeService.getHomeList(page, size);
           int totalCount = homeService.getTotalHomeCount();
 
-          return ResponseEntity.ok(
-                  ApiResponse.success(
-                          homes, String.format("매물 목록 조회가 완료되었습니다. (총 %d개)", totalCount)));
+          PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
+
+          return ResponseEntity.ok(PageResponse.of(homes, pageRequest, totalCount));
       }
 
       @Override

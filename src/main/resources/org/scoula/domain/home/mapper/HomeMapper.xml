@@ -7,13 +7,11 @@
         INSERT INTO home (
             user_id, addr1, addr2, residence_type, lease_type,
             deposit_price, monthly_rent, maintenance_fee, home_status,
-            view_cnt, like_cnt, chat_cnt, room_cnt, supply_area, exclusive_area,
-            created_at, updated_at
+            view_cnt, like_cnt, chat_cnt, room_cnt, supply_area, exclusive_area
         ) VALUES (
                      #{userId}, #{addr1}, #{addr2}, #{residenceType}, #{leaseType},
                      #{depositPrice}, #{monthlyRent}, #{maintenaceFee}, #{homeStatus},
-                     #{viewCnt}, #{likeCnt}, #{chatCnt}, #{roomCnt}, #{supplyArea}, #{exclusiveArea},
-                     #{createdAt}, #{updatedAt}
+                     #{viewCnt}, #{likeCnt}, #{chatCnt}, #{roomCnt}, #{supplyArea}, #{exclusiveArea}
                  )
     </insert>
 

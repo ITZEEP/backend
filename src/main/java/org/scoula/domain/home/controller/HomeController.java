@@ -11,6 +11,7 @@ import org.scoula.domain.home.dto.HomeUpdateRequestDto;
 import org.scoula.domain.home.vo.FacilityCategory;
 import org.scoula.domain.home.vo.FacilityItem;
 import org.scoula.global.common.dto.ApiResponse;
+import org.scoula.global.common.dto.PageResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +37,7 @@ public interface HomeController {
 
       @ApiOperation(value = "매물 목록 조회", notes = "페이징된 매물 목록을 조회합니다.")
       @GetMapping
-      ResponseEntity<ApiResponse<List<HomeResponseDTO>>> getHomeList(
+      ResponseEntity<PageResponse<HomeResponseDTO>> getHomeList(
               @ApiParam(value = "페이지 번호 (1부터 시작)", defaultValue = "1")
                       @RequestParam(defaultValue = "1")
                       int page,
