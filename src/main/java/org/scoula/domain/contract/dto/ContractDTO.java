@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.scoula.domain.contract.document.ContractMongoDocument;
+import org.scoula.domain.precontract.vo.IdentityVerificationInfoVO;
 import org.scoula.global.common.constant.Constants;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -63,15 +64,18 @@ public class ContractDTO {
           private String content;
       }
 
-      public static ContractDTO toDTO(ContractMongoDocument document) {
+      public static ContractDTO toDTO(
+              ContractMongoDocument document,
+              IdentityVerificationInfoVO ownerVO,
+              IdentityVerificationInfoVO buyerVO) {
           return ContractDTO.builder()
-                  .contractChatId(document.getContractChatId())
+                  .contractChatId(ownerVO.getContractId())
                   .ownerName(document.getOwnerName())
-                  .ownerAddr(document.getOwnerAddr())
-                  .ownerPhoneNum(document.getOwnerPhoneNum())
+                  .ownerAddr(ownerVO.getAddr1() + " " + ownerVO.getAddr2())
+                  .ownerPhoneNum(ownerVO.getPhoneNumber())
                   .buyerName(document.getBuyerName())
-                  .buyerAddr(document.getBuyerAddr())
-                  .buyerPhoneNum(document.getBuyerPhoneNum())
+                  .buyerAddr(buyerVO.getAddr1() + " " + buyerVO.getAddr2())
+                  .buyerPhoneNum(buyerVO.getPhoneNumber())
                   .homeAddr1(document.getHomeAddr1())
                   .homeAddr2(document.getHomeAddr2())
                   .residenceType(document.getResidenceType())
