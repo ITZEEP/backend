@@ -93,50 +93,85 @@
         h.maintenance_fee as maintenaceFee, h.home_status as homeStatus,
         h.view_cnt as viewCnt, h.like_cnt as likeCnt, h.chat_cnt as chatCnt,
         h.room_cnt as roomCnt, h.supply_area as supplyArea, h.exclusive_area as exclusiveArea,
-        h.created_at as createdAt, h.updated_at as updatedAt
+        h.created_at as createdAt, h.updated_at as updatedAt,
+        hd.home_floor as homeFloor, hd.building_total_floors as buildingTotalFloors
         FROM home h
-        WHERE 1=1
-        <if test="search.residenceType != null">
-            AND h.residence_type = #{search.residenceType}
-        </if>
-        <if test="search.leaseType != null">
-            AND h.lease_type = #{search.leaseType}
-        </if>
-        <if test="search.homeStatus != null">
-            AND h.home_status = #{search.homeStatus}
-        </if>
-        <if test="search.minDepositPrice != null">
-            AND h.deposit_price >= #{search.minDepositPrice}
-        </if>
-        <if test="search.maxDepositPrice != null">
-            AND h.deposit_price &lt;= #{search.maxDepositPrice}
-        </if>
-        <if test="search.minMonthlyRent != null">
-            AND h.monthly_rent >= #{search.minMonthlyRent}
-        </if>
-        <if test="search.maxMonthlyRent != null">
-            AND h.monthly_rent &lt;= #{search.maxMonthlyRent}
-        </if>
-        <if test="search.maxMaintenanceFee != null">
-            AND h.maintenance_fee &lt;= #{search.maxMaintenanceFee}
-        </if>
-        <if test="search.minSupplyArea != null">
-            AND h.supply_area >= #{search.minSupplyArea}
-        </if>
-        <if test="search.maxSupplyArea != null">
-            AND h.supply_area &lt;= #{search.maxSupplyArea}
-        </if>
-        <if test="search.minRoomCnt != null">
-            AND h.room_cnt >= #{search.minRoomCnt}
-        </if>
-        <if test="search.maxRoomCnt != null">
-            AND h.room_cnt &lt;= #{search.maxRoomCnt}
-        </if>
-        <if test="search.addr1 != null and search.addr1 != ''">
-            AND h.addr1 LIKE CONCAT('%', #{search.addr1}, '%')
-        </if>
-        ORDER BY h.created_at DESC
-        LIMIT #{search.limit} OFFSET #{search.offset}
+        LEFT JOIN home_detail hd ON h.home_id = hd.home_id
+        <where>
+            h.home_status = 'AVAILABLE'
+            <if test="search.residenceType != null">
+                AND h.residence_type = #{search.residenceType}
+            </if>
+            <if test="search.leaseType != null">
+                AND h.lease_type = #{search.leaseType}
+            </if>
+            <if test="search.addr1 != null and search.addr1 != ''">
+                AND h.addr1 LIKE CONCAT('%', #{search.addr1}, '%')
+            </if>
+            <if test="search.maxDepositPrice != null and search.maxDepositPrice &gt; 0">
+                AND h.deposit_price &lt;= #{search.maxDepositPrice}
+            </if>
+            <if test="search.maxMonthlyRent != null and search.maxMonthlyRent &gt; 0">
+                AND h.monthly_rent &lt;= #{search.maxMonthlyRent}
+            </if>
+            <if test="search.maxMaintenanceFee != null and search.maxMaintenanceFee &gt; 0">
+                AND h.maintenance_fee &lt;= #{search.maxMaintenanceFee}
+            </if>
+            <if test="search.minSupplyArea != null and search.minSupplyArea &gt; 0">
+                AND h.supply_area &gt;= #{search.minSupplyArea}
+            </if>
+            <if test="search.maxSupplyArea != null and search.maxSupplyArea &gt; 0">
+                AND h.supply_area &lt;= #{search.maxSupplyArea}
+            </if>
+            <if test="search.minRoomCnt != null">
+                AND h.room_cnt &gt;= #{search.minRoomCnt}
+            </if>
+            <if test="search.maxRoomCnt != null">
+                AND h.room_cnt &lt;= #{search.maxRoomCnt}
+            </if>
+            <if test="search.homeDirection != null">
+                AND hd.home_direction = #{search.homeDirection.getKey()}
+            </if>
+            <if test="search.minFloor != null">
+                AND hd.home_floor &gt;= #{search.minFloor}
+            </if>
+            <if test="search.maxFloor != null">
+                AND hd.home_floor &lt;= #{search.maxFloor}
+            </if>
+            <if test="search.isPet != null">
+                AND hd.is_pet = #{search.isPet}
+            </if>
+            <if test="search.isParking != null">
+                AND hd.is_parking_available = #{search.isParking}
+            </if>
+        </where>
+        <choose>
+            <when test="search.sortBy != null and search.sortBy != ''">
+                ORDER BY
+                <if test="search.sortBy == 'price'">
+                    h.deposit_price, h.monthly_rent
+                </if>
+                <if test="search.sortBy == 'viewCnt'">
+                    h.view_cnt
+                </if>
+                <if test="search.sortBy == 'likeCnt'">
+                    h.like_cnt
+                </if>
+                <if test="search.sortBy == 'createdAt'">
+                    h.created_at
+                </if>
+                <if test="search.sortDirection == 'DESC'">
+                    DESC
+                </if>
+                <if test="search.sortDirection == 'ASC'">
+                    ASC
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY h.created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{search.size} OFFSET #{search.offset}
     </select>
 
     <select id="selectHomeImagesByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeImageVO">
@@ -265,6 +300,60 @@
 
     <select id="selectHomeCount" resultType="int">
         SELECT COUNT(*) FROM home WHERE home_status = 'AVAILABLE'
+    </select>
+
+    <select id="selectHomeCountByCondition" resultType="int">
+        SELECT COUNT(h.home_id)
+        FROM home h
+        LEFT JOIN home_detail hd ON h.home_id = hd.home_id
+        <where>
+            h.home_status = 'AVAILABLE'
+            <if test="search.residenceType != null">
+                AND h.residence_type = #{search.residenceType}
+            </if>
+            <if test="search.leaseType != null">
+                AND h.lease_type = #{search.leaseType}
+            </if>
+            <if test="search.addr1 != null and search.addr1 != ''">
+                AND h.addr1 LIKE CONCAT('%', #{search.addr1}, '%')
+            </if>
+            <if test="search.maxDepositPrice != null and search.maxDepositPrice &gt; 0">
+                AND h.deposit_price &lt;= #{search.maxDepositPrice}
+            </if>
+            <if test="search.maxMonthlyRent != null and search.maxMonthlyRent &gt; 0">
+                AND h.monthly_rent &lt;= #{search.maxMonthlyRent}
+            </if>
+            <if test="search.maxMaintenanceFee != null and search.maxMaintenanceFee &gt; 0">
+                AND h.maintenance_fee &lt;= #{search.maxMaintenanceFee}
+            </if>
+            <if test="search.minSupplyArea != null and search.minSupplyArea &gt; 0">
+                AND h.supply_area &gt;= #{search.minSupplyArea}
+            </if>
+            <if test="search.maxSupplyArea != null and search.maxSupplyArea &gt; 0">
+                AND h.supply_area &lt;= #{search.maxSupplyArea}
+            </if>
+            <if test="search.minRoomCnt != null">
+                AND h.room_cnt &gt;= #{search.minRoomCnt}
+            </if>
+            <if test="search.maxRoomCnt != null">
+                AND h.room_cnt &lt;= #{search.maxRoomCnt}
+            </if>
+            <if test="search.homeDirection != null">
+                AND hd.home_direction = #{search.homeDirection}
+            </if>
+            <if test="search.minFloor != null">
+                AND hd.home_floor &gt;= #{search.minFloor}
+            </if>
+            <if test="search.maxFloor != null">
+                AND hd.home_floor &lt;= #{search.maxFloor}
+            </if>
+            <if test="search.isPet != null">
+                AND hd.is_pet = #{search.isPet}
+            </if>
+            <if test="search.isParking != null">
+                AND hd.is_parking_available = #{search.isParking}
+            </if>
+        </where>
     </select>
 
     <update id="incrementViewCount" parameterType="int">

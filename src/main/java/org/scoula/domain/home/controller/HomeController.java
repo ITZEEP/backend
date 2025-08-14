@@ -46,7 +46,7 @@ public interface HomeController {
 
       @ApiOperation(value = "매물 검색", notes = "조건에 따라 매물을 검색합니다.")
       @GetMapping("/search")
-      ResponseEntity<ApiResponse<List<HomeResponseDTO>>> searchHomes(
+      ResponseEntity<PageResponse<HomeResponseDTO>> searchHomes(
               @ApiParam(value = "검색 조건") @ModelAttribute HomeSearchDTO searchDTO);
 
       @ApiOperation(

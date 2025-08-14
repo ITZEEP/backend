@@ -19,6 +19,10 @@ public enum HomeStatus {
           return description;
       }
 
+      public String getKey() {
+          return this.name();
+      }
+
       @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
       public static HomeStatus from(String value) {
           if (value == null || value.trim().isEmpty()) {

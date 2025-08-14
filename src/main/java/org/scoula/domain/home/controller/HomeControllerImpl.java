@@ -120,7 +120,7 @@ public class HomeControllerImpl implements HomeController {
 
       @Override
       @GetMapping("/search")
-      public ResponseEntity<ApiResponse<List<HomeResponseDTO>>> searchHomes(
+      public ResponseEntity<PageResponse<HomeResponseDTO>> searchHomes(
               @ModelAttribute HomeSearchDTO searchDTO) {
 
           log.info(
@@ -131,9 +131,10 @@ public class HomeControllerImpl implements HomeController {
 
           List<HomeResponseDTO> homes = homeService.searchHomes(searchDTO);
           int totalCount = homeService.getHomeCountByCondition(searchDTO);
+          PageRequest pageRequest =
+                  PageRequest.builder().page(searchDTO.getPage()).size(searchDTO.getSize()).build();
 
-          return ResponseEntity.ok(
-                  ApiResponse.success(homes, String.format("매물 검색이 완료되었습니다. (총 %d개)", totalCount)));
+          return ResponseEntity.ok(PageResponse.of(homes, pageRequest, totalCount));
       }
 
       @Override
