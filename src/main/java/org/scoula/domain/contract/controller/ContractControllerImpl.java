@@ -100,17 +100,18 @@ public class ContractControllerImpl implements ContractController {
                           service.updateDepositPrice(contractChatId, userDetails.getUserId())));
       }
 
-      @Override
-      @PostMapping("/getContracts")
-      public ResponseEntity<ApiResponse<ContractDTO>> getContracts(
-              @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails) {
-          return ResponseEntity.ok(
-                  ApiResponse.success(service.getContract(contractChatId, userDetails.getUserId())));
-      }
+      //      @Override
+      //      @PostMapping("/getContracts")
+      //      public ResponseEntity<ApiResponse<ContractDTO>> getContracts(
+      //              @PathVariable Long contractChatId,
+      //              @AuthenticationPrincipal CustomUserDetails userDetails) {
+      //          return ResponseEntity.ok(
+      //                  ApiResponse.success(service.getContract(contractChatId,
+      // userDetails.getUserId())));
+      //      }
 
       @Override
-      @PostMapping("/legalitysss")
+      @PostMapping("/save/special-contract")
       public ResponseEntity<ApiResponse<Void>> saveSpecialContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -139,7 +140,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @PostMapping("/update/legality")
+      @PostMapping("/suggest/legality")
       public ResponseEntity<ApiResponse<Void>> updateOwnerLegality(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -150,7 +151,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @GetMapping("/update/legality")
+      @PostMapping("/update/legality")
       public ResponseEntity<ApiResponse<Void>> updateBuyerLegality(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,

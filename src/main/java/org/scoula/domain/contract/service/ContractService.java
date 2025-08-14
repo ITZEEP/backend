@@ -72,12 +72,12 @@ public interface ContractService {
        */
       Void updateDepositPrice(Long contractChatId, Long userId);
 
-      /**
-       * @param contractChatId 채팅방 아이디
-       * @param userId 유저 아이디
-       * @return 계약서 내용을 보내기
-       */
-      ContractDTO getContracts(Long contractChatId, Long userId);
+      //      /**
+      //       * @param contractChatId 채팅방 아이디
+      //       * @param userId 유저 아이디
+      //       * @return 계약서 내용을 보내기
+      //       */
+      //      ContractDTO getContracts(Long contractChatId, Long userId);
 
       /** * step4 start 특약을 개약 테이블에 저장하기 * * @param contractChatId 채팅방 아이디 * @param userId 유저 아이디 */
       Void saveSpecialContract(Long contractChatId, Long userId);

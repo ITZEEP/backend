@@ -63,13 +63,13 @@ public interface ContractController {
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      // 적법성 검사
-      @ApiOperation(value = "??? 몽고 디비랑 합친것 [적법성 검사] 계약서 1 | 계약서 전체 조회", notes = "계약서 가져오기")
-      ResponseEntity<ApiResponse<ContractDTO>> getContracts(
-              @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails);
+      //      // 적법성 검사
+      //      @ApiOperation(value = "??? 몽고 디비랑 합친것 [적법성 검사] 계약서 1 | 계약서 전체 조회", notes = "계약서 가져오기")
+      //      ResponseEntity<ApiResponse<ContractDTO>> getContracts(
+      //              @PathVariable Long contractChatId,
+      //              @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "[적법성 검사] 계약서 1 몽고DB만 있는 것 ", notes = "몽고DB에 특약 저장하기 ")
+      @ApiOperation(value = "[적법성 검사] 계약서 1 몽고DB에 특약 저장 ", notes = "몽고DB에 특약 저장하기 ")
       ResponseEntity<ApiResponse<Void>> saveSpecialContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
@@ -81,16 +81,16 @@ public interface ContractController {
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails);
 
-      @ApiOperation(value = "[적법성 검사] 채팅 2 | 임대인 삭제", notes = "임대인 : 적법성 검사 삭제")
-      ResponseEntity<ApiResponse<String>> deleteOwnerLegality(
-              @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails);
-
-      @ApiOperation(value = "[적법성 검사] 채팅 3  | 임대인 수정", notes = "임대인 : 적법성 검사 수정")
+      @ApiOperation(value = "[적법성 검사] 채팅 2  | 임대인 수정", notes = "임대인 : 적법성 검사 수정")
       ResponseEntity<ApiResponse<Void>> updateOwnerLegality(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody UpdateLegalityDTO dto);
+
+      @ApiOperation(value = "[적법성 검사] 채팅 3 | 임대인 삭제", notes = "임대인 : 적법성 검사 삭제")
+      ResponseEntity<ApiResponse<String>> deleteOwnerLegality(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails);
 
       @ApiOperation(value = "[적법성 검사] 채팅 4 | 임차인 수정", notes = "임차인 : 적법성 검사 수정 완료")
       ResponseEntity<ApiResponse<Void>> updateBuyerLegality(

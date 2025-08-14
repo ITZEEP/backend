@@ -193,8 +193,8 @@ public class ContractServiceImpl implements ContractService {
                 // 다음 단계 메세지 보내기
                 contractChatService.AiMessage(contractChatId, "이번 단계는 '금액 조율' 단계입니다");
             }
-            // 스텝 변경
-            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
+//            // 스텝 변경
+//            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
         }
 
         return nextSteps;
@@ -337,47 +337,47 @@ public class ContractServiceImpl implements ContractService {
 
 
       // 적법성 검사
-      @Override
-      public ContractDTO getContracts (Long contractChatId, Long userId){
-          // userId 검증
-          validateUserId(contractChatId, userId);
-
-          ContractDTO dto;
-
-          // 몽고 DB에서 특약부분을 받아서 저장한다.
-          try {
-              repository.saveSpecialContract(contractChatId);
-
-              ContractMongoDocument document = repository.getContract(contractChatId);
-              if (document == null) {
-                  throw new BusinessException(ContractException.CONTRACT_GET);
-              }
-              Long ownerContractId = contractMapper.getOwnerId(contractChatId);
-              Long buyerContractId = contractMapper.getBuyerId(contractChatId);
-              IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
-              IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
-
-
-              // 찾은 값을 Dto에 넣고 반환하기
-              dto = ContractDTO.toDTO(document, ownerVO, buyerVO);
-          } catch (Exception e) {
-              // 예외 로그 기록 및 사용자에게 전달할 메시지 등 처리
-              log.error("특약사항 저장 실패 ❌", e);
-              throw new BusinessException(ContractException.CONTRACT_INSERT, e);
-          }
-
-//          ContractMongoDocument document = repository.getContract(contractChatId);
-//          if (document == null) {
-//              throw new BusinessException(ContractException.CONTRACT_GET);
-//          }
+//      @Override
+//      public ContractDTO getContracts (Long contractChatId, Long userId){
+//          // userId 검증
+//          validateUserId(contractChatId, userId);
 //
-//          // 찾은 값을 Dto에 넣고 반환하기
-//          ContractDTO dto = ContractDTO.toDTO(document);
-
-//          ContractDTO dto = getContract(contractChatId, userId);
-
-          return dto;
-      }
+//          ContractDTO dto;
+//
+//          // 몽고 DB에서 특약부분을 받아서 저장한다.
+////          try {
+//              repository.saveSpecialContract(contractChatId);
+//
+//              ContractMongoDocument document = repository.getContract(contractChatId);
+//              if (document == null) {
+//                  throw new BusinessException(ContractException.CONTRACT_GET);
+//              }
+//              Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+//              Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+//              IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
+//              IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
+//
+//
+//              // 찾은 값을 Dto에 넣고 반환하기
+//              dto = ContractDTO.toDTO(document, ownerVO, buyerVO);
+////          } catch (Exception e) {
+////              // 예외 로그 기록 및 사용자에게 전달할 메시지 등 처리
+////              log.error("특약사항 저장 실패 ❌", e);
+////              throw new BusinessException(ContractException.CONTRACT_INSERT, e);
+////          }
+//
+////          ContractMongoDocument document = repository.getContract(contractChatId);
+////          if (document == null) {
+////              throw new BusinessException(ContractException.CONTRACT_GET);
+////          }
+////
+////          // 찾은 값을 Dto에 넣고 반환하기
+////          ContractDTO dto = ContractDTO.toDTO(document);
+//
+////          ContractDTO dto = getContract(contractChatId, userId);
+//
+//          return dto;
+//      }
 
     @Override
     public Void saveSpecialContract(Long contractChatId, Long userId) {
@@ -577,6 +577,7 @@ public class ContractServiceImpl implements ContractService {
         }
 
         try {
+            stringRedisTemplate.delete(redisKey);
 //            contractChatService.AiMessage(contractChatId, "임대인이 적법성 수정을 거절했습니다.");
         } catch (Exception e) {
             log.error("수정 요청 응답 처리 실패", e);
@@ -677,6 +678,8 @@ public class ContractServiceImpl implements ContractService {
             // 3) 두 사람이 모두 true면 -> 키 삭제하고 true 반환
             if (state.isOwner() && state.isBuyer()) {
                 stringRedisTemplate.delete(redisKey);
+                // 스텝 변경
+                contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
                 return true;
             }
 
