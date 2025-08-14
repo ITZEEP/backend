@@ -717,6 +717,7 @@ public class AiFraudAnalyzerService {
 
                       for (int i = 0; i < items.size(); i++) {
                           Map<String, Object> item = items.get(i);
+                          String riskLevel = (String) item.get("riskLevel");
                           String itemTitle = (String) item.get("title");
                           String itemContent = (String) item.get("content");
 
@@ -724,6 +725,7 @@ public class AiFraudAnalyzerService {
                           groupData.put(
                                   itemTitle != null ? itemTitle : "item_" + i,
                                   Map.of(
+                                          "riskLevel", riskLevel != null ? riskLevel : "UNKNOWN",
                                           "title", itemTitle != null ? itemTitle : "",
                                           "content", itemContent != null ? itemContent : ""));
                       }

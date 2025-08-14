@@ -5,14 +5,6 @@ import org.scoula.domain.contract.dto.*;
 public interface ContractService {
 
       /**
-       * step0. 임차인이 임대인을 기다릴때
-       *
-       * @param contractChatId 채팅방 아이디
-       * @param userId 유저 아이디
-       */
-      Void standByContract(Long contractChatId, Long userId);
-
-      /**
        * step1 (init) 계약서에 필요한 항목들을 가져와서 몽고 DB에 계약서 만들기
        *
        * @param contractChatId 채팅방 아이디
@@ -80,6 +72,16 @@ public interface ContractService {
        */
       Void updateDepositPrice(Long contractChatId, Long userId);
 
+      //      /**
+      //       * @param contractChatId 채팅방 아이디
+      //       * @param userId 유저 아이디
+      //       * @return 계약서 내용을 보내기
+      //       */
+      //      ContractDTO getContracts(Long contractChatId, Long userId);
+
+      /** * step4 start 특약을 개약 테이블에 저장하기 * * @param contractChatId 채팅방 아이디 * @param userId 유저 아이디 */
+      Void saveSpecialContract(Long contractChatId, Long userId);
+
       /**
        * step4 (init) 계약서를 AI로 보내고, 적법성 받기
        *
@@ -90,20 +92,48 @@ public interface ContractService {
       LegalityDTO getLegality(Long contractChatId, Long userId);
 
       /**
-       * step4 start 특약을 개약 테이블에 저장하기
-       *
-       * @param contractChatId 채팅방 아이디
-       * @param userId 유저 아이디
-       */
-      Void saveSpecialContract(Long contractChatId, Long userId);
-
-      /**
        * step4 적법성 검사 후 수정된 특약으로 변경
        *
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디 @Param dto 변경된 특약
        */
       Void updateSpecialContract(Long contractChatId, Long userId, SpecialContractUpdateDTO dto);
+
+      /**
+       * step4 (init) 계약서를 AI로 보내고, 적법성 받기
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       * @return AI가 계약서를 보고 주는 적법성을 리턴값으로 보내기
+       */
+      String deleteOwnerLegality(Long contractChatId, Long userId);
+
+      /**
+       * step4 (init) 계약서를 AI로 보내고, 적법성 받기
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       * @return AI가 계약서를 보고 주는 적법성을 리턴값으로 보내기
+       */
+      Void updateOwnerLegality(Long contractChatId, Long userId, UpdateLegalityDTO dto);
+
+      /**
+       * step4 (init) 계약서를 AI로 보내고, 적법성 받기
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       * @return AI가 계약서를 보고 주는 적법성을 리턴값으로 보내기
+       */
+      Void updateBuyerLegality(Long contractChatId, Long userId, SpecialContractUpdateDTO dto);
+
+      /**
+       * step4 (init) 계약서를 AI로 보내고, 적법성 받기
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       * @return AI가 계약서를 보고 주는 적법성을 리턴값으로 보내기
+       */
+      String rejectBuyerLegality(Long contractChatId, Long userId);
 
       /**
        * step4 finish 적법성 검사 후 다음단계로 넘어가기

@@ -610,10 +610,11 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                   @SuppressWarnings("unchecked")
                   Map<String, Object> itemDetails = (Map<String, Object>) itemValue;
 
+                  String riskLevel = itemDetails.getOrDefault("riskLevel", "UNKNOWN").toString();
                   String title2 = itemDetails.getOrDefault("title", "").toString();
                   String content = itemDetails.getOrDefault("content", "").toString();
 
-                  saveRiskCheckDetail(riskCheckId, title1, title2, content);
+                  saveRiskCheckDetail(riskCheckId, title1, title2, content, riskLevel);
               }
           }
       }
@@ -621,15 +622,16 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       /** 추천사항을 DB에 저장 */
       private void saveRecommendations(List<String> recommendations, Long riskCheckId) {
           String content = String.join("\n", recommendations);
-          saveRiskCheckDetail(riskCheckId, "추천사항", "AI 분석 기반 추천", content);
+          saveRiskCheckDetail(riskCheckId, "추천사항", "AI 분석 기반 추천", content, "UNKNOWN");
       }
 
       /** 위험도 체크 상세 정보를 DB에 저장 */
       private void saveRiskCheckDetail(
-              Long riskCheckId, String title1, String title2, String content) {
+              Long riskCheckId, String title1, String title2, String content, String riskLevel) {
           RiskCheckDetailVO detail =
                   RiskCheckDetailVO.builder()
                           .riskckId(riskCheckId)
+                          .riskLevel(riskLevel)
                           .title1(title1)
                           .title2(title2)
                           .content(content)
@@ -680,6 +682,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                                                       detail ->
                                                               RiskCheckDetailResponse.DetailItem
                                                                       .builder()
+                                                                      .riskLevel(
+                                                                              detail.getRiskLevel())
                                                                       .title(detail.getTitle2())
                                                                       .content(detail.getContent())
                                                                       .build())
@@ -758,6 +762,8 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                                                       detail ->
                                                               RiskCheckSummaryResponse.DetailItem
                                                                       .builder()
+                                                                      .riskLevel(
+                                                                              detail.getRiskLevel())
                                                                       .title(detail.getTitle2())
                                                                       .content(detail.getContent())
                                                                       .build())

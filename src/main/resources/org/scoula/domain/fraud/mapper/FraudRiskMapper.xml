@@ -54,11 +54,13 @@
     <insert id="insertRiskCheckDetail" parameterType="org.scoula.domain.fraud.vo.RiskCheckDetailVO">
         INSERT INTO risk_check_detail (
             riskck_id,
+            risk_level,
             title1,
             title2,
             content
         ) VALUES (
             #{riskckId},
+            #{riskLevel},
             #{title1},
             #{title2},
             #{content}
@@ -72,6 +74,7 @@
             riskck_id AS riskckId,
             title1,
             title2,
+            risk_level AS riskLevel,
             content
         FROM risk_check_detail
         WHERE riskck_id = #{riskckId}
