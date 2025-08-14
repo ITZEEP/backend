@@ -143,6 +143,7 @@
     FROM contract_chat cc
            INNER JOIN identity_verification iv ON cc.owner_id = iv.user_id
     WHERE cc.contract_chat_id = #{contractChatId}
+    AND iv.contract_id = cc.contract_chat_id
   </select>
 
   <!-- rent_type (전/월세) 조회 -->

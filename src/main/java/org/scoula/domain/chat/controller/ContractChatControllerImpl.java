@@ -1,7 +1,6 @@
 package org.scoula.domain.chat.controller;
 
 import java.security.Principal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -305,16 +304,11 @@ public class ContractChatControllerImpl implements ContractChatController {
               log.info("=== WebSocket 계약 채팅방 입장 시작 ===");
               log.info("payload: {}", payload);
               log.info("principal: {}", principal != null ? principal.getName() : "null");
-              
               Long userId = payload.get("userId");
               Long contractChatId = payload.get("contractChatId");
-              
               log.info("추출된 userId: {}, contractChatId: {}", userId, contractChatId);
-              
               contractChatService.enterContractChatRoom(contractChatId, userId);
-
               notifyContractChatOnlineStatus(contractChatId, userId, true);
-              
               log.info("=== WebSocket 계약 채팅방 입장 완료 ===");
           } catch (Exception e) {
               log.error("계약 채팅방 입장 실패", e);
@@ -390,15 +384,20 @@ public class ContractChatControllerImpl implements ContractChatController {
                               ? contractChat.getBuyerId()
                               : contractChat.getOwnerId();
 
-              Map<String, Object> statusInfo =
-                      Map.of(
-                              "userId", userId,
-                              "isOnline", isOnline,
-                              "contractChatId", contractChatId,
-                              "timestamp", LocalDateTime.now().toString());
+              // 현재 기준의 전체 온라인 상태 맵(REDIS 기반)
+              Map<String, Object> statusMap =
+                      contractChatService.getContractChatOnlineStatus(
+                              contractChatId,
+                              // getContractChatOnlineStatus는 호출자 userId가 필요하므로 아무 사용자(지금 사용자) 전달
+                              userId);
 
+              // 사용자 큐로(상대방 개인 채널)
               messagingTemplate.convertAndSendToUser(
-                      otherUserId.toString(), "/queue/contract/online-status", statusInfo);
+                      otherUserId.toString(), "/queue/contract/online-status", statusMap);
+
+              // 방 브로드캐스트로도(PRESENCE 타입 부여)
+              statusMap.put("type", "PRESENCE");
+              messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, statusMap);
 
           } catch (Exception e) {
               log.error("온라인 상태 알림 실패", e);
@@ -955,16 +954,16 @@ public class ContractChatControllerImpl implements ContractChatController {
               Long userId = getUserIdFromAuthentication(authentication);
               log.info("=== HTTP 디버그 계약 채팅방 입장 ===");
               log.info("contractChatId: {}, userId: {}", contractChatId, userId);
-              
+
               contractChatService.enterContractChatRoom(contractChatId, userId);
-              
+
               return ResponseEntity.ok(ApiResponse.success("입장 완료"));
           } catch (Exception e) {
               log.error("디버그 입장 실패", e);
-              return ResponseEntity.badRequest()
-                      .body(ApiResponse.error("입장 실패: " + e.getMessage()));
+              return ResponseEntity.badRequest().body(ApiResponse.error("입장 실패: " + e.getMessage()));
           }
       }
+
       public ResponseEntity<ApiResponse<String>> getContractStatus(
               @PathVariable Long contractChatId, Authentication authentication) {
           Long userId = getUserIdFromAuthentication(authentication);

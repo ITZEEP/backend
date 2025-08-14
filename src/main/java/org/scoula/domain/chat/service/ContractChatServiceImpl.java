@@ -30,11 +30,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
+@Log4j2
 public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       private final ContractChatMapper contractChatMapper;
@@ -460,7 +460,14 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
 
-          setContractChatUserOnline(userId, contractChatId);
+          // 방 멤버십 Set에 사용자 추가
+          stringRedisTemplate.opsForSet().add(roomKey(contractChatId), userId.toString());
+          // 사용자 현재 방 Key에 방 ID 저장 (역참조용)
+          stringRedisTemplate
+                  .opsForValue()
+                  .set(userCurrentRoomKey(userId), contractChatId.toString());
+
+          broadcastPresence(contractChatId);
           log.info("=== enterContractChatRoom 완료 ===");
       }
 
@@ -468,18 +475,24 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       @Override
       @Transactional
       public void leaveContractChatRoom(Long contractChatId, Long userId) {
+          // Redis: 방에서 사용자 제거 및 역참조 정리
+          stringRedisTemplate.opsForSet().remove(roomKey(contractChatId), userId.toString());
+          stringRedisTemplate.delete(userCurrentRoomKey(userId));
           setContractChatUserOffline(userId, contractChatId);
+          broadcastPresence(contractChatId);
+
+          log.info("====== 사용자 채팅방 퇴장 ======");
       }
 
       /** {@inheritDoc} */
       @Override
       public Map<String, Object> getContractChatOnlineStatus(Long contractChatId, Long userId) {
-          log.info("=== getContractChatOnlineStatus 시작 ===");
+          log.info("=== getContractChatOnlineStatus(REDIS) 시작 ===");
           log.info("contractChatId: {}, userId: {}", contractChatId, userId);
-          
+
           // 디버깅용 전체 온라인 사용자 출력
           debugContractChatOnlineUsers(contractChatId);
-          
+
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
@@ -517,13 +530,22 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return result;
       }
 
-      // 디버깅용 메서드 추가
+      // 디버깅용 메서드 (REDIS 기반)
       public void debugContractChatOnlineUsers(Long contractChatId) {
-          log.info("=== 현재 모든 온라인 사용자 상태 ===");
-          log.info("전체 contractChatOnlineUsers: {}", contractChatOnlineUsers);
-          String key = getContractChatKey(contractChatId);
-          Set<Long> users = contractChatOnlineUsers.get(key);
-          log.info("계약 채팅방 {} 온라인 사용자: {}", contractChatId, users);
+          log.info("=== 현재 모든 온라인 사용자 상태(REDIS) ===");
+          try {
+              String rKey = roomKey(contractChatId);
+              Set<String> members = stringRedisTemplate.opsForSet().members(rKey);
+              log.info("Redis Key: {}, 온라인 사용자(문자열): {}", rKey, members);
+              if (members != null) {
+                  Set<Long> asLongs = members.stream().map(Long::valueOf).collect(Collectors.toSet());
+                  log.info("계약 채팅방 {} 온라인 사용자(Long): {}", contractChatId, asLongs);
+              } else {
+                  log.info("계약 채팅방 {} 온라인 사용자 없음", contractChatId);
+              }
+          } catch (Exception e) {
+              log.warn("온라인 사용자 상태 로드 중 오류: {}", e.getMessage());
+          }
       }
 
       /** {@inheritDoc} */
@@ -590,20 +612,28 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       /** {@inheritDoc} */
       private boolean isUserInContractChatRoom(Long userId, Long contractChatId) {
-          String key = getContractChatKey(contractChatId);
-          Set<Long> users = contractChatOnlineUsers.get(key);
-          boolean isOnline = users != null && users.contains(userId);
+          String rKey = roomKey(contractChatId);
+          Boolean member = stringRedisTemplate.opsForSet().isMember(rKey, userId.toString());
+          boolean isOnline = Boolean.TRUE.equals(member);
           log.debug(
-                  "사용자 {} 계약 채팅방 {} 온라인 상태 확인: {}. 현재 온라인 사용자: {}",
+                  "사용자 {} 계약 채팅방 {} 온라인 상태 확인(REDIS): {}, key={}",
                   userId,
                   contractChatId,
                   isOnline,
-                  users);
+                  rKey);
           return isOnline;
       }
 
       private String getContractChatKey(Long contractChatId) {
           return "contract-chat-" + contractChatId;
+      }
+
+      private String roomKey(Long contractChatId) {
+          return "contract:room:" + contractChatId + ":users";
+      }
+
+      private String userCurrentRoomKey(Long userId) {
+          return "contract:user:" + userId + ":current-room";
       }
 
       /** {@inheritDoc} */
@@ -2604,5 +2634,25 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String param = getContractChatStatus(contractChatId.getStatus());
 
           return baseUrl + contractChatUrl + contractChatRoomId.toString() + param;
+      }
+
+      private void broadcastPresence(Long contractChatId) {
+          ContractChat c = contractChatMapper.findByContractChatId(contractChatId);
+          if (c == null) return;
+
+          boolean ownerIn = isUserInContractChatRoom(c.getOwnerId(), contractChatId);
+          boolean buyerIn = isUserInContractChatRoom(c.getBuyerId(), contractChatId);
+          boolean both = ownerIn && buyerIn;
+
+          Map<String, Object> payload =
+                  Map.of(
+                          "type", "PRESENCE",
+                          "ownerInContractRoom", ownerIn,
+                          "buyerInContractRoom", buyerIn,
+                          "bothInRoom", both,
+                          "canChat", both,
+                          "ownerId", c.getOwnerId(),
+                          "buyerId", c.getBuyerId());
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, payload);
       }
 }
