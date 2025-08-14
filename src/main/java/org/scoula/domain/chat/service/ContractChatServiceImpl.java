@@ -30,11 +30,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
+@Log4j2
 public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       private final ContractChatMapper contractChatMapper;
@@ -100,6 +100,25 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
           enterContractChatRoom(dto.getContractChatId(), dto.getSenderId());
+
+          boolean canSend = canSendContractMessage(dto.getContractChatId());
+          if (!canSend) {
+              log.warn(
+                      "메시지 전송 차단 - contractChatId: {}, senderId: {}",
+                      dto.getContractChatId(),
+                      dto.getSenderId());
+
+              // 에러 메시지를 발송자에게만 전송 (저장하지 않음)
+              Map<String, Object> errorInfo =
+                      Map.of(
+                              "error", "OFFLINE_USER",
+                              "message", "상대방이 오프라인 상태입니다. 상대방이 접속한 후 메시지를 보내주세요.");
+
+              messagingTemplate.convertAndSendToUser(
+                      dto.getSenderId().toString(), "/queue/contract/error", errorInfo);
+
+              return;
+          }
 
           ContractChatDocument messageDocument =
                   ContractChatDocument.builder()
@@ -476,10 +495,10 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       public Map<String, Object> getContractChatOnlineStatus(Long contractChatId, Long userId) {
           log.info("=== getContractChatOnlineStatus 시작 ===");
           log.info("contractChatId: {}, userId: {}", contractChatId, userId);
-          
+
           // 디버깅용 전체 온라인 사용자 출력
           debugContractChatOnlineUsers(contractChatId);
-          
+
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
