@@ -15,6 +15,9 @@ import org.scoula.domain.contract.repository.ContractMongoRepository;
 import org.scoula.domain.precontract.enums.ContractDuration;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
 import org.scoula.domain.precontract.mapper.TenantPreContractMapper;
+import org.scoula.domain.precontract.service.IdentityVerificationService;
+import org.scoula.domain.precontract.service.IdentityVerificationServiceImpl;
+import org.scoula.domain.precontract.vo.IdentityVerificationInfoVO;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.email.service.EmailServiceImpl;
 import org.scoula.global.file.service.S3ServiceImpl;
@@ -22,9 +25,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 @Service
@@ -39,6 +45,8 @@ public class ContractServiceImpl implements ContractService {
       private final RestTemplate restTemplate;
       private final TenantPreContractMapper tenantMapper;
       private final ContractChatMapper contractChatMapper;
+      private final IdentityVerificationService identityVerificationService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
       private final RedisTemplate<String, String> stringRedisTemplate;
       private final S3ServiceImpl s3Service;
@@ -104,8 +112,14 @@ public class ContractServiceImpl implements ContractService {
               throw new BusinessException(ContractException.CONTRACT_GET);
           }
 
+          Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+          Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+
+          IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
+          IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
+
           // 찾은 값을 Dto에 넣고 반환하기
-          ContractDTO dto = ContractDTO.toDTO(document);
+          ContractDTO dto = ContractDTO.toDTO(document, ownerVO, buyerVO);
 
           return dto;
       }
@@ -179,8 +193,8 @@ public class ContractServiceImpl implements ContractService {
                 // 다음 단계 메세지 보내기
                 contractChatService.AiMessage(contractChatId, "이번 단계는 '금액 조율' 단계입니다");
             }
-            // 스텝 변경
-            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
+//            // 스텝 변경
+//            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
         }
 
         return nextSteps;
@@ -321,7 +335,64 @@ public class ContractServiceImpl implements ContractService {
           return null;
       }
 
+
+      // 적법성 검사
+//      @Override
+//      public ContractDTO getContracts (Long contractChatId, Long userId){
+//          // userId 검증
+//          validateUserId(contractChatId, userId);
+//
+//          ContractDTO dto;
+//
+//          // 몽고 DB에서 특약부분을 받아서 저장한다.
+////          try {
+//              repository.saveSpecialContract(contractChatId);
+//
+//              ContractMongoDocument document = repository.getContract(contractChatId);
+//              if (document == null) {
+//                  throw new BusinessException(ContractException.CONTRACT_GET);
+//              }
+//              Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+//              Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+//              IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
+//              IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
+//
+//
+//              // 찾은 값을 Dto에 넣고 반환하기
+//              dto = ContractDTO.toDTO(document, ownerVO, buyerVO);
+////          } catch (Exception e) {
+////              // 예외 로그 기록 및 사용자에게 전달할 메시지 등 처리
+////              log.error("특약사항 저장 실패 ❌", e);
+////              throw new BusinessException(ContractException.CONTRACT_INSERT, e);
+////          }
+//
+////          ContractMongoDocument document = repository.getContract(contractChatId);
+////          if (document == null) {
+////              throw new BusinessException(ContractException.CONTRACT_GET);
+////          }
+////
+////          // 찾은 값을 Dto에 넣고 반환하기
+////          ContractDTO dto = ContractDTO.toDTO(document);
+//
+////          ContractDTO dto = getContract(contractChatId, userId);
+//
+//          return dto;
+//      }
+
+    @Override
+    public Void saveSpecialContract(Long contractChatId, Long userId) {
+          // userId 검증
+         validateUserId(contractChatId, userId);
+         // 몽고 DB에서 특약부분을 받아서 저장한다.
+         try {        repository.saveSpecialContract(contractChatId);    } catch (Exception e) {
+             // 예외 로그 기록 및 사용자에게 전달할 메시지 등 처리
+              log.error("특약사항 저장 실패 ❌", e);
+              throw new BusinessException(ContractException.CONTRACT_INSERT, e);    }
+         return null;
+      }
+
       /** {@inheritDoc} */
+      // ai로 적법성 검사하기 -> 암호화 풀어서 보내기
       @Override
       public LegalityDTO getLegality(Long contractChatId, Long userId) {
           // userId 검증
@@ -332,7 +403,13 @@ public class ContractServiceImpl implements ContractService {
           if (document == null) {
               throw new BusinessException(ContractException.CONTRACT_GET);
           }
-          ContractDTO dto = ContractDTO.toDTO(document);
+
+          Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+          Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+          IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
+          IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
+
+          ContractDTO dto = ContractDTO.toDTO(document, ownerVO, buyerVO);
 
           // AI
           try {
@@ -374,25 +451,144 @@ public class ContractServiceImpl implements ContractService {
           }
       }
 
-      /** {@inheritDoc} */
-      @Override
-      public Void saveSpecialContract(Long contractChatId, Long userId) {
+      // 임대인 삭제
+    @Override
+    @Transactional
+    public String deleteOwnerLegality(Long contractChatId, Long userId) {
+        // userId 검증
+        validateUserId(contractChatId, userId);
+
+        Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+
+        String redisKey =
+                "final-contract:legality:" + contractChatId + ":" + ownerContractId;
+        String valueDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+        if (valueDataJson == null) {
+            throw new IllegalArgumentException("대기중인 수정 요청이 없습니다.");
+        }
+
+        try {
+            stringRedisTemplate.delete(redisKey);
+//            contractChatService.AiMessage(contractChatId, "임대인");
+        } catch (Exception e) {
+            log.error("수정 요청 응답 처리 실패", e);
+            throw new RuntimeException("응답 처리 중 오류가 발생했습니다.");
+        }
+
+
+        return "임대인이 적법성 검사를 삭제했습니다.";
+    }
+
+    // 임대인 수정요청
+    @Override
+    @Transactional
+      public Void updateOwnerLegality(Long contractChatId, Long userId, UpdateLegalityDTO updateLegalityDTO) {
+
           // userId 검증
           validateUserId(contractChatId, userId);
+        Long ownerContractId = contractMapper.getOwnerId(contractChatId);
 
-          // 몽고 DB에서 특약부분을 받아서 저장한다.
+          String redisKey = "final-contract:legality:" + contractChatId + ":" + ownerContractId;
+
+          String existingRequest = stringRedisTemplate.opsForValue().get(redisKey);
+          if (existingRequest != null) {
+              throw new IllegalArgumentException("해당 조항에 대한 수정 요청이 이미 대기중입니다.");
+          }
+
+          LegalityRequestDTO requestData =
+                  LegalityRequestDTO.builder()
+                          .legalBasis(updateLegalityDTO.getLegalBasis())
+                          .requestId(userId)
+                          .createdAt(LocalDateTime.now().toString())
+                          .build();
           try {
-              repository.saveSpecialContract(contractChatId);
-          } catch (Exception e) {
-              // 예외 로그 기록 및 사용자에게 전달할 메시지 등 처리
-              log.error("특약사항 저장 실패 ❌", e);
-              throw new BusinessException(ContractException.CONTRACT_INSERT, e);
+              String jsonData = objectMapper.writeValueAsString(requestData);
+              // Store as valid JSON for correct parsing later
+              String valueData = String.format("{\"requestData\":%s}", jsonData);
+              stringRedisTemplate.opsForValue().set(redisKey, valueData);
+
+              contractChatService.AiMessage(contractChatId, "임대인이 적법성 검사 수정을 요청합니다.");
+          }  catch (Exception e) {
+              log.error("수정 요청 저장 실패", e);
+              throw new RuntimeException("수정 요청 저장 중 오류가 발생했습니다.");
           }
 
           return null;
       }
 
+    // 임차인 수정
+   @Override
+    @Transactional
+    public Void updateBuyerLegality(Long contractChatId, Long userId, SpecialContractUpdateDTO dto) {
+
+        // userId 검증
+        validateUserId(contractChatId, userId);
+
+        Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+
+        String redisKey =
+                "final-contract:legality:" + contractChatId + ":" + ownerContractId;
+        String valueDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+        if (valueDataJson == null) {
+            throw new IllegalArgumentException("대기중인 수정 요청이 없습니다.");
+        }
+
+        try{
+            // JSON에서 clauseOrder와 requestData 추출
+            com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(valueDataJson);
+            String requestDataJson = rootNode.get("requestData").toString();
+
+            LegalityRequestDTO requestData =
+                    objectMapper.readValue(requestDataJson, LegalityRequestDTO.class);
+
+            // 수정하는 로직 짜기
+            updateSpecialContract(contractChatId, userId, dto);
+            String resultMessage;
+            resultMessage =
+                    String.format("적법성 수정 후 레디스에서 삭제되었습니다.");
+
+            stringRedisTemplate.delete(redisKey);
+            contractChatService.AiMessage(contractChatId, resultMessage);
+
+        }catch (Exception e) {
+            log.error("수정 요청 응답 처리 실패", e);
+            throw new RuntimeException("응답 처리 중 오류가 발생했습니다.");
+        }
+
+
+        return null;
+    }
+
+    // 임차인 거절
+    @Override
+    @Transactional
+    public String rejectBuyerLegality(Long contractChatId, Long userId) {
+
+        // userId 검증
+        validateUserId(contractChatId, userId);
+
+        Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+
+        String redisKey =
+                "final-contract:legality:" + contractChatId + ":" + ownerContractId;
+        String valueDataJson = stringRedisTemplate.opsForValue().get(redisKey);
+        if (valueDataJson == null) {
+            throw new IllegalArgumentException("대기중인 수정 요청이 없습니다.");
+        }
+
+        try {
+            stringRedisTemplate.delete(redisKey);
+//            contractChatService.AiMessage(contractChatId, "임대인이 적법성 수정을 거절했습니다.");
+        } catch (Exception e) {
+            log.error("수정 요청 응답 처리 실패", e);
+            throw new RuntimeException("응답 처리 중 오류가 발생했습니다.");
+        }
+
+        return "임대인이 적법성 수정을 거절했습니다.";
+    }
+
       /** {@inheritDoc} */
+      // 수정 확정
       @Override
       public Void updateSpecialContract(Long contractChatId, Long userId, SpecialContractUpdateDTO dto) {
           // userId 검증
@@ -410,9 +606,16 @@ public class ContractServiceImpl implements ContractService {
       /** {@inheritDoc} */
       @Override
       public Void sendStep4(Long contractChatId, Long userId) {
+
+          // userId 검증
+          validateUserId(contractChatId, userId);
+
+          contractChatService.AiMessage(contractChatId, "계약서 작성이 완료되었습니다.");
+
           return null;
       }
 
+      // ---------------------------------------
       // Userid 검증
       public void validateUserId(Long contractChatId, Long userId) {
 
@@ -475,6 +678,8 @@ public class ContractServiceImpl implements ContractService {
             // 3) 두 사람이 모두 true면 -> 키 삭제하고 true 반환
             if (state.isOwner() && state.isBuyer()) {
                 stringRedisTemplate.delete(redisKey);
+                // 스텝 변경
+                contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
                 return true;
             }
 
