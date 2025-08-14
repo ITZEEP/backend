@@ -41,7 +41,7 @@ public interface HomeController {
               @ApiParam(value = "페이지 번호 (1부터 시작)", defaultValue = "1")
                       @RequestParam(defaultValue = "1")
                       int page,
-              @ApiParam(value = "페이지 크기", defaultValue = "20") @RequestParam(defaultValue = "20")
+              @ApiParam(value = "페이지 크기", defaultValue = "21") @RequestParam(defaultValue = "21")
                       int size);
 
       @ApiOperation(value = "매물 검색", notes = "조건에 따라 매물을 검색합니다.")

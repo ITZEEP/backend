@@ -43,7 +43,7 @@ public class HomeSearchDTO {
 
       // 페이징
       private Integer page = 1;
-      private Integer size = 20;
+      private Integer size = 21;
 
       // 정렬
       private String sortBy = "createdAt"; // createdAt, price, viewCnt, likeCnt

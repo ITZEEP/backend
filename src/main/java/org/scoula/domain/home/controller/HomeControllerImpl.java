@@ -106,7 +106,7 @@ public class HomeControllerImpl implements HomeController {
       @GetMapping
       public ResponseEntity<PageResponse<HomeResponseDTO>> getHomeList(
               @RequestParam(defaultValue = "1") int page,
-              @RequestParam(defaultValue = "20") int size) {
+              @RequestParam(defaultValue = "21") int size) {
 
           log.info("매물 목록 조회 요청: page={}, size={}", page, size);
 
