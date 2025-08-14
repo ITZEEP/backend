@@ -1,6 +1,5 @@
 package org.scoula.global.websocket.config;
 
-
 import java.util.Collections;
 
 import org.springframework.context.annotation.Configuration;
