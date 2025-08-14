@@ -17,6 +17,9 @@ import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
+import org.scoula.domain.home.mapper.HomeMapper;
+import org.scoula.domain.home.vo.HomeRegisterVO;
+import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -40,6 +43,7 @@ import lombok.extern.log4j.Log4j2;
 public class AiFraudAnalyzerService {
 
       private final RestTemplate restTemplate;
+      private final HomeMapper homeMapper;
 
       @Value("${ai.server.url:http://localhost:8000}")
       private String aiServerUrl;
@@ -302,6 +306,20 @@ public class AiFraudAnalyzerService {
 
       /** RiskAnalysisRequest를 AI 서버 요청 형식으로 변환 */
       private FraudRiskCheckDto.Request buildAiRequest(Long userId, RiskAnalysisRequest request) {
+
+          Long homeId = request.getHomeId();
+          HomeRegisterVO home =
+                  homeMapper
+                          .findHomeById(homeId)
+                          .orElseThrow(() -> new BusinessException(FraudErrorCode.INVALID_HOME_ID));
+
+          request.setAddress(home.getAddr1() + " " + home.getAddr2());
+          request.setPropertyPrice(home.getDepositPrice());
+          request.setMonthlyRent(home.getMonthlyRent() != null ? home.getMonthlyRent() : 0);
+          request.setLeaseType(home.getLeaseType().toString());
+          request.setResidenceType(home.getResidenceType().toString());
+          request.setRegisteredUserName(home.getUserName());
+
           FraudRiskCheckDto.Request.RequestBuilder builder =
                   FraudRiskCheckDto.Request.builder()
                           .userId(userId)

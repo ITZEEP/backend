@@ -33,7 +33,11 @@ public enum FraudErrorCode implements IErrorCode {
       // 데이터 검증 관련 에러
       INVALID_CONTRACT_DATA("FRAUD_014", HttpStatus.BAD_REQUEST, "유효하지 않은 계약 데이터입니다"),
       MISSING_REQUIRED_FIELDS("FRAUD_015", HttpStatus.BAD_REQUEST, "필수 정보가 누락되었습니다"),
-      DATA_CONSISTENCY_ERROR("FRAUD_016", HttpStatus.CONFLICT, "데이터 일관성 오류가 발생했습니다");
+      DATA_CONSISTENCY_ERROR("FRAUD_016", HttpStatus.CONFLICT, "데이터 일관성 오류가 발생했습니다"),
+
+      // 매물 찾기 에러
+      INVALID_HOME_ID("FRAUD_017", HttpStatus.BAD_REQUEST, "유효하지 않은 매물 ID입니다"),
+      ;
 
       private final String code;
       private final HttpStatus httpStatus;
