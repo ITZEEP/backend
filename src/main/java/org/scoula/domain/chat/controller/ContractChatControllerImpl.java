@@ -1,6 +1,7 @@
 package org.scoula.domain.chat.controller;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,11 +30,11 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 @RestController
 @RequestMapping("/api/chat/contract")
-@Slf4j
+@Log4j2
 public class ContractChatControllerImpl implements ContractChatController {
 
       private final ContractChatServiceInterface contractChatService;
@@ -304,11 +305,22 @@ public class ContractChatControllerImpl implements ContractChatController {
               log.info("=== WebSocket 계약 채팅방 입장 시작 ===");
               log.info("payload: {}", payload);
               log.info("principal: {}", principal != null ? principal.getName() : "null");
+              log.info("Thread: {}", Thread.currentThread().getName());
+
               Long userId = payload.get("userId");
               Long contractChatId = payload.get("contractChatId");
+
               log.info("추출된 userId: {}, contractChatId: {}", userId, contractChatId);
+
+              if (userId == null || contractChatId == null) {
+                  log.error("필수 파라미터 누락 - userId: {}, contractChatId: {}", userId, contractChatId);
+                  return;
+              }
+
               contractChatService.enterContractChatRoom(contractChatId, userId);
+
               notifyContractChatOnlineStatus(contractChatId, userId, true);
+
               log.info("=== WebSocket 계약 채팅방 입장 완료 ===");
           } catch (Exception e) {
               log.error("계약 채팅방 입장 실패", e);
@@ -384,20 +396,15 @@ public class ContractChatControllerImpl implements ContractChatController {
                               ? contractChat.getBuyerId()
                               : contractChat.getOwnerId();
 
-              // 현재 기준의 전체 온라인 상태 맵(REDIS 기반)
-              Map<String, Object> statusMap =
-                      contractChatService.getContractChatOnlineStatus(
-                              contractChatId,
-                              // getContractChatOnlineStatus는 호출자 userId가 필요하므로 아무 사용자(지금 사용자) 전달
-                              userId);
+              Map<String, Object> statusInfo =
+                      Map.of(
+                              "userId", userId,
+                              "isOnline", isOnline,
+                              "contractChatId", contractChatId,
+                              "timestamp", LocalDateTime.now().toString());
 
-              // 사용자 큐로(상대방 개인 채널)
               messagingTemplate.convertAndSendToUser(
-                      otherUserId.toString(), "/queue/contract/online-status", statusMap);
-
-              // 방 브로드캐스트로도(PRESENCE 타입 부여)
-              statusMap.put("type", "PRESENCE");
-              messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, statusMap);
+                      otherUserId.toString(), "/queue/contract/online-status", statusInfo);
 
           } catch (Exception e) {
               log.error("온라인 상태 알림 실패", e);

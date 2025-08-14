@@ -101,6 +101,25 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           enterContractChatRoom(dto.getContractChatId(), dto.getSenderId());
 
+          boolean canSend = canSendContractMessage(dto.getContractChatId());
+          if (!canSend) {
+              log.warn(
+                      "메시지 전송 차단 - contractChatId: {}, senderId: {}",
+                      dto.getContractChatId(),
+                      dto.getSenderId());
+
+              // 에러 메시지를 발송자에게만 전송 (저장하지 않음)
+              Map<String, Object> errorInfo =
+                      Map.of(
+                              "error", "OFFLINE_USER",
+                              "message", "상대방이 오프라인 상태입니다. 상대방이 접속한 후 메시지를 보내주세요.");
+
+              messagingTemplate.convertAndSendToUser(
+                      dto.getSenderId().toString(), "/queue/contract/error", errorInfo);
+
+              return;
+          }
+
           ContractChatDocument messageDocument =
                   ContractChatDocument.builder()
                           .contractChatId(dto.getContractChatId().toString())
