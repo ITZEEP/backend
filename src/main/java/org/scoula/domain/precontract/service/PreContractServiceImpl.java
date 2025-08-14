@@ -3,9 +3,11 @@ package org.scoula.domain.precontract.service;
 import java.util.Optional;
 
 import org.scoula.domain.chat.dto.ChatMessageRequestDto;
+import org.scoula.domain.chat.mapper.ChatRoomMapper;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.service.ChatServiceInterface;
 import org.scoula.domain.chat.service.ContractChatServiceInterface;
+import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
@@ -34,6 +36,7 @@ public class PreContractServiceImpl implements PreContractService {
       private final ChatServiceInterface chatService;
       private final ContractChatMapper contractChatMapper;
       private final ContractChatServiceInterface contractChatService;
+      private final ChatRoomMapper chatRoomMapper;
 
       @Value("${front.base.url}")
       private String URL;
@@ -359,12 +362,11 @@ public class PreContractServiceImpl implements PreContractService {
           }
 
           ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-
+          ChatRoom chatRoom=chatRoomMapper.findByUserAndHome(contractChat.getOwnerId(),contractChat.getBuyerId(),contractChat.getHomeId());
           String contractChatUrls = URL + precontractUrl + (contractChatId.toString()) + ownerUrl;
-
           ChatMessageRequestDto linkMessages =
                   ChatMessageRequestDto.builder()
-                          .chatRoomId(contractChatId)
+                          .chatRoomId(chatRoom.getChatRoomId())
                           .senderId(contractChat.getBuyerId())
                           .receiverId(contractChat.getOwnerId())
                           .content(contractChatUrls)
