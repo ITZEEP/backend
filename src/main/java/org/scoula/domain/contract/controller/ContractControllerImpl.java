@@ -101,6 +101,25 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
+      @PostMapping("/getContracts")
+      public ResponseEntity<ApiResponse<ContractDTO>> getContracts(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails) {
+          return ResponseEntity.ok(
+                  ApiResponse.success(service.getContract(contractChatId, userDetails.getUserId())));
+      }
+
+      @Override
+      @PostMapping("/legalitysss")
+      public ResponseEntity<ApiResponse<Void>> saveSpecialContract(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails) {
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          service.saveSpecialContract(contractChatId, userDetails.getUserId())));
+      }
+
+      @Override
       @PostMapping("/legality")
       public ResponseEntity<ApiResponse<LegalityDTO>> getLegality(
               @PathVariable Long contractChatId,
@@ -110,13 +129,45 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @PostMapping("/specialContract")
-      public ResponseEntity<ApiResponse<Void>> saveSpecialContract(
+      @DeleteMapping("/delete/legality")
+      public ResponseEntity<ApiResponse<String>> deleteOwnerLegality(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
           return ResponseEntity.ok(
                   ApiResponse.success(
-                          service.saveSpecialContract(contractChatId, userDetails.getUserId())));
+                          service.deleteOwnerLegality(contractChatId, userDetails.getUserId())));
+      }
+
+      @Override
+      @PostMapping("/update/legality")
+      public ResponseEntity<ApiResponse<Void>> updateOwnerLegality(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @RequestBody UpdateLegalityDTO dto) {
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          service.updateOwnerLegality(contractChatId, userDetails.getUserId(), dto)));
+      }
+
+      @Override
+      @GetMapping("/update/legality")
+      public ResponseEntity<ApiResponse<Void>> updateBuyerLegality(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @RequestBody SpecialContractUpdateDTO dto) {
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          service.updateBuyerLegality(contractChatId, userDetails.getUserId(), dto)));
+      }
+
+      @Override
+      @GetMapping("/reject/legality")
+      public ResponseEntity<ApiResponse<String>> rejectBuyerLegality(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails) {
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          service.rejectBuyerLegality(contractChatId, userDetails.getUserId())));
       }
 
       @Override
