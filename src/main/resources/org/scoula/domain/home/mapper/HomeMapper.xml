@@ -133,7 +133,7 @@
                 AND h.exclusive_area= #{search.exclusiveArea}
             </if>
             <if test="search.homeDirection != null">
-                AND hd.home_direction = #{search.homeDirection.getKey()}
+                AND hd.home_direction = #{search.homeDirection}
             </if>
             <if test="search.homeFloor != null">
                 AND hd.home_floor = #{search.homeFloor}
@@ -346,6 +346,9 @@
             </if>
             <if test="search.homeDirection != null">
                 AND hd.home_direction = #{search.homeDirection}
+            </if>
+            <if test="search.homeFloor != null">
+                AND hd.home_floor = #{search.homeFloor}
             </if>
             <if test="search.minFloor != null">
                 AND hd.home_floor &gt;= #{search.minFloor}

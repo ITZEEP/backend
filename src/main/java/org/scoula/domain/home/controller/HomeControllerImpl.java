@@ -128,6 +128,7 @@ public class HomeControllerImpl implements HomeController {
                   searchDTO.getResidenceType(),
                   searchDTO.getLeaseType(),
                   searchDTO.getAddr1());
+          log.info("최대 월세 필터 값: {}", searchDTO.getMaxMonthlyRent());
 
           List<HomeResponseDTO> homes = homeService.searchHomes(searchDTO);
           int totalCount = homeService.getHomeCountByCondition(searchDTO);
