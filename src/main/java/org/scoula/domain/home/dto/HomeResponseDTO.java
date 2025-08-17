@@ -52,7 +52,7 @@ public class HomeResponseDTO {
       private Boolean isParking;
 
       private List<FacilityItem> facilities;
-
+      private String description;
       private List<HomeMaintenanceFeeVO> maintenanceFees;
 
       private List<String> imageUrls;

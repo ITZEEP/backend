@@ -37,6 +37,10 @@ public class HomeServiceImpl implements HomeService {
                   createDTO.getResidenceType(),
                   images != null ? images.size() : 0);
 
+          // ✨ 서비스에서 받은 DTO와 description 값 확인
+          log.info("서비스에서 받은 DTO: {}", createDTO);
+          log.info("서비스에서 확인한 description 값: {}", createDTO.getDescription());
+
           try {
               HomeVO home =
                       HomeVO.builder()
@@ -79,7 +83,12 @@ public class HomeServiceImpl implements HomeService {
                               .isParking(createDTO.getIsParking())
                               .area(createDTO.getArea())
                               .landCategory(createDTO.getLandCategory())
+                              .description(createDTO.getDescription())
                               .build();
+
+              // ✨ DB에 저장할 객체의 description 값 최종 확인
+              log.info("DB에 저장할 HomeDetailVO 객체: {}", homeDetail);
+              log.info("최종 DB 저장 직전의 description 값: {}", homeDetail.getDescription());
 
               int detailResult = homeMapper.insertHomeDetail(homeDetail);
               if (detailResult != 1) {
@@ -158,7 +167,11 @@ public class HomeServiceImpl implements HomeService {
               return homeId;
 
           } catch (Exception e) {
-              log.error("매물 등록 중 오류 발생: userId={}, error={}", userId, e.getMessage());
+              log.error(
+                      "매물 등록 중 오류 발생: userId={}, error={}",
+                      userId,
+                      e.getMessage(),
+                      e); // ⭐️ 예외 객체(e)를 함께 출력하여 스택 트레이스 확인
               throw new BusinessException(
                       CommonErrorCode.INTERNAL_SERVER_ERROR, "매물 등록 중 오류가 발생했습니다: " + e.getMessage());
           }
@@ -187,6 +200,12 @@ public class HomeServiceImpl implements HomeService {
           }
 
           HomeDetailVO homeDetail = homeMapper.selectHomeDetailByHomeId(homeId);
+
+          // ✨ 매퍼에서 반환된 객체와 description 값 확인
+          log.info("매퍼에서 반환된 HomeDetailVO: {}", homeDetail);
+          log.info(
+                  "매퍼에서 확인한 description 값: {}",
+                  homeDetail != null ? homeDetail.getDescription() : null);
 
           List<HomeImageVO> images = homeMapper.selectHomeImagesByHomeId(homeId);
           List<String> imageUrls =
@@ -229,6 +248,7 @@ public class HomeServiceImpl implements HomeService {
                   .isParking(homeDetail != null ? homeDetail.getIsParking() : null)
                   .facilities(facilities)
                   .maintenanceFees(maintenanceFees)
+                  .description(homeDetail != null ? homeDetail.getDescription() : null)
                   .imageUrls(imageUrls)
                   .createdAt(home.getCreatedAt())
                   .updatedAt(home.getUpdatedAt())

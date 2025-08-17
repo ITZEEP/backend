@@ -18,11 +18,11 @@
     <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeDetailVO" useGeneratedKeys="true" keyProperty="homeDetailId">
         INSERT INTO home_detail (
             home_id, build_date, home_floor, building_total_floors,
-            home_direction, bathroom_count, is_pet, is_parking_available,area,land_category
+            home_direction, bathroom_count, is_pet, is_parking_available,area,land_category,description
 
         ) VALUES (
                      #{homeId}, #{buildDate}, #{homeFloor}, #{buildingTotalFloors},
-                     #{homeDirection}, #{bathroomCnt}, #{isPet}, #{isParking}, #{area}, #{landCategory}
+                     #{homeDirection}, #{bathroomCnt}, #{isPet}, #{isParking}, #{area}, #{landCategory},#{description}
                  )
     </insert>
 
@@ -63,7 +63,7 @@
     <select id="selectHomeDetailByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeDetailVO">
         SELECT
             home_detail_id, home_id, build_date, home_floor, building_total_floors,
-            home_direction, bathroom_count as bathroomCnt, is_pet as isPet, is_parking_available as isParking
+            home_direction, bathroom_count as bathroomCnt, is_pet as isPet, is_parking_available as isParking, description as description
         FROM home_detail
         WHERE home_id = #{homeId}
     </select>
