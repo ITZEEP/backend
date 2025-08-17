@@ -163,7 +163,7 @@ CREATE TABLE final_contract (
                                 home_id BIGINT,
                                 owner_id BIGINT,
                                 buyer_id BIGINT,
-                                contract_pdf_url VARCHAR(255),
+                                contract_pdf_key VARCHAR(255),
                                 contract_date DATETIME,
                                 contract_expire_date DATETIME,
                                 FOREIGN KEY (contract_id) REFERENCES contract_chat(contract_chat_id),

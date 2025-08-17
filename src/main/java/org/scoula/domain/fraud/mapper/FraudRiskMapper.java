@@ -6,6 +6,9 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.scoula.domain.fraud.dto.response.RiskCheckDetailResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckListResponse;
+import org.scoula.domain.fraud.vo.BuildingDocumentVO;
+import org.scoula.domain.fraud.vo.MortgageInfoVO;
+import org.scoula.domain.fraud.vo.RegistryDocumentVO;
 import org.scoula.domain.fraud.vo.RiskCheckDetailVO;
 import org.scoula.domain.fraud.vo.RiskCheckVO;
 import org.scoula.global.common.dto.PageRequest;
@@ -142,4 +145,54 @@ public interface FraudRiskMapper {
               @Param("homeId") Long homeId,
               @Param("startOfDay") java.time.LocalDateTime startOfDay,
               @Param("endOfDay") java.time.LocalDateTime endOfDay);
+
+      // ==================== 문서 정보 저장 메서드 ====================
+
+      /**
+       * 등기부등본 정보 저장
+       *
+       * @param registryDocument 등기부등본 정보
+       * @return 삽입된 행 수
+       */
+      int insertRegistryDocument(RegistryDocumentVO registryDocument);
+
+      /**
+       * 근저당권 정보 저장
+       *
+       * @param mortgageInfo 근저당권 정보
+       * @return 삽입된 행 수
+       */
+      int insertMortgageInfo(MortgageInfoVO mortgageInfo);
+
+      /**
+       * 건축물대장 정보 저장
+       *
+       * @param buildingDocument 건축물대장 정보
+       * @return 삽입된 행 수
+       */
+      int insertBuildingDocument(BuildingDocumentVO buildingDocument);
+
+      /**
+       * 등기부등본 정보 조회
+       *
+       * @param riskckId 위험도 체크 ID
+       * @return 등기부등본 정보
+       */
+      RegistryDocumentVO selectRegistryDocumentByRiskCheckId(@Param("riskckId") Long riskckId);
+
+      /**
+       * 근저당권 정보 목록 조회
+       *
+       * @param registryId 등기부등본 ID
+       * @return 근저당권 정보 목록
+       */
+      List<MortgageInfoVO> selectMortgageInfoListByRegistryId(@Param("registryId") Long registryId);
+
+      /**
+       * 건축물대장 정보 조회
+       *
+       * @param riskckId 위험도 체크 ID
+       * @return 건축물대장 정보
+       */
+      BuildingDocumentVO selectBuildingDocumentByRiskCheckId(@Param("riskckId") Long riskckId);
 }

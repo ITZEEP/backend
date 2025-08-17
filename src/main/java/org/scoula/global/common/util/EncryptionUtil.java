@@ -19,10 +19,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itextpdf.kernel.pdf.*;
 
+import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
 /** 통합 암호화 유틸리티 - PDF: Redis 기반 키 수집 + 2-of-3 봉투암호화, 이미지: AES 암호화 */
@@ -32,6 +34,8 @@ public class EncryptionUtil {
 
       @Autowired private RedisTemplate<String, Object> redisTemplate;
 
+      /** -- GETTER -- 서버 마스터 키 반환 */
+      @Getter
       @Value("${crypto.aes.secret-key:itzip-server-master-key-2024-secure}")
       private String serverMasterKey;
 
@@ -55,8 +59,8 @@ public class EncryptionUtil {
 
       // ==================== Redis 기반 계약 키 수집 시스템 ====================
 
-      /** 계약서 업로드 및 첫 번째 키 등록 */
-      public ContractKeyStatus uploadContract(
+      /** 계약서 업로드 및 첫 번째 키 등록 (내부 사용용 byte[] 버전) */
+      private ContractKeyStatus uploadContractInternal(
               String fileId, byte[] pdfData, String keyType, String password) throws Exception {
 
           String redisKey = String.format(REDIS_KEY_PATTERN, fileId);
@@ -150,7 +154,8 @@ public class EncryptionUtil {
               byte[] pdfData = Base64.decodeBase64(contractKeys.getPdfData());
 
               EncryptedPDF encryptedPDF =
-                      encryptPDF(pdfData, contractKeys.getOwnerKey(), contractKeys.getTenantKey());
+                      encryptPDFInternal(
+                              pdfData, contractKeys.getOwnerKey(), contractKeys.getTenantKey());
 
               log.info("Envelope encryption completed successfully for fileId: {}", fileId);
 
@@ -171,60 +176,11 @@ public class EncryptionUtil {
           }
       }
 
-      /** 계약서 상태 조회 */
-      public ContractKeyStatus getContractStatus(String fileId) {
-          String redisKey = String.format(REDIS_KEY_PATTERN, fileId);
-
-          ContractKeys contractKeys = (ContractKeys) redisTemplate.opsForValue().get(redisKey);
-          if (contractKeys == null) {
-              return ContractKeyStatus.builder()
-                      .fileId(fileId)
-                      .status("NOT_FOUND")
-                      .message("Contract not found or expired")
-                      .build();
-          }
-
-          return ContractKeyStatus.builder()
-                  .fileId(fileId)
-                  .status(contractKeys.getStatus())
-                  .message("Contract found")
-                  .createdTimestamp(contractKeys.getCreatedTimestamp())
-                  .hasOwnerKey(contractKeys.getOwnerKey() != null)
-                  .hasTenantKey(contractKeys.getTenantKey() != null)
-                  .build();
-      }
-
-      /** 계약서 삭제 (수동 정리) */
-      public void deleteContract(String fileId) {
-          String redisKey = String.format(REDIS_KEY_PATTERN, fileId);
-          redisTemplate.delete(redisKey);
-          log.info("Contract manually deleted from Redis - fileId: {}", fileId);
-      }
-
-      /** Redis에서 데이터 조회 (범용) */
-      public Object getFromRedis(String key) {
-          return redisTemplate.opsForValue().get(key);
-      }
-
-      /** Redis에서 데이터 삭제 (범용) */
-      public void deleteFromRedis(String key) {
-          redisTemplate.delete(key);
-      }
-
-      /** Redis에 데이터 저장 (범용) */
-      public void saveToRedis(String key, Object value, long timeoutMinutes) {
-          redisTemplate.opsForValue().set(key, value, timeoutMinutes, TimeUnit.MINUTES);
-      }
-
       // ==================== PDF 암호화 (2-of-3 Threshold) ====================
 
-      /**
-       * PDF 파일 암호화
-       *
-       * @return 암호화된 PDF 정보 (데이터, 메타데이터 포함)
-       */
-      public EncryptedPDF encryptPDF(byte[] pdfData, String ownerPassword, String tenantPassword)
-              throws Exception {
+      /** PDF 파일 암호화 (내부 사용용 byte[] 버전) */
+      private EncryptedPDF encryptPDFInternal(
+              byte[] pdfData, String ownerPassword, String tenantPassword) throws Exception {
           // 1. 원본 해시값 계산
           String originalHash = DigestUtils.sha256Hex(pdfData);
 
@@ -241,10 +197,6 @@ public class EncryptionUtil {
           byte[] encryptedData = cipher.doFinal(pdfData);
 
           // 4. 키를 3개로 분할 (단순화된 2-of-3 방식)
-          // server share = key
-          // owner share = key
-          // tenant share = key
-          // 이렇게 하면 어떤 2개를 선택해도 복호화 가능
           byte[] keyBytes = dataKey.getEncoded();
           byte[] share1 = keyBytes.clone(); // server share
           byte[] share2 = keyBytes.clone(); // owner share
@@ -284,7 +236,7 @@ public class EncryptionUtil {
       }
 
       /**
-       * PDF 파일 복호화
+       * PDF 파일 복호화 (EncryptedPDF 객체 사용)
        *
        * @param encryptedPDF 암호화된 PDF 정보
        * @param ownerPassword 임대인 패스워드 (선택)
@@ -368,8 +320,8 @@ public class EncryptionUtil {
 
       // ==================== PDF 직접 암호화 (iText) ====================
 
-      /** PDF 파일에 직접 암호를 설정하여 암호화 */
-      public static byte[] encryptPDFWithPassword(
+      /** PDF 파일에 직접 암호를 설정하여 암호화 (내부 사용용) */
+      private byte[] encryptPDFWithPasswordInternal(
               byte[] pdfData, String userPassword, String ownerPassword) throws Exception {
           log.info("Encrypting PDF with user password protection");
 
@@ -385,13 +337,10 @@ public class EncryptionUtil {
 
               // 암호 설정 - 사용자 암호와 소유자 암호
               writerProperties.setStandardEncryption(
-                      userPassword != null ? userPassword.getBytes() : null, // 사용자 암호 (열기용)
-                      ownerPassword != null
-                              ? ownerPassword.getBytes()
-                              : userPassword.getBytes(), // 소유자 암호 (권한용)
-                      EncryptionConstants.ALLOW_PRINTING | EncryptionConstants.ALLOW_COPY, // 권한 설정
-                      EncryptionConstants.ENCRYPTION_AES_128 // AES 128 암호화
-                      );
+                      userPassword != null ? userPassword.getBytes() : null,
+                      ownerPassword != null ? ownerPassword.getBytes() : userPassword.getBytes(),
+                      EncryptionConstants.ALLOW_PRINTING | EncryptionConstants.ALLOW_COPY,
+                      EncryptionConstants.ENCRYPTION_AES_128);
 
               PdfWriter writer = new PdfWriter(outputStream, writerProperties);
               PdfDocument pdfDoc = new PdfDocument(reader, writer);
@@ -413,74 +362,22 @@ public class EncryptionUtil {
           }
       }
 
-      /** PDF 파일에 사용자 암호만 설정 (간단한 버전) */
-      public static byte[] encryptPDFWithUserPassword(byte[] pdfData, String password)
-              throws Exception {
-          return encryptPDFWithPassword(pdfData, password, password);
-      }
-
-      /** PDF 파일에 암호 설정 + 편집 제한 (보기/인쇄 가능, 편집 불가) */
-      public static byte[] encryptPDFWithEditRestriction(byte[] pdfData, String userPassword)
-              throws Exception {
-          log.info("Encrypting PDF with user password and edit restrictions");
-
-          try {
-              // 입력 PDF 읽기
-              PdfReader reader = new PdfReader(new ByteArrayInputStream(pdfData));
-
-              // 출력 스트림 준비
-              ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-              // 암호화 설정
-              WriterProperties writerProperties = new WriterProperties();
-
-              // 편집 제한: 보기/인쇄는 가능, 편집/복사/주석 불가
-              writerProperties.setStandardEncryption(
-                      userPassword.getBytes(), // 사용자 암호 (열기용)
-                      userPassword.getBytes(), // 소유자 암호 (사용자 암호와 동일)
-                      EncryptionConstants.ALLOW_PRINTING
-                              | EncryptionConstants.ALLOW_SCREENREADERS, // 권한: 인쇄 + 화면 읽기만 허용
-                      EncryptionConstants.ENCRYPTION_AES_128 // AES 128 암호화
-                      );
-
-              PdfWriter writer = new PdfWriter(outputStream, writerProperties);
-              PdfDocument pdfDoc = new PdfDocument(reader, writer);
-
-              // PDF 문서 닫기 (자동으로 암호화됨)
-              pdfDoc.close();
-              reader.close();
-
-              byte[] encryptedPdf = outputStream.toByteArray();
-              log.info(
-                      "PDF encrypted successfully with edit restrictions, size: {} bytes",
-                      encryptedPdf.length);
-
-              return encryptedPdf;
-
-          } catch (Exception e) {
-              log.error("Failed to encrypt PDF with edit restrictions: {}", e.getMessage(), e);
-              throw new Exception(
-                      "PDF encryption with edit restrictions failed: " + e.getMessage(), e);
-          }
-      }
-
-      /** PDF 암호화 상태 확인 */
-      public static boolean isPDFEncrypted(byte[] pdfData) {
-          try {
-              PdfReader reader = new PdfReader(new ByteArrayInputStream(pdfData));
-              boolean isEncrypted = reader.isEncrypted();
-              reader.close();
-              return isEncrypted;
-          } catch (Exception e) {
-              log.warn("Could not check PDF encryption status: {}", e.getMessage());
-              return false;
-          }
-      }
-
-      /** 암호화된 PDF 복호화 (암호로 열기) */
-      public static byte[] decryptPDFWithPassword(byte[] encryptedPdfData, String password)
+      /** 암호화된 PDF 복호화 (내부 사용용) */
+      private byte[] decryptPDFWithPasswordInternal(byte[] encryptedPdfData, String password)
               throws Exception {
           log.info("Attempting to decrypt PDF with provided password");
+
+          // PDF 헤더 확인 (첫 4바이트가 %PDF 인지)
+          if (encryptedPdfData == null || encryptedPdfData.length < 4) {
+              throw new IllegalArgumentException("Invalid PDF data: file is empty or too small");
+          }
+
+          String header = new String(encryptedPdfData, 0, Math.min(4, encryptedPdfData.length));
+          if (!header.startsWith("%PDF")) {
+              log.error("File does not appear to be a PDF. First 4 bytes: {}", header);
+              throw new IllegalArgumentException(
+                      "File is not a valid PDF document. Please ensure you're uploading a PDF file.");
+          }
 
           try {
               // 암호를 사용하여 PDF 읽기
@@ -512,10 +409,294 @@ public class EncryptionUtil {
           }
       }
 
+      // ==================== MultipartFile 처리 메서드 ====================
+
+      /** PDF 파일 암호화 (메인 메서드 - MultipartFile 사용) */
+      public EncryptedPDF encryptPDF(
+              MultipartFile pdfFile, String ownerPassword, String tenantPassword) throws Exception {
+          log.info("Encrypting PDF from MultipartFile: {}", pdfFile.getOriginalFilename());
+
+          // 파일 유효성 검증
+          validateMultipartFile(pdfFile, "pdf");
+
+          // MultipartFile을 byte array로 변환
+          byte[] pdfData = pdfFile.getBytes();
+
+          // 내부 암호화 메서드 호출
+          EncryptedPDF result = encryptPDFInternal(pdfData, ownerPassword, tenantPassword);
+
+          // 파일 정보 추가
+          result.originalFilename = pdfFile.getOriginalFilename();
+          result.contentType = pdfFile.getContentType();
+
+          return result;
+      }
+
+      /** PDF 파일에 직접 암호 설정 (메인 메서드 - MultipartFile 사용) */
+      public byte[] encryptPDFWithPassword(
+              MultipartFile pdfFile, String userPassword, String ownerPassword) throws Exception {
+          log.info(
+                  "Encrypting PDF with password from MultipartFile: {}",
+                  pdfFile.getOriginalFilename());
+
+          // 파일 유효성 검증
+          validateMultipartFile(pdfFile, "pdf");
+
+          // MultipartFile을 byte array로 변환
+          byte[] pdfData = pdfFile.getBytes();
+
+          // PDF 암호화 수행
+          return encryptPDFWithPasswordInternal(pdfData, userPassword, ownerPassword);
+      }
+
+      /** 암호화된 PDF 복호화 (메인 메서드 - MultipartFile 사용) */
+      public byte[] decryptPDFWithPassword(MultipartFile encryptedPdfFile, String password)
+              throws Exception {
+          log.info(
+                  "Decrypting PDF with password from MultipartFile: {}",
+                  encryptedPdfFile.getOriginalFilename());
+
+          // 파일 유효성 검증
+          validateMultipartFile(encryptedPdfFile, "pdf");
+
+          // MultipartFile을 byte array로 변환
+          byte[] encryptedPdfData = encryptedPdfFile.getBytes();
+
+          // PDF 복호화 수행
+          return decryptPDFWithPasswordInternal(encryptedPdfData, password);
+      }
+
+      /** 이미지 MultipartFile 암호화 (서버 마스터 키 사용) */
+      public EncryptedImage encryptImageFromMultipartFile(MultipartFile imageFile) throws Exception {
+          log.info("Encrypting image from MultipartFile: {}", imageFile.getOriginalFilename());
+
+          // MultipartFile을 byte array로 변환
+          byte[] imageData = imageFile.getBytes();
+
+          // 원본 해시값
+          String originalHash = DigestUtils.sha256Hex(imageData);
+
+          // Salt와 IV 생성
+          byte[] salt = new byte[SALT_LENGTH];
+          byte[] iv = new byte[IV_LENGTH];
+          new SecureRandom().nextBytes(salt);
+          new SecureRandom().nextBytes(iv);
+
+          // 서버 마스터 키에서 키 도출
+          SecretKey key = deriveKeyFromPassword(serverMasterKey, Base64.encodeBase64String(salt));
+
+          // 암호화
+          Cipher cipher = Cipher.getInstance(AES_ALGORITHM_SIMPLE);
+          cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
+          byte[] encryptedData = cipher.doFinal(imageData);
+
+          // 결과 반환
+          EncryptedImage result = new EncryptedImage();
+          result.encryptedData = encryptedData;
+          result.iv = Base64.encodeBase64String(iv);
+          result.salt = Base64.encodeBase64String(salt);
+          result.originalHash = originalHash;
+          result.algorithm = AES_ALGORITHM_SIMPLE;
+          result.originalFilename = imageFile.getOriginalFilename();
+          result.contentType = imageFile.getContentType();
+
+          log.info(
+                  "Image encrypted successfully from MultipartFile, encrypted size: {} bytes",
+                  encryptedData.length);
+
+          return result;
+      }
+
+      /** PDF 파일에 사용자 암호만 설정 (메인 메서드 - MultipartFile 사용) */
+      public byte[] encryptPDFWithUserPassword(MultipartFile pdfFile, String password)
+              throws Exception {
+          log.info(
+                  "Encrypting PDF with user password from MultipartFile: {}",
+                  pdfFile.getOriginalFilename());
+
+          // 파일 유효성 검증
+          validateMultipartFile(pdfFile, "pdf");
+
+          // MultipartFile을 byte array로 변환
+          byte[] pdfData = pdfFile.getBytes();
+
+          // PDF 암호화 수행
+          return encryptPDFWithPasswordInternal(pdfData, password, password);
+      }
+
+      /** 데이터의 SHA-256 해시 계산 */
+      public String calculateHash(byte[] data) throws NoSuchAlgorithmException {
+          MessageDigest digest = MessageDigest.getInstance("SHA-256");
+          byte[] hash = digest.digest(data);
+          return Base64.encodeBase64String(hash);
+      }
+
+      /** 계약서 업로드 (메인 메서드 - MultipartFile 사용) */
+      public ContractKeyStatus uploadContract(
+              String fileId, MultipartFile pdfFile, String keyType, String password)
+              throws Exception {
+
+          // pdfFile이 null인 경우 - Step1: 첫 번째 키만 저장
+          if (pdfFile == null && "owner".equals(keyType)) {
+              log.info("Step 1: Saving first key only - fileId: {}, keyType: {}", fileId, keyType);
+              return saveFirstKeyOnly(fileId, keyType, password);
+          }
+
+          // pdfFile이 있는 경우 - Step2: PDF 파일과 두 번째 키 저장
+          if (pdfFile != null && "tenant".equals(keyType)) {
+              log.info(
+                      "Step 2: Saving PDF file and second key - fileId: {}, keyType: {}",
+                      fileId,
+                      keyType);
+              return savePdfAndSecondKey(fileId, pdfFile, keyType, password);
+          }
+
+          // 기존 로직 (호환성 유지)
+          if (pdfFile == null) {
+              log.info("Adding second key - fileId: {}, keyType: {}", fileId, keyType);
+              ContractEncryptionResult result = addSecondKey(fileId, keyType, password);
+              return ContractKeyStatus.builder()
+                      .fileId(fileId)
+                      .status(result.getStatus())
+                      .message(result.getMessage())
+                      .encryptedPDF(result.getEncryptedPDF())
+                      .hasOwnerKey(true)
+                      .hasTenantKey(true)
+                      .build();
+          }
+
+          // 첫 번째 키 추가 (파일 업로드) - 기존 로직
+          log.info("Uploading contract from MultipartFile: {}", pdfFile.getOriginalFilename());
+          validateMultipartFile(pdfFile, "pdf");
+          byte[] pdfData = pdfFile.getBytes();
+          return uploadContractInternal(fileId, pdfData, keyType, password);
+      }
+
+      /** Step1: 첫 번째 패스워드만 저장 (PDF 파일 없이) */
+      private ContractKeyStatus saveFirstKeyOnly(String fileId, String keyType, String password)
+              throws Exception {
+          String redisKey = String.format(REDIS_KEY_PATTERN, fileId);
+
+          log.info("Saving first key only - fileId: {}, keyType: {}", fileId, keyType);
+
+          ContractKeys contractKeys = new ContractKeys();
+          contractKeys.setCreatedTimestamp(new Date());
+          contractKeys.setOwnerKey(password);
+          contractKeys.setStatus("WAITING_PDF_AND_TENANT_KEY");
+
+          // Redis에 저장
+          redisTemplate.opsForValue().set(redisKey, contractKeys, 60L, TimeUnit.MINUTES);
+
+          return ContractKeyStatus.builder()
+                  .fileId(fileId)
+                  .status("WAITING_PDF_AND_TENANT_KEY")
+                  .message("First key saved. Waiting for PDF file and second key.")
+                  .hasOwnerKey(true)
+                  .hasTenantKey(false)
+                  .build();
+      }
+
+      /** Step2: PDF 파일과 두 번째 패스워드 저장 및 암호화 수행 */
+      private ContractKeyStatus savePdfAndSecondKey(
+              String fileId, MultipartFile pdfFile, String keyType, String password)
+              throws Exception {
+          String redisKey = String.format(REDIS_KEY_PATTERN, fileId);
+
+          log.info("Saving PDF and second key - fileId: {}, keyType: {}", fileId, keyType);
+
+          // Redis에서 기존 데이터 조회
+          ContractKeys existingKeys = (ContractKeys) redisTemplate.opsForValue().get(redisKey);
+          if (existingKeys == null) {
+              throw new IllegalArgumentException(
+                      "Contract not found. Please complete Step 1 first: " + fileId);
+          }
+
+          // 파일 유효성 검증
+          validateMultipartFile(pdfFile, "pdf");
+          byte[] pdfData = pdfFile.getBytes();
+
+          // PDF 데이터와 두 번째 키 추가
+          existingKeys.setPdfData(Base64.encodeBase64String(pdfData));
+          existingKeys.setTenantKey(password);
+          existingKeys.setStatus("READY_FOR_ENCRYPTION");
+
+          // Redis 업데이트
+          redisTemplate.opsForValue().set(redisKey, existingKeys, 60L, TimeUnit.MINUTES);
+
+          // 두 키가 모두 있으므로 암호화 수행
+          if (existingKeys.getOwnerKey() != null && existingKeys.getTenantKey() != null) {
+              log.info("Both keys present. Performing 2-of-3 encryption");
+
+              EncryptedPDF encryptedPDF =
+                      encryptPDFInternal(
+                              pdfData, existingKeys.getOwnerKey(), existingKeys.getTenantKey());
+
+              // Redis에서 삭제 (암호화 완료)
+              redisTemplate.delete(redisKey);
+
+              return ContractKeyStatus.builder()
+                      .fileId(fileId)
+                      .status("ENCRYPTION_COMPLETE")
+                      .message("PDF encrypted successfully with 2-of-3 scheme")
+                      .encryptedPDF(encryptedPDF)
+                      .hasOwnerKey(true)
+                      .hasTenantKey(true)
+                      .build();
+          }
+
+          return ContractKeyStatus.builder()
+                  .fileId(fileId)
+                  .status("ERROR")
+                  .message("Unexpected state")
+                  .hasOwnerKey(true)
+                  .hasTenantKey(true)
+                  .build();
+      }
+
+      /** 두 번째 키 추가 및 자동 암호화 (결과에 파일 정보 포함) */
+      public ContractEncryptionResult addSecondKeyWithFileInfo(
+              String fileId, String keyType, String password, String originalFilename)
+              throws Exception {
+
+          // 기존 메서드 호출
+          ContractEncryptionResult result = addSecondKey(fileId, keyType, password);
+
+          // 암호화가 완료된 경우 파일 정보 추가
+          if (result.getEncryptedPDF() != null) {
+              result.getEncryptedPDF().originalFilename = originalFilename;
+              result.getEncryptedPDF().contentType = "application/pdf";
+          }
+
+          return result;
+      }
+
+      /** MultipartFile 유효성 검증 헬퍼 메서드 */
+      private void validateMultipartFile(MultipartFile file, String expectedType)
+              throws IllegalArgumentException {
+          if (file == null || file.isEmpty()) {
+              throw new IllegalArgumentException("File is empty or null");
+          }
+
+          String contentType = file.getContentType();
+          if (contentType == null) {
+              throw new IllegalArgumentException("File content type is null");
+          }
+
+          if (expectedType.equals("pdf") && !contentType.toLowerCase().contains("pdf")) {
+              throw new IllegalArgumentException("File is not a PDF. Content type: " + contentType);
+          }
+
+          if (expectedType.equals("image") && !contentType.toLowerCase().startsWith("image/")) {
+              throw new IllegalArgumentException(
+                      "File is not an image. Content type: " + contentType);
+          }
+      }
+
       // ==================== 이미지 암호화 (AES) ====================
 
-      /** 이미지 파일 암호화 */
-      public static EncryptedImage encryptImage(byte[] imageData, String password) throws Exception {
+      /** 이미지 파일 암호화 (내부 사용용 byte[] 버전) */
+      private EncryptedImage encryptImageInternal(byte[] imageData, String password)
+              throws Exception {
           // 원본 해시값
           String originalHash = DigestUtils.sha256Hex(imageData);
 
@@ -544,9 +725,8 @@ public class EncryptionUtil {
           return result;
       }
 
-      /** 이미지 파일 복호화 */
-      public static byte[] decryptImage(EncryptedImage encryptedImage, String password)
-              throws Exception {
+      /** 이미지 파일 복호화 (EncryptedImage 객체 사용) */
+      public byte[] decryptImage(EncryptedImage encryptedImage, String password) throws Exception {
           // Salt와 IV 디코딩
           byte[] salt = Base64.decodeBase64(encryptedImage.salt);
           byte[] iv = Base64.decodeBase64(encryptedImage.iv);
@@ -554,8 +734,14 @@ public class EncryptionUtil {
           // 패스워드에서 키 도출
           SecretKey key = deriveKeyFromPassword(password, Base64.encodeBase64String(salt));
 
+          // 알고리즘 설정 (null이면 기본값 사용)
+          String algorithm = encryptedImage.algorithm;
+          if (algorithm == null || algorithm.isEmpty()) {
+              algorithm = "AES/CBC/PKCS5Padding";
+          }
+
           // 복호화
-          Cipher cipher = Cipher.getInstance(encryptedImage.algorithm);
+          Cipher cipher = Cipher.getInstance(algorithm);
           cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
           byte[] decryptedData = cipher.doFinal(encryptedImage.encryptedData);
 
@@ -570,13 +756,13 @@ public class EncryptionUtil {
 
       // ==================== 헬퍼 메서드 ====================
 
-      private static SecretKey generateAESKey() throws NoSuchAlgorithmException {
+      private SecretKey generateAESKey() throws NoSuchAlgorithmException {
           KeyGenerator keyGen = KeyGenerator.getInstance("AES");
           keyGen.init(AES_KEY_SIZE);
           return keyGen.generateKey();
       }
 
-      private static SecretKey deriveKeyFromPassword(String password, String salt) throws Exception {
+      private SecretKey deriveKeyFromPassword(String password, String salt) throws Exception {
           System.out.println(
                   "DEBUG: Deriving key from password - Password: " + password + ", Salt: " + salt);
 
@@ -601,7 +787,7 @@ public class EncryptionUtil {
           return key;
       }
 
-      private static EncryptedShare encryptShare(byte[] share, SecretKey key) throws Exception {
+      private EncryptedShare encryptShare(byte[] share, SecretKey key) throws Exception {
           byte[] iv = new byte[GCM_IV_LENGTH];
           new SecureRandom().nextBytes(iv);
 
@@ -626,7 +812,7 @@ public class EncryptionUtil {
           return result;
       }
 
-      private static byte[] decryptShare(EncryptedShare encShare, SecretKey key) throws Exception {
+      private byte[] decryptShare(EncryptedShare encShare, SecretKey key) throws Exception {
           byte[] encryptedData = Base64.decodeBase64(encShare.data);
           byte[] iv = Base64.decodeBase64(encShare.iv);
 
@@ -718,6 +904,7 @@ public class EncryptionUtil {
           private Date createdTimestamp;
           private boolean hasOwnerKey;
           private boolean hasTenantKey;
+          private EncryptedPDF encryptedPDF;
 
           public static ContractKeyStatusBuilder builder() {
               return new ContractKeyStatusBuilder();
@@ -756,6 +943,11 @@ public class EncryptionUtil {
                   return this;
               }
 
+              public ContractKeyStatusBuilder encryptedPDF(EncryptedPDF encryptedPDF) {
+                  status.encryptedPDF = encryptedPDF;
+                  return this;
+              }
+
               public ContractKeyStatus build() {
                   return status;
               }
@@ -784,6 +976,10 @@ public class EncryptionUtil {
 
           public boolean isHasTenantKey() {
               return hasTenantKey;
+          }
+
+          public EncryptedPDF getEncryptedPDF() {
+              return encryptedPDF;
           }
       }
 
@@ -853,6 +1049,8 @@ public class EncryptionUtil {
           public int threshold;
           public int totalShares;
           public Date encryptionTimestamp;
+          public String originalFilename; // 원본 파일명
+          public String contentType; // MIME 타입
       }
 
       /** 암호화된 이미지 정보 */
@@ -862,11 +1060,28 @@ public class EncryptionUtil {
           public String salt;
           public String originalHash;
           public String algorithm;
+          public String originalFilename; // 원본 파일명
+          public String contentType; // MIME 타입
       }
 
       /** 암호화된 Share */
       public static class EncryptedShare {
           public String data;
           public String iv;
+      }
+
+      /**
+       * Redis에서 계약 ID에 대한 키 존재 여부 확인
+       *
+       * @param contractChatId 계약 채팅 ID
+       * @return 키 존재 여부 (true: 키가 존재함, false: 키가 없음)
+       */
+      public boolean hasKey(String contractChatId) {
+          if (contractChatId == null || contractChatId.trim().isEmpty()) {
+              return false;
+          }
+
+          String redisKey = String.format(REDIS_KEY_PATTERN, contractChatId);
+          return Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
       }
 }

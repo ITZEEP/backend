@@ -1,13 +1,12 @@
 package org.scoula.global.auth.config;
 
-import java.util.List;
-
 import org.scoula.global.auth.filter.AuthenticationErrorFilter;
 import org.scoula.global.auth.filter.JwtAuthenticationFilter;
 import org.scoula.global.auth.filter.JwtUsernamePasswordAuthenticationFilter;
 import org.scoula.global.auth.handler.CustomAccessDeniedHandler;
 import org.scoula.global.auth.handler.CustomAuthenticationEntryPoint;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.scoula.global.auth.handler.LoginFailureHandler;
+import org.scoula.global.auth.handler.LoginSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -24,10 +23,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CharacterEncodingFilter;
-import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
 import lombok.RequiredArgsConstructor;
@@ -48,8 +44,8 @@ public class SecurityConfig {
       private final CustomAccessDeniedHandler accessDeniedHandler;
       private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
-      @Autowired
-      private JwtUsernamePasswordAuthenticationFilter jwtUsernamePasswordAuthenticationFilter;
+      private final LoginSuccessHandler loginSuccessHandler;
+      private final LoginFailureHandler loginFailureHandler;
 
       @Bean
       public PasswordEncoder passwordEncoder() {
@@ -78,6 +74,8 @@ public class SecurityConfig {
                   .disable()
                   .csrf()
                   .disable()
+                  // .cors() // Nginx에서 CORS 처리하므로 비활성화
+                  // .and()
                   .formLogin()
                   .disable()
                   .sessionManagement()
@@ -95,6 +93,7 @@ public class SecurityConfig {
                                           .permitAll()
                                           // 공개 API
                                           .requestMatchers(
+                                                  new AntPathRequestMatcher("/"), // 루트 경로
                                                   new AntPathRequestMatcher(
                                                           "/api", HttpMethod.GET.name()),
                                                   new AntPathRequestMatcher("/api/health"),
@@ -102,8 +101,18 @@ public class SecurityConfig {
                                                   new AntPathRequestMatcher("/api/auth/signup"),
                                                   new AntPathRequestMatcher("/api/auth/refresh"),
                                                   new AntPathRequestMatcher("/api/auth/oauth/**"),
+                                                  new AntPathRequestMatcher(
+                                                          "/oauth2/**"), // OAuth2 엔드포인트 추가
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/**"), // 매물 조회는 인증 불필요
+                                                  new AntPathRequestMatcher(
+                                                          "/ws/**"), // WebSocket 엔드포인트
+                                                  new AntPathRequestMatcher(
+                                                          "/ws/info"), // WebSocket info
+                                                  new AntPathRequestMatcher("/swagger-ui.html"),
                                                   new AntPathRequestMatcher("/swagger-ui/**"),
                                                   new AntPathRequestMatcher("/v2/api-docs"),
+                                                  new AntPathRequestMatcher("/v2/api-docs/**"),
                                                   new AntPathRequestMatcher("/swagger-resources/**"),
                                                   new AntPathRequestMatcher("/webjars/**"))
                                           .permitAll()
@@ -113,16 +122,15 @@ public class SecurityConfig {
                                           .authenticated()
                                           // 나머지 모든 요청은 인증 필요
                                           .anyRequest()
-                                          .permitAll())
+                                          .authenticated())
                   // 필터 설정
-                  .addFilter(corsFilter())
                   .addFilterBefore(encodingFilter(), CsrfFilter.class)
                   .addFilterBefore(
                           authenticationErrorFilter, UsernamePasswordAuthenticationFilter.class)
                   .addFilterBefore(
                           jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                   .addFilterBefore(
-                          jwtUsernamePasswordAuthenticationFilter,
+                          jwtUsernamePasswordAuthenticationFilter(http),
                           UsernamePasswordAuthenticationFilter.class)
 
                   // 예외처리 설정
@@ -145,18 +153,10 @@ public class SecurityConfig {
                   .build();
       }
 
-      @Bean
-      public CorsFilter corsFilter() {
-
-          UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-          CorsConfiguration config = new CorsConfiguration();
-
-          config.setAllowCredentials(true);
-          config.addAllowedOriginPattern("*");
-          config.addAllowedHeader("*");
-          config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-          source.registerCorsConfiguration("/**", config);
-
-          return new CorsFilter(source);
+      // 순환 참조 해결을 위해 메서드로 생성
+      public JwtUsernamePasswordAuthenticationFilter jwtUsernamePasswordAuthenticationFilter(
+              HttpSecurity http) throws Exception {
+          return new JwtUsernamePasswordAuthenticationFilter(
+                  authenticationManager(http), loginSuccessHandler, loginFailureHandler);
       }
 }

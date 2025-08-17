@@ -40,7 +40,7 @@ public class SwaggerConfig {
       @Bean
       public Docket api() {
           return new Docket(DocumentationType.SWAGGER_2)
-                  .host("localhost:8080") // 명시적 호스트 설정
+                  // .host() 제거 - 자동으로 현재 호스트 사용
                   .select()
                   .apis(RequestHandlerSelectors.basePackage("org.scoula"))
                   .paths(PathSelectors.any())
