@@ -2,11 +2,12 @@ package org.scoula.domain.chat.dto;
 
 import lombok.*;
 
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class FinalContractModificationResponseDto {
+public class FinalContractDeletionResponseDto {
       private boolean accepted;
 }

@@ -2,7 +2,7 @@ package org.scoula.domain.precontract.service;
 
 import org.scoula.domain.precontract.dto.tenant.*;
 
-public interface PreContractService {
+public interface TenantPreContractService {
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 

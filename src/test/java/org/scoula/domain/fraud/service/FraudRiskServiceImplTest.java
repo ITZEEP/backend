@@ -22,12 +22,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
 import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
+import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.response.DocumentAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.LikedHomeResponse;
 import org.scoula.domain.fraud.dto.response.RiskAnalysisResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckDetailResponse;
 import org.scoula.domain.fraud.dto.response.RiskCheckListResponse;
+import org.scoula.domain.fraud.dto.response.RiskCheckSummaryResponse;
 import org.scoula.domain.fraud.enums.AnalysisStatus;
 import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudRiskException;
@@ -237,6 +239,79 @@ class FraudRiskServiceImplTest {
                       .isInstanceOf(FraudRiskException.class)
                       .hasMessageContaining("문서 분석 중 오류가 발생했습니다: S3 업로드 실패");
           }
+
+          @Test
+          @DisplayName("homeId가 null인 경우 검증 생략하고 성공")
+          void analyzeDocuments_NullHomeId_Success() throws Exception {
+              // given
+              when(s3Service.uploadFile(any(MultipartFile.class), anyString()))
+                      .thenReturn("file-key-1", "file-key-2");
+              when(s3Service.getFileUrl(anyString()))
+                      .thenReturn("https://s3.url/file1", "https://s3.url/file2");
+
+              RegistryDocumentDto mockRegistryDoc =
+                      RegistryDocumentDto.builder().regionAddress("서울시 강남구").ownerName("홍길동").build();
+              BuildingDocumentDto mockBuildingDoc =
+                      BuildingDocumentDto.builder()
+                              .siteLocation("서울시 강남구")
+                              .totalFloorArea(100.0)
+                              .build();
+
+              when(aiFraudAnalyzerService.parseRegistryDocument(any(MultipartFile.class)))
+                      .thenReturn(mockRegistryDoc);
+              when(aiFraudAnalyzerService.parseBuildingDocument(any(MultipartFile.class)))
+                      .thenReturn(mockBuildingDoc);
+
+              // when
+              DocumentAnalysisResponse response =
+                      fraudRiskService.analyzeDocuments(
+                              userId, validRegistryFile, validBuildingFile, null);
+
+              // then
+              assertThat(response).isNotNull();
+              assertThat(response.getHomeId()).isNull();
+              assertThat(response.getRegistryAnalysisStatus())
+                      .isEqualTo(AnalysisStatus.SUCCESS.name());
+
+              verify(fraudRiskMapper, never()).existsHome(anyLong());
+          }
+
+          @Test
+          @DisplayName("파일명이 null인 경우 예외 발생")
+          void analyzeDocuments_NullFileName_ThrowsException() {
+              // given
+              MultipartFile fileWithNullName =
+                      new MockMultipartFile(
+                              "registryFile", null, "application/pdf", "content".getBytes());
+
+              // when & then
+              assertThatThrownBy(
+                              () ->
+                                      fraudRiskService.analyzeDocuments(
+                                              userId, fileWithNullName, validBuildingFile, homeId))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("PDF 파일만 업로드 가능합니다");
+          }
+
+          @Test
+          @DisplayName("파일명에 확장자가 없는 경우 예외 발생")
+          void analyzeDocuments_NoExtension_ThrowsException() {
+              // given
+              MultipartFile fileWithoutExtension =
+                      new MockMultipartFile(
+                              "registryFile", "filename", "application/pdf", "content".getBytes());
+
+              // when & then
+              assertThatThrownBy(
+                              () ->
+                                      fraudRiskService.analyzeDocuments(
+                                              userId,
+                                              fileWithoutExtension,
+                                              validBuildingFile,
+                                              homeId))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("PDF 파일만 업로드 가능합니다");
+          }
       }
 
       @Nested
@@ -329,6 +404,66 @@ class FraudRiskServiceImplTest {
               assertThatThrownBy(() -> fraudRiskService.analyzeRisk(userId, request))
                       .isInstanceOf(FraudRiskException.class)
                       .hasMessageContaining("위험도 분석 중 오류가 발생했습니다");
+          }
+
+          @Test
+          @DisplayName("homeId가 null인 경우 예외 발생")
+          void analyzeRisk_NullHomeId_ThrowsException() {
+              // given
+              RiskAnalysisRequest invalidRequest =
+                      RiskAnalysisRequest.builder()
+                              .homeId(null)
+                              .registryFileUrl("https://s3.url/registry.pdf")
+                              .buildingFileUrl("https://s3.url/building.pdf")
+                              .build();
+
+              // when & then
+              assertThatThrownBy(() -> fraudRiskService.analyzeRisk(userId, invalidRequest))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("유효한 매물 ID가 필요합니다");
+          }
+
+          @Test
+          @DisplayName("homeId가 0 이하인 경우 예외 발생")
+          void analyzeRisk_InvalidHomeId_ThrowsException() {
+              // given
+              RiskAnalysisRequest invalidRequest =
+                      RiskAnalysisRequest.builder()
+                              .homeId(-1L)
+                              .registryFileUrl("https://s3.url/registry.pdf")
+                              .buildingFileUrl("https://s3.url/building.pdf")
+                              .build();
+
+              // when & then
+              assertThatThrownBy(() -> fraudRiskService.analyzeRisk(userId, invalidRequest))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("유효한 매물 ID가 필요합니다");
+          }
+
+          @Test
+          @DisplayName("AI 서비스에서 FraudRiskException 발생 시 그대로 전파")
+          void analyzeRisk_FraudRiskExceptionFromAi_PropagatesException() {
+              // given
+              doAnswer(
+                              invocation -> {
+                                  RiskCheckVO arg = invocation.getArgument(0);
+                                  arg.setRiskckId(1L);
+                                  return null;
+                              })
+                      .when(fraudRiskMapper)
+                      .insertRiskCheck(any(RiskCheckVO.class));
+
+              when(aiFraudAnalyzerService.analyzeFraudRisk(anyLong(), any(RiskAnalysisRequest.class)))
+                      .thenThrow(
+                              new FraudRiskException(
+                                      org.scoula.domain.fraud.exception.FraudErrorCode
+                                              .AI_SERVICE_UNAVAILABLE,
+                                      "AI 서비스 불가"));
+
+              // when & then
+              assertThatThrownBy(() -> fraudRiskService.analyzeRisk(userId, request))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("AI 서비스 불가");
           }
       }
 
@@ -568,6 +703,283 @@ class FraudRiskServiceImplTest {
               assertThat(response.getContent()).hasSize(1);
               assertThat(response.getTotalElements()).isEqualTo(1);
               assertThat(response.getContent().get(0).getHomeId()).isEqualTo(200L);
+          }
+      }
+
+      @Nested
+      @DisplayName("analyzeExternalRisk 메서드 테스트")
+      class AnalyzeExternalRiskTest {
+
+          private Long userId;
+          private ExternalRiskAnalysisRequest request;
+
+          @BeforeEach
+          void setUp() {
+              userId = 1L;
+              // Mock documents for the request
+              RegistryDocumentDto mockRegistryDoc =
+                      RegistryDocumentDto.builder().regionAddress("서울시 강남구").ownerName("홍길동").build();
+
+              BuildingDocumentDto mockBuildingDoc =
+                      BuildingDocumentDto.builder()
+                              .siteLocation("서울시 강남구")
+                              .totalFloorArea(100.0)
+                              .build();
+
+              request =
+                      ExternalRiskAnalysisRequest.builder()
+                              .address("서울시 강남구 테헤란로 123")
+                              .propertyPrice(300000000L)
+                              .leaseType("JEONSE")
+                              .residenceType("APARTMENT")
+                              .registeredUserName("홍길동")
+                              .monthlyRent(0L)
+                              .registryFileUrl("https://s3.url/registry.pdf")
+                              .buildingFileUrl("https://s3.url/building.pdf")
+                              .registryDocument(mockRegistryDoc)
+                              .buildingDocument(mockBuildingDoc)
+                              .build();
+          }
+
+          @Test
+          @DisplayName("서비스 외 매물 위험도 분석 성공")
+          void analyzeExternalRisk_Success() {
+              // given
+              FraudRiskCheckDto.Response aiResponse =
+                      FraudRiskCheckDto.Response.builder()
+                              .status("SUCCESS")
+                              .riskScore(15.0)
+                              .riskLevel("LOW")
+                              .analysisId("external-analysis-id")
+                              .build();
+
+              when(aiFraudAnalyzerService.analyzeFraudRisk(
+                              anyLong(), any(ExternalRiskAnalysisRequest.class)))
+                      .thenReturn(aiResponse);
+              when(aiFraudAnalyzerService.determineRiskType(any(FraudRiskCheckDto.Response.class)))
+                      .thenReturn(RiskType.SAFE);
+
+              // when
+              RiskAnalysisResponse response = fraudRiskService.analyzeExternalRisk(userId, request);
+
+              // then
+              assertThat(response).isNotNull();
+              assertThat(response.getRiskCheckId()).isNull(); // 서비스 외 매물은 DB에 저장하지 않으므로 null
+              assertThat(response.getRiskType()).isEqualTo(RiskType.SAFE);
+              assertThat(response.getAnalyzedAt()).isNotNull();
+              assertThat(response.getDetailGroups()).isNotNull();
+
+              verify(aiFraudAnalyzerService).analyzeFraudRisk(userId, request);
+              verify(aiFraudAnalyzerService).determineRiskType(aiResponse);
+          }
+
+          @Test
+          @DisplayName("AI 서비스 오류 시 예외 발생")
+          void analyzeExternalRisk_AiServiceError_ThrowsException() {
+              // given
+              when(aiFraudAnalyzerService.analyzeFraudRisk(
+                              anyLong(), any(ExternalRiskAnalysisRequest.class)))
+                      .thenThrow(new RuntimeException("AI 서비스 오류"));
+
+              // when & then
+              assertThatThrownBy(() -> fraudRiskService.analyzeExternalRisk(userId, request))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("AI 분석 중 오류가 발생했습니다");
+          }
+
+          @Test
+          @DisplayName("AI 응답이 null인 경우 기본값으로 처리")
+          void analyzeExternalRisk_NullAiResponse_Success() {
+              // given
+              when(aiFraudAnalyzerService.analyzeFraudRisk(
+                              anyLong(), any(ExternalRiskAnalysisRequest.class)))
+                      .thenReturn(null);
+              when(aiFraudAnalyzerService.determineRiskType(any())).thenReturn(RiskType.WARN);
+
+              // when
+              RiskAnalysisResponse response = fraudRiskService.analyzeExternalRisk(userId, request);
+
+              // then
+              assertThat(response).isNotNull();
+              assertThat(response.getRiskCheckId()).isNull();
+              assertThat(response.getRiskType()).isEqualTo(RiskType.WARN);
+              assertThat(response.getAnalyzedAt()).isNotNull();
+          }
+
+          @Test
+          @DisplayName("일반 예외 발생 시 FraudRiskException으로 래핑")
+          void analyzeExternalRisk_GeneralException_ThrowsWrappedException() {
+              // given
+              when(aiFraudAnalyzerService.analyzeFraudRisk(
+                              anyLong(), any(ExternalRiskAnalysisRequest.class)))
+                      .thenThrow(new IllegalArgumentException("잘못된 인자"));
+
+              // when & then
+              assertThatThrownBy(() -> fraudRiskService.analyzeExternalRisk(userId, request))
+                      .isInstanceOf(FraudRiskException.class)
+                      .hasMessageContaining("AI 분석 중 오류가 발생했습니다");
+          }
+      }
+
+      @Nested
+      @DisplayName("getTodayRiskCheckSummary 메서드 테스트")
+      class GetTodayRiskCheckSummaryTest {
+
+          private Long userId;
+          private Long homeId;
+          private Long riskCheckId;
+
+          @BeforeEach
+          void setUp() {
+              userId = 1L;
+              homeId = 100L;
+              riskCheckId = 10L;
+          }
+
+          @Test
+          @DisplayName("오늘 분석한 위험도 체크 요약 조회 성공")
+          void getTodayRiskCheckSummary_Success() {
+              // given
+              when(fraudRiskMapper.selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any()))
+                      .thenReturn(riskCheckId);
+
+              RiskCheckVO mockRiskCheck =
+                      RiskCheckVO.builder()
+                              .riskckId(riskCheckId)
+                              .userId(userId)
+                              .homeId(homeId)
+                              .riskType(RiskType.SAFE)
+                              .build();
+              when(fraudRiskMapper.selectRiskCheckById(riskCheckId)).thenReturn(mockRiskCheck);
+
+              List<RiskCheckDetailVO> mockDetails =
+                      Arrays.asList(
+                              RiskCheckDetailVO.builder()
+                                      .title1("기본정보")
+                                      .title2("소유자 정보")
+                                      .content("등기부등본의 소유자와 임대인 정보가 일치합니다.")
+                                      .build(),
+                              RiskCheckDetailVO.builder()
+                                      .title1("추천사항")
+                                      .title2("AI 분석 기반 추천")
+                                      .content("안전한 거래입니다.")
+                                      .build());
+              when(fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId))
+                      .thenReturn(mockDetails);
+
+              // when
+              RiskCheckSummaryResponse response =
+                      fraudRiskService.getTodayRiskCheckSummary(userId, homeId);
+
+              // then
+              assertThat(response).isNotNull();
+              assertThat(response.getRiskCheckId()).isEqualTo(riskCheckId);
+              assertThat(response.getRiskType()).isEqualTo(RiskType.SAFE.name());
+              assertThat(response.getDetailGroups()).hasSize(2);
+
+              // 첫 번째 그룹 검증
+              RiskCheckSummaryResponse.DetailGroup firstGroup = response.getDetailGroups().get(0);
+              assertThat(firstGroup.getTitle()).isEqualTo("기본정보");
+              assertThat(firstGroup.getItems()).hasSize(1);
+              assertThat(firstGroup.getItems().get(0).getTitle()).isEqualTo("소유자 정보");
+
+              verify(fraudRiskMapper).selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any());
+              verify(fraudRiskMapper).selectRiskCheckById(riskCheckId);
+              verify(fraudRiskMapper).selectRiskCheckDetailByRiskCheckId(riskCheckId);
+          }
+
+          @Test
+          @DisplayName("오늘 분석한 위험도 체크가 없는 경우 null 반환")
+          void getTodayRiskCheckSummary_NoTodayCheck_ReturnsNull() {
+              // given
+              when(fraudRiskMapper.selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any()))
+                      .thenReturn(null);
+
+              // when
+              RiskCheckSummaryResponse response =
+                      fraudRiskService.getTodayRiskCheckSummary(userId, homeId);
+
+              // then
+              assertThat(response).isNull();
+              verify(fraudRiskMapper).selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any());
+              verify(fraudRiskMapper, never()).selectRiskCheckById(anyLong());
+          }
+
+          @Test
+          @DisplayName("위험도 체크 정보가 없는 경우 null 반환")
+          void getTodayRiskCheckSummary_NoRiskCheck_ReturnsNull() {
+              // given
+              when(fraudRiskMapper.selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any()))
+                      .thenReturn(riskCheckId);
+              when(fraudRiskMapper.selectRiskCheckById(riskCheckId)).thenReturn(null);
+
+              // when
+              RiskCheckSummaryResponse response =
+                      fraudRiskService.getTodayRiskCheckSummary(userId, homeId);
+
+              // then
+              assertThat(response).isNull();
+              verify(fraudRiskMapper).selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any());
+              verify(fraudRiskMapper).selectRiskCheckById(riskCheckId);
+              verify(fraudRiskMapper, never()).selectRiskCheckDetailByRiskCheckId(anyLong());
+          }
+
+          @Test
+          @DisplayName("상세 정보가 없는 경우에도 기본 정보 반환")
+          void getTodayRiskCheckSummary_NoDetails_ReturnsBasicInfo() {
+              // given
+              when(fraudRiskMapper.selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any()))
+                      .thenReturn(riskCheckId);
+
+              RiskCheckVO mockRiskCheck =
+                      RiskCheckVO.builder()
+                              .riskckId(riskCheckId)
+                              .userId(userId)
+                              .homeId(homeId)
+                              .riskType(RiskType.WARN)
+                              .build();
+              when(fraudRiskMapper.selectRiskCheckById(riskCheckId)).thenReturn(mockRiskCheck);
+
+              when(fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId))
+                      .thenReturn(Arrays.asList()); // 빈 리스트
+
+              // when
+              RiskCheckSummaryResponse response =
+                      fraudRiskService.getTodayRiskCheckSummary(userId, homeId);
+
+              // then
+              assertThat(response).isNotNull();
+              assertThat(response.getRiskCheckId()).isEqualTo(riskCheckId);
+              assertThat(response.getRiskType()).isEqualTo(RiskType.WARN.name());
+              assertThat(response.getDetailGroups()).isEmpty();
+          }
+
+          @Test
+          @DisplayName("다양한 위험도 타입 처리 확인")
+          void getTodayRiskCheckSummary_DifferentRiskTypes_Success() {
+              // given - DANGER 타입 테스트
+              when(fraudRiskMapper.selectTodayRiskCheckId(eq(userId), eq(homeId), any(), any()))
+                      .thenReturn(riskCheckId);
+
+              RiskCheckVO mockRiskCheck =
+                      RiskCheckVO.builder()
+                              .riskckId(riskCheckId)
+                              .userId(userId)
+                              .homeId(homeId)
+                              .riskType(RiskType.DANGER)
+                              .build();
+              when(fraudRiskMapper.selectRiskCheckById(riskCheckId)).thenReturn(mockRiskCheck);
+
+              when(fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId))
+                      .thenReturn(Arrays.asList());
+
+              // when
+              RiskCheckSummaryResponse response =
+                      fraudRiskService.getTodayRiskCheckSummary(userId, homeId);
+
+              // then
+              assertThat(response).isNotNull();
+              assertThat(response.getRiskType()).isEqualTo(RiskType.DANGER.name());
           }
       }
 }

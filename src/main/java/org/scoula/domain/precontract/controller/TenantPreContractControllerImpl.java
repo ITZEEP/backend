@@ -1,7 +1,7 @@
 package org.scoula.domain.precontract.controller;
 
 import org.scoula.domain.precontract.dto.tenant.*;
-import org.scoula.domain.precontract.service.PreContractService;
+import org.scoula.domain.precontract.service.TenantPreContractService;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 public class TenantPreContractControllerImpl implements TenantPreContractController {
 
-      private final PreContractService service;
+      private final TenantPreContractService service;
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 

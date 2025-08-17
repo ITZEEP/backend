@@ -17,6 +17,8 @@ public interface TenantPreContractMapper {
 
       Optional<Long> selectContractBuyerId(@Param("contractChatId") Long contractChatId);
 
+      Optional<Long> selectContractOwnerId(@Param("contractChatId") Long contractChatId);
+
       Optional<Long> selectBuyerId(@Param("contractChatId") Long contractChatId);
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================

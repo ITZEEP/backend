@@ -38,7 +38,8 @@ import lombok.RequiredArgsConstructor;
               "org.scoula.domain.precontract.controller",
               "org.scoula.domain.home.controller",
               "org.scoula.domain.mypage.controller",
-              "org.scoula.domain.contract.controller"
+              "org.scoula.domain.contract.controller",
+              "org.scoula.global.common.util.encryptionTest.controller"
           })
 @RequiredArgsConstructor
 public class ServletConfig implements WebMvcConfigurer {

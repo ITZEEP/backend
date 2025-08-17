@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import lombok.extern.log4j.Log4j2;
 
-/** 로깅 AOP 클래스 컸트롤러, 서비스, 매퍼 메서드의 실행 로그를 자동으로 기록합니다 */
+/** 로깅 AOP 클래스 컨트롤러, 서비스, 매퍼 메서드의 실행 로그를 자동으로 기록합니다 */
 @Aspect
 @Component
 @Log4j2
@@ -33,7 +33,7 @@ public class LoggingAspect {
           String className = joinPoint.getTarget().getClass().getSimpleName();
           Object[] args = joinPoint.getArgs();
 
-          log.info("==> 컸트롤러: {}.{}() 호출, 인수: {}", className, methodName, args);
+          log.info("==> 컨트롤러: {}.{}() 호출, 인수: {}", className, methodName, args);
       }
 
       @Around("serviceMethods()")
@@ -73,7 +73,7 @@ public class LoggingAspect {
           String className = joinPoint.getTarget().getClass().getSimpleName();
 
           log.info(
-                  "<== 컸트롤러: {}.{}() 반환: {}",
+                  "<== 컨트롤러: {}.{}() 반환: {}",
                   className,
                   methodName,
                   result != null ? result.getClass().getSimpleName() : "null");

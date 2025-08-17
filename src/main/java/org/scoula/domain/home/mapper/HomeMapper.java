@@ -10,6 +10,8 @@ import org.scoula.domain.home.vo.*;
 @Mapper
 public interface HomeMapper {
 
+      HomeVO findHomeById(@Param("id") Long id);
+
       // === 기본 매물 관리 ===
       // 매물 등록
       int insertHome(HomeVO home);

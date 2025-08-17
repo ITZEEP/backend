@@ -30,7 +30,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
       SecurityConfig.class,
       WebSocketConfig.class,
       RedisConfig.class,
-      OAuth2ManualConfig.class
+      OAuth2ManualConfig.class,
+      AsyncConfig.class
 })
 @ComponentScan(
           basePackages = {

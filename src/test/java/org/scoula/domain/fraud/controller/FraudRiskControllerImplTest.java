@@ -252,7 +252,7 @@ class FraudRiskControllerImplTest {
                       RiskAnalysisRequest.builder()
                               .homeId(100L)
                               .address("서울시 강남구")
-                              .propertyPrice(50000L)
+                              .propertyPrice(50000)
                               .leaseType("JEONSE")
                               .residenceType("APARTMENT")
                               .registeredUserName("홍길동")

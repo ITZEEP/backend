@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class RiskCheckDetailVO {
       // 데이터베이스 실제 컬럼
       private Long riskckId; // 외래키
+      private String riskLevel; // 위험 유형(SAFE, WARN, DANGER)
       private String title1;
       private String title2;
       private String content;
