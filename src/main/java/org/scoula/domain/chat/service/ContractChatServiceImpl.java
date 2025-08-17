@@ -2535,7 +2535,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           violationMessage.append(
                                   // 위반 내용
                                   String.format(
-                                          i + ". %s\n" + "\n",
+                                          (i+1) + ". %s\n" + "\n",
                                           violation.getViolationContent() != null
                                                   ? violation.getViolationContent()
                                                   : "정보 없음"));
