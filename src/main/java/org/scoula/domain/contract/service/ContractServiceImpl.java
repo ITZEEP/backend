@@ -233,7 +233,12 @@ public class ContractServiceImpl implements ContractService {
           long contract = ChronoUnit.YEARS.between(aiDto.getContractStartDate(), aiDto.getContractEndDate());
           String rentType = tenantMapper.selectRentTypeAll(contractChatId, userId)
                   .orElseThrow(() -> new BusinessException(ContractException.CONTRACT_GET, "전/월세 타입 조회 실패"));
-
+          String rentTypeKr;
+          if(rentType.equals("JEONSE")){
+              rentTypeKr = "전세";
+          }else{
+              rentTypeKr="월세";
+          }
           // 시작 메세지 보내기
           contractChatService.AiMessage(
                   contractChatId,
@@ -243,7 +248,7 @@ public class ContractServiceImpl implements ContractService {
       관리비는 %s입니다.
       """.formatted(
                           contract,
-                          rentType,
+                          rentTypeKr,
                           formatWonShort(aiDto.getDepositPrice()),
                           formatWonShort(aiDto.getMaintenanceFee())));
 
