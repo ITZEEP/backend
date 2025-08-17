@@ -192,29 +192,28 @@ public class EncryptionServiceImpl implements EncryptionService {
       // ==================== PDF 2단계 암호화/복호화 ====================
 
       @Override
-      public String uploadPdfStep1(MultipartFile pdfFile, String contractChatId, String password1)
-              throws Exception {
-          log.info(
-                  "PDF encryption step 1 - file: {}, contractChatId: {}",
-                  pdfFile.getOriginalFilename(),
-                  contractChatId);
+      public String uploadPdfStep1(String contractChatId, String password1) throws Exception {
+          log.info("PDF encryption step 1 - contractChatId: {}", contractChatId);
 
-          // Redis에 파일과 첫 번째 패스워드 저장
+          // Redis에 첫 번째 패스워드만 저장 (PDF 파일은 null로 전달)
           ContractKeyStatus status =
-                  encryptionUtil.uploadContract(contractChatId, pdfFile, "owner", password1);
+                  encryptionUtil.uploadContract(contractChatId, null, "owner", password1);
 
           log.info("Step 1 completed: {}", status.getMessage());
           return status.getMessage();
       }
 
       @Override
-      public FileWithHashDto encryptPdfStep2(String contractChatId, String password2)
-              throws Exception {
-          log.info("PDF encryption step 2 - contractChatId: {}", contractChatId);
+      public FileWithHashDto encryptPdfStep2(
+              MultipartFile pdfFile, String contractChatId, String password2) throws Exception {
+          log.info(
+                  "PDF encryption step 2 - file: {}, contractChatId: {}",
+                  pdfFile.getOriginalFilename(),
+                  contractChatId);
 
-          // Redis에서 두 번째 패스워드 추가 및 암호화 수행
+          // Redis에 PDF 파일과 두 번째 패스워드 추가 및 암호화 수행
           ContractKeyStatus status =
-                  encryptionUtil.uploadContract(contractChatId, null, "tenant", password2);
+                  encryptionUtil.uploadContract(contractChatId, pdfFile, "tenant", password2);
 
           if (status.getEncryptedPDF() == null) {
               throw new IllegalStateException("Encryption not ready. Status: " + status.getStatus());
@@ -496,5 +495,25 @@ public class EncryptionServiceImpl implements EncryptionService {
                   .fileName(baseName + "_protected.pdf")
                   .contentType("application/pdf")
                   .build();
+      }
+
+      @Override
+      public boolean hasKey(String contractChatId) {
+          log.debug("Checking if key exists for contractChatId: {}", contractChatId);
+
+          if (contractChatId == null || contractChatId.trim().isEmpty()) {
+              log.warn("Invalid contractChatId provided: null or empty");
+              return false;
+          }
+
+          try {
+              // EncryptionUtil의 hasKey 메서드를 호출하여 Redis에서 키 존재 여부 확인
+              boolean keyExists = encryptionUtil.hasKey(contractChatId);
+              log.debug("Key existence check for contractChatId {}: {}", contractChatId, keyExists);
+              return keyExists;
+          } catch (Exception e) {
+              log.error("Error checking key existence for contractChatId: {}", contractChatId, e);
+              return false;
+          }
       }
 }

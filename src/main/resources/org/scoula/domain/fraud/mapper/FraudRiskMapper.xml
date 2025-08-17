@@ -243,4 +243,157 @@
         LIMIT 1
     </select>
     
+    <!-- ========== 문서 정보 저장 관련 쿼리 ========== -->
+    
+    <!-- 등기부등본 정보 저장 -->
+    <insert id="insertRegistryDocument" parameterType="org.scoula.domain.fraud.vo.RegistryDocumentVO"
+            useGeneratedKeys="true" keyProperty="registryId">
+        INSERT INTO registry_document (
+            riskck_id,
+            region_address,
+            road_address,
+            building_number,
+            building_detail,
+            owner_name,
+            owner_birth_date,
+            debtor,
+            has_seizure,
+            has_auction,
+            has_litigation,
+            has_attachment,
+            issue_date,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{riskckId},
+            #{regionAddress},
+            #{roadAddress},
+            #{buildingNumber},
+            #{buildingDetail},
+            #{ownerName},
+            #{ownerBirthDate},
+            #{debtor},
+            #{hasSeizure},
+            #{hasAuction},
+            #{hasLitigation},
+            #{hasAttachment},
+            #{issueDate},
+            NOW(),
+            NOW()
+        )
+    </insert>
+    
+    <!-- 근저당권 정보 저장 -->
+    <insert id="insertMortgageInfo" parameterType="org.scoula.domain.fraud.vo.MortgageInfoVO"
+            useGeneratedKeys="true" keyProperty="mortgageId">
+        INSERT INTO mortgage_info (
+            registry_id,
+            priority_number,
+            max_claim_amount,
+            debtor,
+            mortgagee,
+            created_at
+        ) VALUES (
+            #{registryId},
+            #{priorityNumber},
+            #{maxClaimAmount},
+            #{debtor},
+            #{mortgagee},
+            NOW()
+        )
+    </insert>
+    
+    <!-- 건축물대장 정보 저장 -->
+    <insert id="insertBuildingDocument" parameterType="org.scoula.domain.fraud.vo.BuildingDocumentVO"
+            useGeneratedKeys="true" keyProperty="buildingId">
+        INSERT INTO building_document (
+            riskck_id,
+            site_location,
+            road_address,
+            land_area,
+            total_floor_area,
+            purpose,
+            floor_number,
+            approval_date,
+            is_violation_building,
+            issue_date,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{riskckId},
+            #{siteLocation},
+            #{roadAddress},
+            #{landArea},
+            #{totalFloorArea},
+            #{purpose},
+            #{floorNumber},
+            #{approvalDate},
+            #{isViolationBuilding},
+            #{issueDate},
+            NOW(),
+            NOW()
+        )
+    </insert>
+    
+    <!-- 등기부등본 정보 조회 -->
+    <select id="selectRegistryDocumentByRiskCheckId" parameterType="long"
+            resultType="org.scoula.domain.fraud.vo.RegistryDocumentVO">
+        SELECT 
+            registry_id AS registryId,
+            riskck_id AS riskckId,
+            region_address AS regionAddress,
+            road_address AS roadAddress,
+            building_number AS buildingNumber,
+            building_detail AS buildingDetail,
+            owner_name AS ownerName,
+            owner_birth_date AS ownerBirthDate,
+            debtor,
+            has_seizure AS hasSeizure,
+            has_auction AS hasAuction,
+            has_litigation AS hasLitigation,
+            has_attachment AS hasAttachment,
+            issue_date AS issueDate,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+        FROM registry_document
+        WHERE riskck_id = #{riskckId}
+    </select>
+    
+    <!-- 근저당권 정보 목록 조회 -->
+    <select id="selectMortgageInfoListByRegistryId" parameterType="long"
+            resultType="org.scoula.domain.fraud.vo.MortgageInfoVO">
+        SELECT 
+            mortgage_id AS mortgageId,
+            registry_id AS registryId,
+            priority_number AS priorityNumber,
+            max_claim_amount AS maxClaimAmount,
+            debtor,
+            mortgagee,
+            created_at AS createdAt
+        FROM mortgage_info
+        WHERE registry_id = #{registryId}
+        ORDER BY priority_number
+    </select>
+    
+    <!-- 건축물대장 정보 조회 -->
+    <select id="selectBuildingDocumentByRiskCheckId" parameterType="long"
+            resultType="org.scoula.domain.fraud.vo.BuildingDocumentVO">
+        SELECT 
+            building_id AS buildingId,
+            riskck_id AS riskckId,
+            site_location AS siteLocation,
+            road_address AS roadAddress,
+            land_area AS landArea,
+            total_floor_area AS totalFloorArea,
+            purpose,
+            floor_number AS floorNumber,
+            approval_date AS approvalDate,
+            is_violation_building AS isViolationBuilding,
+            issue_date AS issueDate,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+        FROM building_document
+        WHERE riskck_id = #{riskckId}
+    </select>
+    
 </mapper>

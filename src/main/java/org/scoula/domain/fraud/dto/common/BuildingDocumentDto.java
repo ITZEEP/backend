@@ -29,6 +29,9 @@ public class BuildingDocumentDto {
       @NotBlank(message = "도로명주소는 필수입니다")
       private String roadAddress;
 
+      @ApiModelProperty(value = "대지면적 (㎡)", example = "185")
+      private Double landArea;
+
       @ApiModelProperty(value = "연면적 (㎡)", required = true, example = "84.5")
       @NotNull(message = "연면적은 필수입니다")
       private Double totalFloorArea;
@@ -49,4 +52,8 @@ public class BuildingDocumentDto {
       @ApiModelProperty(value = "위반건축물 여부", required = true, example = "false")
       @NotNull(message = "위반건축물 여부는 필수입니다")
       private Boolean isViolationBuilding;
+
+      @ApiModelProperty(value = "발급일", example = "2025-07-12")
+      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+      private LocalDate issueDate;
 }
