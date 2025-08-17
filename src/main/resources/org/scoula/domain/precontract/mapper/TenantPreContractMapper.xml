@@ -33,7 +33,7 @@
                  INNER JOIN identity_verification iv
                             ON cc.buyer_id = iv.user_id
         WHERE cc.buyer_id = #{userId}
-        AND iv.contract_id = cc.contract_chat_id
+        AND iv.contract_id = #{contractChatId}
     </select>
 
     <select id="selectRiskId" resultType="Long">
