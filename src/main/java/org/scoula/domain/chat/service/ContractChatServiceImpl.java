@@ -197,6 +197,24 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
       }
 
+    public void AiMessageLegal(Long contractChatId, String content) {
+        final Long ai = 9996L;
+
+        ContractChatDocument aiMessage =
+                ContractChatDocument.builder()
+                        .contractChatId(contractChatId.toString())
+                        .senderId(ai)
+                        .receiverId(null)
+                        .content(content)
+                        .sendTime(LocalDateTime.now().toString())
+                        .build();
+
+        contractChatMessageRepository.saveMessage(aiMessage);
+        contractChatMapper.updateLastMessage(contractChatId, content);
+        messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
+    }
+
+
       /** {@inheritDoc} */
       @Override
       public List<ContractChatDocument> getContractMessages(Long contractChatId) {
@@ -2460,84 +2478,81 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           // api/contract/{contractChatId}/legality
           try {
+              log.info("적법성 검사 API 호출 시작 - contractChatId: {}", contractChatId);
               Object legalityResponse = contractFixService.getLegality(contractChatId, buyerId);
+              log.info("적법성 검사 응답: {}", legalityResponse);
 
               if (legalityResponse instanceof Map) {
                   Map<String, Object> responseMap = (Map<String, Object>) legalityResponse;
-                  Map<String, Object> data = (Map<String, Object>) responseMap.get("data");
-                  if (data != null) {
-                      Map<String, Object> innerData = (Map<String, Object>) data.get("data");
-                      if (innerData != null) {
-                          List<Map<String, Object>> violations =
-                                  (List<Map<String, Object>>) innerData.get("violations");
 
-                          if (violations != null && !violations.isEmpty()) {
-                              AiMessage(contractChatId, "적법성 검사 결과, 일부 문제점이 발견되었습니다:");
+                  Object violationsObj = responseMap.get("violations");
+                  log.info("violations 객체: {}", violationsObj);
 
-                              for (int i = 0; i < violations.size(); i++) {
-                                  Map<String, Object> violation = violations.get(i);
+                  if (violationsObj instanceof List) {
+                      List<Map<String, Object>> violations = (List<Map<String, Object>>) violationsObj;
+                      log.info("violations 크기: {}", violations.size());
 
-                                  String violationType = (String) violation.get("violation_type");
-                                  String lawName = (String) violation.get("law_name");
-                                  String violationContent =
-                                          (String) violation.get("violation_content");
-                                  String explanation = (String) violation.get("explanation");
-                                  String improvementExample =
-                                          (String) violation.get("improvement_example");
-                                  String legalBasis = (String) violation.get("legal_basis");
-                                  String originalClause = (String) violation.get("original_clause");
+                      if (!violations.isEmpty()) {
+                          log.info("위반 사항 발견됨: {}개", violations.size());
+                          AiMessage(contractChatId, "적법성 검사 결과, 일부 문제점이 발견되었습니다:");
 
-                                  StringBuilder violationMessage = new StringBuilder();
-                                  violationMessage.append(String.format("문제점 %d\n", i + 1));
-                                  violationMessage.append(
-                                          String.format(
-                                                  "위반 유형: %s\n",
-                                                  violationType != null ? violationType : "정보 없음"));
-                                  violationMessage.append(
-                                          String.format(
-                                                  "관련 법령: %s\n",
-                                                  lawName != null ? lawName : "정보 없음"));
-                                  violationMessage.append(
-                                          String.format(
-                                                  "위반 내용: %s\n",
-                                                  violationContent != null
-                                                          ? violationContent
-                                                          : "정보 없음"));
-                                  violationMessage.append(
-                                          String.format(
-                                                  "설명: %s\n",
-                                                  explanation != null ? explanation : "정보 없음"));
+                          for (int i = 0; i < violations.size(); i++) {
+                              Map<String, Object> violation = violations.get(i);
+                              log.info("위반 사항 {}: {}", i + 1, violation);
 
-                                  if (originalClause != null && !originalClause.trim().isEmpty()) {
-                                      violationMessage.append(
-                                              String.format("문제가 된 조항: %s\n", originalClause));
-                                  }
+                              String violationType = (String) violation.get("violation_type");
+                              String lawName = (String) violation.get("law_name");
+                              String violationContent = (String) violation.get("violation_content");
+                              String explanation = (String) violation.get("explanation");
+                              String improvementExample = (String) violation.get("improvement_example");
+                              String legalBasis = (String) violation.get("legal_basis");
+                              String originalClause = (String) violation.get("original_clause");
 
-                                  if (improvementExample != null
-                                          && !improvementExample.trim().isEmpty()) {
-                                      violationMessage.append(
-                                              String.format("개선 방안: %s\n", improvementExample));
-                                  }
+                              StringBuilder violationMessage = new StringBuilder();
+                              violationMessage.append(String.format("문제점 %d\n", i + 1));
+                              violationMessage.append(String.format("위반 유형: %s\n",
+                                      violationType != null ? violationType : "정보 없음"));
+                              violationMessage.append(String.format("관련 법령: %s\n",
+                                      lawName != null ? lawName : "정보 없음"));
+                              violationMessage.append(String.format("위반 내용: %s\n",
+                                      violationContent != null ? violationContent : "정보 없음"));
+                              violationMessage.append(String.format("설명: %s\n",
+                                      explanation != null ? explanation : "정보 없음"));
 
-                                  if (legalBasis != null && !legalBasis.trim().isEmpty()) {
-                                      violationMessage.append(String.format("법적 근거: %s", legalBasis));
-                                  }
-
-                                  AiMessage(contractChatId, violationMessage.toString());
-
-                                  try {
-                                      Thread.sleep(1000);
-                                  } catch (InterruptedException e) {
-                                      Thread.currentThread().interrupt();
-                                  }
+                              if (originalClause != null && !originalClause.trim().isEmpty()) {
+                                  violationMessage.append(String.format("문제가 된 조항: %s\n", originalClause));
                               }
 
-                              AiMessageBtn(contractChatId, "위 문제점들을 검토하시고 필요시 수정 요청을 해주세요.");
-                          } else {
-                              AiMessage(contractChatId, "적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
+                              if (improvementExample != null && !improvementExample.trim().isEmpty()) {
+                                  violationMessage.append(String.format("개선 방안: %s\n", improvementExample));
+                              }
+
+                              if (legalBasis != null && !legalBasis.trim().isEmpty()) {
+                                  violationMessage.append(String.format("법적 근거: %s", legalBasis));
+                              }
+
+                              log.info("전송할 메시지: {}", violationMessage.toString());
+                              AiMessageLegal(contractChatId, violationMessage.toString());
+
+                              try {
+                                  Thread.sleep(1000);
+                              } catch (InterruptedException e) {
+                                  Thread.currentThread().interrupt();
+                              }
                           }
+
+                          AiMessageBtn(contractChatId, "위 문제점들을 검토하시고 필요시 수정 요청을 해주세요.");
+                      } else {
+                          log.info("위반 사항 없음 - 빈 배열");
+                          AiMessage(contractChatId, "적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
                       }
+                  } else {
+                      log.warn("violations가 List 타입이 아님: {}", violationsObj != null ? violationsObj.getClass() : "null");
+                      AiMessage(contractChatId, "적법성 검사 응답 형식이 올바르지 않습니다.");
                   }
+              } else {
+                  log.warn("응답이 Map 타입이 아님: {}", legalityResponse != null ? legalityResponse.getClass() : "null");
+                  AiMessage(contractChatId, "적법성 검사 응답 형식이 올바르지 않습니다.");
               }
           } catch (Exception e) {
               log.error("적법성 검사 결과 처리 중 오류 발생", e);
