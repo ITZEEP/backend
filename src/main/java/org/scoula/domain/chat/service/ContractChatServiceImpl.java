@@ -2535,7 +2535,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           violationMessage.append(
                                   // 위반 내용
                                   String.format(
-                                          (i+1) + ". %s\n" + "\n",
+                                          (i + 1) + ". %s\n" + "\n",
                                           violation.getViolationContent() != null
                                                   ? violation.getViolationContent()
                                                   : "정보 없음"));
@@ -2581,7 +2581,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   } else {
                       log.info("위반 사항 없음");
                       AiMessage(contractChatId, "✅ 적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
-                      AiMessage(contractChatId, "최종 계약서 서명하러 갈꼐요!");
+                      AiMessage(contractChatId, "최종 계약서 서명하러 갈께요!");
                   }
               } else if (legalityResponse instanceof Map) {
                   // 기존 Map 처리 로직
