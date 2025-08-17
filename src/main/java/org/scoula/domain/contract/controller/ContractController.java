@@ -1,5 +1,7 @@
 package org.scoula.domain.contract.controller;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.scoula.domain.contract.dto.*;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
@@ -7,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -114,4 +118,68 @@ public interface ContractController {
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody SpecialContractUpdateDTO dto);
+
+      // =================
+
+      // 내보내기
+      //      @ApiOperation(
+      //              value = "[내보내기] 1 최종 계약서, 전자서명 테이블 초기 세팅",
+      //              notes = "전자서명에 관련된 값들을 저장하기 위해 테이블 초기 세팅을 합니다.")
+      //      ResponseEntity<ApiResponse<Void>> finalContractInit(
+      //              @PathVariable Long contractChatId,
+      //              @AuthenticationPrincipal CustomUserDetails userDetails);
+
+      @ApiOperation(value = "[내보내기] 1 최종 계약서 PDF로 만들기 -> AI", notes = "최종 계약서에 들어갈 항목들로 최종 계약서 만들기 ")
+      ResponseEntity<ApiResponse<MultipartFile>> finalContractPDF(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails);
+
+      @ApiOperation(value = "[내보내기] 2 받아온 전자서명 파일 암호화 후 S3에 저장", notes = "전자서명 png를 s3에 저장합니다.")
+      ResponseEntity<ApiResponse<Boolean>> saveSignature(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @RequestPart("dto") String dtoText, // JSON 파트
+              @RequestPart("imgFiles") MultipartFile imgFiles)
+              throws Exception;
+
+      @ApiOperation(value = "[내보내기] 3 최종 계약서 PDF S3에 저장", notes = "사용자에게 암호를 받아 암호화 후 S3에 저장하기")
+      ResponseEntity<ApiResponse<Void>> saveFinalContract(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @RequestBody ContractPasswordDTO dto);
+
+      @ApiOperation(value = "[내보내기] 4 최종 계약서 PDF를 보여줍니다.", notes = "최종 계약서 PDF를 보여줍니다.")
+      ResponseEntity<ApiResponse<byte[]>> selectContractPDF(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails)
+              throws Exception;
+
+      //      @ApiOperation(value = "최종 계약서 PDF 파일 받아와서 암호화 후 S3에 저장", notes = "최종 계약서 PDF를 암호화하여 S3에
+      // 저장합니다.")
+      //      ResponseEntity<ApiResponse<Void>> saveContractPDF(
+      //              @PathVariable Long contractChatId,
+      //              @AuthenticationPrincipal CustomUserDetails userDetails,
+      //              @RequestBody FinalContractDTO dto);
+      //
+      //      @ApiOperation(value = "전자서명 다운로드", notes = "전자서명을 다운로드해서 복호화해서 프론트에 전송합니다.")
+      //      ResponseEntity<ApiResponse<Void>> selectSignaturePDF(
+      //              @PathVariable Long contractChatId,
+      //              @AuthenticationPrincipal CustomUserDetails userDetails,
+      //              HttpServletResponse response);
+
+      // 패스베리어블을 뭘로 받아올지 얘기해보기 : contract_id
+      @ApiOperation(value = "[내보내기] 5 계약서 PDF 파일 다운로드", notes = "계약서 PDF를 S3에서 꺼내 보내준다")
+      ResponseEntity<ApiResponse<Void>> selectContractPDF(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              HttpServletResponse response,
+              @RequestBody FindContractDTO dto)
+              throws Exception;
+
+      @ApiOperation(value = "[내보내기] 6 최종 계약서 PDF를 이메일로 전송", notes = "최종 계약서 PDF를 이메일로 전송합니다.")
+      ResponseEntity<ApiResponse<Void>> sendContractPDF(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @RequestBody FindContractDTO dto)
+              throws Exception;
 }
