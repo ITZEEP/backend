@@ -1,9 +1,11 @@
 package org.scoula.domain.contract.controller;
 
+import java.util.Map;
+import java.util.Optional;
+
 import org.scoula.domain.chat.dto.FinalContractDeletionResponseDto;
 import org.scoula.domain.chat.exception.ChatErrorCode;
 import org.scoula.domain.chat.service.ContractChatServiceInterface;
-import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.domain.contract.dto.*;
 import org.scoula.domain.contract.service.ContractFixServiceInterface;
 import org.scoula.domain.contract.service.ContractService;
@@ -21,9 +23,6 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
-import java.util.Map;
-import java.util.Optional;
-
 @RestController
 @Log4j2
 @RequiredArgsConstructor
@@ -36,15 +35,16 @@ public class ContractControllerImpl implements ContractController {
       private final ContractChatServiceInterface contractChatService;
 
       private Long getUserIdFromAuthentication(Authentication authentication) {
-            String currentUserEmail = authentication.getName();
-            Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
 
-            if (currentUserOpt.isEmpty()) {
-                  throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
-            }
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(ChatErrorCode.USER_NOT_FOUND);
+          }
 
-            return currentUserOpt.get().getUserId();
+          return currentUserOpt.get().getUserId();
       }
+
       @Override
       @PostMapping("")
       public ResponseEntity<ApiResponse<Void>> saveContractMongo(
@@ -209,23 +209,24 @@ public class ContractControllerImpl implements ContractController {
           return ResponseEntity.ok(
                   ApiResponse.success(service.sendStep4(contractChatId, userDetails.getUserId())));
       }
+
       @Override
       @PostMapping("/specialContract/final-request")
       public ResponseEntity<ApiResponse<String>> requestFinalContract(
               @PathVariable Long contractChatId, Authentication authentication) {
 
-            try {
-                  Long userId = getUserIdFromAuthentication(authentication);
-                  contractChatService.requestFinalContract(contractChatId, userId);
-                  return ResponseEntity.ok(ApiResponse.success("최종 특약 확정 요청이 임차인에게 전송되었습니다."));
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              contractChatService.requestFinalContract(contractChatId, userId);
+              return ResponseEntity.ok(ApiResponse.success("최종 특약 확정 요청이 임차인에게 전송되었습니다."));
 
-            } catch (BusinessException e) {
-                  return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-            } catch (Exception e) {
-                  log.error("최종 특약서 확정 요청 처리 중 오류 발생", e);
-                  return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                          .body(ApiResponse.error("서버 오류가 발생했습니다."));
-            }
+          } catch (BusinessException e) {
+              return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+          } catch (Exception e) {
+              log.error("최종 특약서 확정 요청 처리 중 오류 발생", e);
+              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                      .body(ApiResponse.error("서버 오류가 발생했습니다."));
+          }
       }
 
       @Override
@@ -235,17 +236,18 @@ public class ContractControllerImpl implements ContractController {
               @RequestBody FinalContractDeletionResponseDto responseDto,
               Authentication authentication) {
 
-            try {
-                  Long userId = getUserIdFromAuthentication(authentication);
-                  Map<String, Object> result = contractChatService.acceptFinalContract(contractChatId, userId);
-                  return ResponseEntity.ok(ApiResponse.success(result));
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              Map<String, Object> result =
+                      contractChatService.acceptFinalContract(contractChatId, userId);
+              return ResponseEntity.ok(ApiResponse.success(result));
 
-            } catch (BusinessException e) {
-                  return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-            } catch (Exception e) {
-                  log.error("최종 특약서 확정 수락 처리 중 오류 발생", e);
-                  return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                          .body(ApiResponse.error("서버 오류가 발생했습니다."));
-            }
+          } catch (BusinessException e) {
+              return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+          } catch (Exception e) {
+              log.error("최종 특약서 확정 수락 처리 중 오류 발생", e);
+              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                      .body(ApiResponse.error("서버 오류가 발생했습니다."));
+          }
       }
 }
