@@ -301,4 +301,10 @@ public interface ContractChatServiceInterface {
       String getContractChatRoomUrl(Long chatRoomId);
 
       String getContractChatStatus(ContractChat.ContractStatus status);
+
+      /** 임대인이 최종 특약 확정 요청 */
+      void requestFinalContract(Long contractChatId, Long ownerId);
+
+      /** 임차인이 최종 특약 확정 수락 */
+      Map<String, Object> acceptFinalContract(Long contractChatId, Long buyerId);
 }
