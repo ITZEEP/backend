@@ -66,7 +66,7 @@ public class ContractServiceImpl implements ContractService {
     private final ContractChatMapper contractChatMapper;
     private final IdentityVerificationService identityVerificationService;
     private final EncryptionService encryptionService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     private final RedisTemplate<String, String> stringRedisTemplate;
     private final S3ServiceImpl s3Service;
@@ -76,9 +76,9 @@ public class ContractServiceImpl implements ContractService {
     private final ImgAesCryptoUtil imgAesCryptoUtil;
     private final NumberFormatUtil numberFormatUtil;
 
-    private static final String ALGORITHM = "AES";
-    private static final String TRANSFORMATION = "AES";
-    private static final String SECRET_KEY = "mySuperSecretKey"; // 16글자 (128bit) ==> 환경변수에 넣기
+//    private static final String ALGORITHM = "AES";
+//    private static final String TRANSFORMATION = "AES";
+//    private static final String SECRET_KEY = "mySuperSecretKey"; // 16글자 (128bit) ==> 환경변수에 넣기
 
     @Value("${ai.server.url:http://localhost:8000}")
     private String aiServerUrl;
@@ -863,9 +863,11 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     @Transactional
-    public Void saveFinalContract(Long contractChatId, Long userId, ContractPasswordDTO dto) {
+    public byte[] saveFinalContract(Long contractChatId, Long userId, ContractPasswordDTO dto) {
         // userId 인증
         validateUserId(contractChatId, userId);
+
+        byte[] resultBytes = null; // 최종 PDF 바이트 (없으면 null 반환)
 
         // 동의 여부 확인
         if (!dto.getMediationAgree()) throw new BusinessException(ContractException.CONTRACT_AGREEMENT);
@@ -873,7 +875,6 @@ public class ContractServiceImpl implements ContractService {
         // 1. 최종 사인이 있는지 여부를 확인한다.
         List<ElectronicSignature> signatures = contractMapper.selectSignature(contractChatId, userId);
 
-        // DTO에 값 넣기
         // DB에서 값을 가져온다
         DBFinalContractDTO dbDTO = contractMapper.selectFinalContractPDF(contractChatId);
 
@@ -1013,14 +1014,14 @@ public class ContractServiceImpl implements ContractService {
 
                 try {
                     String existing = stringRedisTemplate.opsForValue().get(redisKey);
-                    if (existing == null) {
+                    if (existing != null) {
 
-                        // 3. DTO를 JSON 문자열로 변환
-                        ObjectMapper objectMapper = new ObjectMapper();
-                        String json = objectMapper.writeValueAsString(dto);
-
-                        // 4. Redis에 저장
-                        stringRedisTemplate.opsForValue().set(redisKey, json);
+//                        // 3. DTO를 JSON 문자열로 변환
+//                        ObjectMapper objectMapper = new ObjectMapper();
+//                        String json = objectMapper.writeValueAsString(dto);
+//
+//                        // 4. Redis에 저장
+//                        stringRedisTemplate.opsForValue().set(redisKey, json);
 
                         FinalContractDTO finalDTO = basePayLoad.toBuilder()
                                 .ownerMediationAgree(dto.getMediationAgree())
@@ -1065,6 +1066,9 @@ public class ContractServiceImpl implements ContractService {
 
                             // AI 쪽에서 최종 값을 받기 (pdf)
                             MultipartFile contracts = MultipartFileUtils.fromFile(tempFile);
+                            byte[] finalContract = MultipartFileUtils.fileToBytes(tempFile);
+
+                            resultBytes = finalContract;
 
                             try {
                                 // 1단계 업로드 실행 (반환 값을 사용하지 않으면 변수에 담지 않아도 됩니다)
@@ -1074,28 +1078,38 @@ public class ContractServiceImpl implements ContractService {
                                 throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
                             }
 
+                            // 알림 보내기 ------------------------------------------------
+
+                            stringRedisTemplate.delete(redisKey);
+
                         } catch (Exception e) {
                             log.error(e.getMessage());
                             throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR, e);
                         }
-                    } else if (existing != null) {
+                    } else if (existing == null) {
 
-                        try {
-                            FileWithHashDto uploadStep2 = encryptionService.encryptPdfStep2(String.valueOf(contractChatId), dto.getContractPassword());
+                        // 3. DTO를 JSON 문자열로 변환
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        String json = objectMapper.writeValueAsString(dto);
 
-                            // S3에 저장하기
-                            MultipartFile multipartContract = MultipartFileUtils.fromFile(uploadStep2.getFile());
-                            String s3Keys = s3Service.uploadFile(multipartContract);
+                        // 4. Redis에 저장
+                        stringRedisTemplate.opsForValue().set(redisKey, json);
 
-                            // final_contract에 값을 저장하기
-                            int update = contractMapper.updateFinalContract(contractChatId, s3Keys, uploadStep2.getOriginalHash());
-                            if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
-
-                            stringRedisTemplate.delete(redisKey);
-                        } catch (Exception ex) {
-                            // 업로드 과정의 예외를 비즈니스 예외로 변환
-                            throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
-                        }
+//                        try {
+//                            FileWithHashDto uploadStep2 = encryptionService.encryptPdfStep2(String.valueOf(contractChatId), dto.getContractPassword());
+//
+//                            // S3에 저장하기
+//                            MultipartFile multipartContract = MultipartFileUtils.fromFile(uploadStep2.getFile());
+//                            String s3Keys = s3Service.uploadFile(multipartContract);
+//
+//                            // final_contract에 값을 저장하기
+//                            int update = contractMapper.updateFinalContract(contractChatId, s3Keys, uploadStep2.getOriginalHash());
+//                            if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
+//
+//                        } catch (Exception ex) {
+//                            // 업로드 과정의 예외를 비즈니스 예외로 변환
+//                            throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
+//                        }
                     }
 
                 } catch (Exception e) {
@@ -1106,14 +1120,7 @@ public class ContractServiceImpl implements ContractService {
             } else if (sign.getSignedType() != null && sign.getSignedType() == SignedType.BUYER_CONTRACT) {
                 try {
                     String existing = stringRedisTemplate.opsForValue().get(redisKey);
-                    if (existing == null) {
-
-                        // 3. DTO를 JSON 문자열로 변환
-                        ObjectMapper objectMapper = new ObjectMapper();
-                        String json = objectMapper.writeValueAsString(dto);
-
-                        // 4. Redis에 저장
-                        stringRedisTemplate.opsForValue().set(redisKey, json);
+                    if (existing != null) {
 
                         FinalContractDTO finalDTO = basePayLoad.toBuilder()
                                 .ownerMediationAgree(dto.getMediationAgree())
@@ -1159,6 +1166,9 @@ public class ContractServiceImpl implements ContractService {
 
                             // AI 쪽에서 최종 값을 받기 (pdf)
                             MultipartFile contracts = MultipartFileUtils.fromFile(tempFile);
+                            byte[] finalContract = MultipartFileUtils.fileToBytes(tempFile);
+
+                            resultBytes = finalContract;
 
                             try {
                                 // 1단계 업로드 실행 (반환 값을 사용하지 않으면 변수에 담지 않아도 됩니다)
@@ -1168,28 +1178,39 @@ public class ContractServiceImpl implements ContractService {
                                 throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
                             }
 
+                            // 알림 보내기  --------------------------------------
+
+                            stringRedisTemplate.delete(redisKey);
+
                         } catch (Exception e) {
                             log.error(e.getMessage());
                             throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR, e);
                         }
-                    } else if (existing != null) {
+                    } else if (existing == null) {
 
-                        try {
-                            FileWithHashDto uploadStep2 = encryptionService.encryptPdfStep2(String.valueOf(contractChatId), dto.getContractPassword());
+//                        try {
+//                            FileWithHashDto uploadStep2 = encryptionService.encryptPdfStep2(String.valueOf(contractChatId), dto.getContractPassword());
+//
+//                            // S3에 저장하기
+//                            MultipartFile multipartContract = MultipartFileUtils.fromFile(uploadStep2.getFile());
+//                            String s3Keys = s3Service.uploadFile(multipartContract);
+//
+//                            // final_contract에 값을 저장하기
+//                            int update = contractMapper.updateFinalContract(contractChatId, s3Keys, uploadStep2.getOriginalHash());
+//                            if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
+//
+//                            stringRedisTemplate.delete(redisKey);
+//                        } catch (Exception ex) {
+//                            // 업로드 과정의 예외를 비즈니스 예외로 변환
+//                            throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
+//                        }
 
-                            // S3에 저장하기
-                            MultipartFile multipartContract = MultipartFileUtils.fromFile(uploadStep2.getFile());
-                            String s3Keys = s3Service.uploadFile(multipartContract);
+                        // 3. DTO를 JSON 문자열로 변환
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        String json = objectMapper.writeValueAsString(dto);
 
-                            // final_contract에 값을 저장하기
-                            int update = contractMapper.updateFinalContract(contractChatId, s3Keys, uploadStep2.getOriginalHash());
-                            if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
-
-                            stringRedisTemplate.delete(redisKey);
-                        } catch (Exception ex) {
-                            // 업로드 과정의 예외를 비즈니스 예외로 변환
-                            throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
-                        }
+                        // 4. Redis에 저장
+                        stringRedisTemplate.opsForValue().set(redisKey, json);
                     }
 
                 } catch (Exception e) {
@@ -1199,123 +1220,188 @@ public class ContractServiceImpl implements ContractService {
             }
         }
 
-
-        // =================================
-
-
-//            // S3에서 파일 가져오기
-//            FinalContract s3Key = contractMapper.selectFinalContract(contractChatId);
-//            InputStream contract = s3Service.downloadFile(s3Key.getContractPdfKey());
-//            File contractFile;
-//            try {
-//                // 임시 파일 생성 (필요하다면 builder 등에 전달)
-//                contractFile = MultipartFileUtils.inputStreamToTempFile(contract);
-//            } catch (IOException e) {
-//                // 예외를 로깅하고 비즈니스 예외로 감싸서 위로 던집니다.
-//                log.error("임시 파일 생성 중 오류 발생", e);
-//                throw new BusinessException(ContractException.CONTRACT_INSERT, e);
-//            }
-//
-//            // 동의 여부까지 같은 빌더에 누적 후 최종 DTO 생성
-//            FinalContractDTO finalDTO = builder
-//                    .mediationAgree(dto.getMediationAgree())
-//                    .contractPDF(contractFile)
-//                    .build();
-//
-//            File tempFile;
-//            // AI에 사인 & 동의 여부를 넘기기 -> 여기서 pdf를 같이 넘겨야 하는지 or 다시 처음부터 모든 값을 넘겨야 하는지 물어보기
-//            try {
-//                // AI로 해당 데이터를 넘긴다 (restTemplate 사용)
-//                String url = aiServerUrl + "/api/contract/이건 다시 받기!";
-//                HttpHeaders headers = new HttpHeaders();
-//                headers.setContentType(MediaType.APPLICATION_JSON);
-//
-//                HttpEntity<FinalContractDTO> requestEntity = new HttpEntity<>(finalDTO, headers);
-//
-//                // 반환값을 받아오고, 그 값을 프론트에 넘겨준다.
-//                ResponseEntity<byte[]> response =
-//                        restTemplate.exchange(url, HttpMethod.POST, requestEntity, byte[].class);
-//
-//                log.warn("AI 응답 헤더 확인: {}", response.getStatusCode());
-//
-//                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-//                    // 응답 바이트를 파일로 저장
-//                    byte[] fileBytes = response.getBody();
-//                    tempFile = File.createTempFile("contract_", ".pdf");
-//                    Files.write(tempFile.toPath(), fileBytes);
-//
-//                } else {
-//                    // Sanitize response body before logging to prevent log injection
-//                    String responseBodyStr;
-//                    try {
-//                        ObjectMapper objectMapper = new ObjectMapper();
-//                        responseBodyStr = objectMapper.writeValueAsString(response.getBody());
-//                    } catch (Exception ex) {
-//                        responseBodyStr = String.valueOf(response.getBody());
-//                    }
-//                    // Remove newlines and carriage returns
-//                    responseBodyStr = responseBodyStr.replaceAll("[\\r\\n]", " ");
-//                    log.error(responseBodyStr);
-//                    throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR);
-//                }
-//
-//            } catch (Exception e) {
-//                log.error(e.getMessage());
-//                throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR, e);
-//            }
-//
-//            // AI 쪽에서 최종 값을 받기 (pdf)
-//            MultipartFile contracts = MultipartFileUtils.fromFile(tempFile);
-//
-//            // 받은 비밀번호 & 서버키로 암호화 및 해시키를 받기
-//            // 레디스에 내용 저장하기 / value 값 넛기
-//            String redisKey = "contract:export:" + contractChatId;
-//            try {
-//                String existing = stringRedisTemplate.opsForValue().get(redisKey);
-//                if (existing == null) {
-//
-//                    // 3. DTO를 JSON 문자열로 변환
-//                    ObjectMapper objectMapper = new ObjectMapper();
-//                    String json = objectMapper.writeValueAsString(dto);
-//
-//                    // 4. Redis에 저장
-//                    stringRedisTemplate.opsForValue().set(redisKey, json);
-//
-//                    try {
-//                        // 1단계 업로드 실행 (반환 값을 사용하지 않으면 변수에 담지 않아도 됩니다)
-//                        encryptionService.uploadPdfStep1(contracts, String.valueOf(contractChatId), dto.getContractPassword());
-//                    } catch (Exception ex) {
-//                        // 업로드 과정의 예외를 비즈니스 예외로 변환
-//                        throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
-//                    }
-//                } else if (existing != null) {
-//                    try {
-//                        FileWithHashDto uploadStep2 = encryptionService.encryptPdfStep2(String.valueOf(contractChatId), dto.getContractPassword());
-//
-//                        // S3에 저장하기
-//                        MultipartFile multipartContract = MultipartFileUtils.fromFile(uploadStep2.getFile());
-//                        String s3Keys = s3Service.uploadFile(multipartContract);
-//
-//                        // final_contract에 값을 저장하기
-//                        int update = contractMapper.updateFinalContract(contractChatId, s3Keys, uploadStep2.getOriginalHash());
-//                        if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
-//                    } catch (Exception ex) {
-//                        // 업로드 과정의 예외를 비즈니스 예외로 변환
-//                        throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
-//                    }
-//                    stringRedisTemplate.delete(redisKey);
-//                }
-//            } catch (JsonProcessingException e) {
-//                throw new BusinessException(ContractException.CONTRACT_REDIS, e);
-//            }
-
-        return null;
+        return resultBytes;
     }
 
     @Override
-    public byte[] selectContractPDF(Long contractChatId, Long userId) {
+    public byte[] selectContractPDF(Long contractChatId, Long userId, ContractPasswordDTO dto) {
+
+        // userId 인증
+        validateUserId(contractChatId, userId);
+
         // s3에서 pdf를 가져온다.
-        // 복호화를 한다
+        // 1. 최종 사인이 있는지 여부를 확인한다.
+        List<ElectronicSignature> signatures = contractMapper.selectSignature(contractChatId, userId);
+
+        // DB에서 값을 가져온다
+        DBFinalContractDTO dbDTO = contractMapper.selectFinalContractPDF(contractChatId);
+
+        // 몽고 DB에서 값을 가져오기
+        ContractMongoDocument document = repository.getContract(contractChatId);
+
+        // 복호화 하기
+        Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+        Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+
+        IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
+        IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
+
+        String ownerSsnFront = dbDTO.getOwnerSsnFront();
+        String ownerSsnBack = aesCryptoUtil.decrypt(dbDTO.getOwnerSsnBack());
+        String buyerSsnFront = dbDTO.getBuyerSsnFront();
+        String buyerSsnBack = aesCryptoUtil.decrypt(dbDTO.getBuyerSsnBack());
+
+        // 추가 작업 해야할거 하기
+        boolean leaseType;
+
+        if (RentType.JEONSE.name().equals(dbDTO.getLeaseType())) {
+            leaseType = true;
+        } else if (RentType.WOLSE.name().equals(dbDTO.getLeaseType())) {
+            leaseType = false; // WOLSE일 때 명시적으로 false
+        } else {
+            leaseType = false; // 기타 타입도 false
+        }
+
+        String buildingStructure = "철근 콘크리트 구조";
+        String ownerSsn = ownerSsnFront + "-" + ownerSsnBack;
+        String buyerSsn = buyerSsnFront + "-" + buyerSsnBack;
+
+        String textDepositPrice = numberFormatUtil.toKoreanNumber(document.getDepositPrice());
+        String textMaintenanceFee = numberFormatUtil.toKoreanNumber(document.getMaintenanceFee());
+
+        LocalDate expectedMoveOut =
+                dbDTO.getExpectedMoveInDate()
+                        .plusYears(dbDTO.getContractDuration().getYears());
+
+        // --------
+        FinalContractDTO.FinalContractDTOBuilder builder = FinalContractDTO.builder();
+        builder.leaseType(leaseType);
+        builder.ownerNickname(document.getOwnerName());
+        builder.buyerNickname(document.getBuyerName());
+        builder.addr1(document.getHomeAddr1());
+        builder.landCategory(dbDTO.getLandCategory());
+        builder.area(dbDTO.getArea());
+        builder.buildingStructure(buildingStructure);
+//        builder.purpose(dbDTO.getPurpose());
+//        builder.totalFloorArea(dbDTO.getTotalFloorArea());
+        builder.addr2(document.getHomeAddr2());
+        builder.supplyArea(document.getExclusiveArea());
+        builder.hasTaxArrears(dbDTO.isHasTaxArrears());
+        builder.hasPriorFixedDate(dbDTO.isHasPriorFixedDate());
+        builder.textDepositPrice(textDepositPrice);
+        builder.depositPrice(document.getDepositPrice());
+        builder.monthlyRent(document.getMonthlyRent());
+        builder.paymentDueDay(dbDTO.getPaymentDueDay());
+        builder.bankAccount(dbDTO.getBankAccount());
+        builder.textMaintenanceFee(textMaintenanceFee);
+        builder.maintenanceFee(document.getMaintenanceFee());
+        builder.expectedMoveInYear(dbDTO.getExpectedMoveInDate().getYear());
+        builder.expectedMoveInMonth(dbDTO.getExpectedMoveInDate().getMonthValue());
+        builder.expectedMoveInDay(dbDTO.getExpectedMoveInDate().getDayOfMonth());
+        builder.expectedMoveOutYear(expectedMoveOut.getYear());
+        builder.expectedMoveOutMonth(expectedMoveOut.getMonthValue());
+        builder.expectedMoveOutDay(expectedMoveOut.getDayOfMonth());
+        builder.contractDateYear(dbDTO.getContractDate().getYear());
+        builder.contractDateMonth(dbDTO.getContractDate().getMonthValue());
+        builder.contractDateDay(dbDTO.getContractDate().getDayOfMonth());
+        builder.ownerAddr(ownerVO.getAddr1() + " " + ownerVO.getAddr2());
+        builder.ownerSsn(ownerSsn);
+        builder.ownerPhoneNumber(ownerVO.getPhoneNumber());
+        builder.buyerAddr(buyerVO.getAddr1() + " " + buyerVO.getAddr2());
+        builder.buyerSsn(buyerSsn);
+        builder.buyerPhoneNumber(buyerVO.getPhoneNumber());
+        FinalContractDTO basePayLoad = builder.build();
+
+        for (ElectronicSignature sign : signatures) {
+
+            try (InputStream s3File = s3Service.downloadFile(sign.getSignatureFileKey())) {
+                File contractFile = MultipartFileUtils.inputStreamToTempFile(s3File);
+
+                switch (sign.getSignedType()) {
+                    case TAX:
+                        builder.ownerTaxSignature(contractFile);
+                        break;
+                    case PRIORITY:
+                        builder.ownerPrioritySignature(contractFile);
+                        break;
+                    case OWNER_CONTRACT:
+                        builder.ownerContractSignature(contractFile);
+                        break;
+                    case BUYER_CONTRACT:
+                        builder.buyerContractSignature(contractFile);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("지원하지 않는 서명 타입입니다: " + sign.getSignedType());
+                }
+            } catch (IOException e) {
+                throw new BusinessException(ContractException.CONTRACT_INSERT, e);
+            }
+
+            FinalContractDTO finalDTO = basePayLoad.toBuilder()
+                    .ownerMediationAgree(true)
+                    .build();
+
+            File tempFile;
+            // AI에 사인 & 동의 여부를 넘기기 -> 여기서 pdf를 같이 넘겨야 하는지 or 다시 처음부터 모든 값을 넘겨야 하는지 물어보기
+            try {
+                // AI로 해당 데이터를 넘긴다 (restTemplate 사용)
+                String url = aiServerUrl + "/api/contract/generate";
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<FinalContractDTO> requestEntity = new HttpEntity<>(finalDTO, headers);
+
+                // 반환값을 받아오고, 그 값을 프론트에 넘겨준다.
+                ResponseEntity<byte[]> response =
+                        restTemplate.exchange(url, HttpMethod.POST, requestEntity, byte[].class);
+
+                log.warn("AI 응답 헤더 확인: {}", response.getStatusCode());
+
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    // 응답 바이트를 파일로 저장
+                    byte[] fileBytes = response.getBody();
+                    tempFile = File.createTempFile("contract_", ".pdf");
+                    Files.write(tempFile.toPath(), fileBytes);
+
+                } else {
+                    // Sanitize response body before logging to prevent log injection
+                    String responseBodyStr;
+                    try {
+                        objectMapper = new ObjectMapper();
+                        responseBodyStr = objectMapper.writeValueAsString(response.getBody());
+                    } catch (Exception ex) {
+                        responseBodyStr = String.valueOf(response.getBody());
+                    }
+                    // Remove newlines and carriage returns
+                    responseBodyStr = responseBodyStr.replaceAll("[\\r\\n]", " ");
+                    log.error(responseBodyStr);
+                    throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR);
+                }
+                // AI 쪽에서 최종 값을 받기 (pdf)
+                MultipartFile contracts = MultipartFileUtils.fromFile(tempFile);
+
+                // 이거 step2로 바꿔야 함
+                try {
+                    // 1단계 업로드 실행 (반환 값을 사용하지 않으면 변수에 담지 않아도 됩니다)
+                    encryptionService.uploadPdfStep1(contracts, String.valueOf(contractChatId), dto.getContractPassword());
+
+                    // S3에 저장하기
+//                    MultipartFile multipartContract = MultipartFileUtils.fromFile(uploadStep2.getFile());
+//                    String s3Keys = s3Service.uploadFile(multipartContract);
+
+                    // final_contract에 값을 저장하기, DB 확인
+//                    int update = contractMapper.updateFinalContract(contractChatId, s3Keys, uploadStep2.getOriginalHash());
+//                    if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
+                } catch (Exception ex) {
+                    // 업로드 과정의 예외를 비즈니스 예외로 변환
+                    throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
+                }
+
+            } catch (Exception e) {
+                log.error(e.getMessage());
+                throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR, e);
+            }
+            }
 
         return null;
     }

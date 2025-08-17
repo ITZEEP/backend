@@ -73,6 +73,43 @@ public final class MultipartFileUtils {
           return fromFile(tempFile, originalFilename, contentType);
       }
 
+      /** File → byte[] (전체 파일 메모리에 적재) */
+      public static byte[] fileToBytes(File file) throws IOException {
+          Objects.requireNonNull(file, "file must not be null");
+          return Files.readAllBytes(file.toPath());
+      }
+
+      /** MultipartFile → byte[] (전체 파일 메모리에 적재) */
+      public static byte[] multipartToBytes(MultipartFile multipart) throws IOException {
+          Objects.requireNonNull(multipart, "multipart must not be null");
+          return multipart.getBytes(); // 내부적으로 InputStream을 모두 읽어 byte[]로 반환
+      }
+
+      /** InputStream → byte[] (전체 스트림 메모리에 적재) */
+      public static byte[] inputStreamToBytes(InputStream in) throws IOException {
+          Objects.requireNonNull(in, "inputStream must not be null");
+          try (InputStream src = in;
+                  ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+              byte[] buf = new byte[8192];
+              int n;
+              while ((n = src.read(buf)) != -1) {
+                  out.write(buf, 0, n);
+              }
+              return out.toByteArray();
+          }
+      }
+
+      /** byte[] → 임시 File (호출자가 삭제 책임) */
+      public static File bytesToTempFile(byte[] bytes, String prefix, String suffix)
+              throws IOException {
+          Objects.requireNonNull(bytes, "bytes must not be null");
+          if (prefix == null || prefix.isBlank()) prefix = "contract_";
+          if (suffix == null || suffix.isBlank()) suffix = ".bin";
+          File temp = File.createTempFile(prefix, suffix);
+          Files.write(temp.toPath(), bytes);
+          return temp;
+      }
+
       // 파일 삭제 예시
       //    File tempFile = MultipartFileUtils.toTempFile(multipart, "sig_", ".png");
       //

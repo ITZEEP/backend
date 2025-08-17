@@ -143,7 +143,7 @@ public interface ContractController {
               throws Exception;
 
       @ApiOperation(value = "[내보내기] 3 최종 계약서 PDF S3에 저장", notes = "사용자에게 암호를 받아 암호화 후 S3에 저장하기")
-      ResponseEntity<ApiResponse<Void>> saveFinalContract(
+      ResponseEntity<ApiResponse<byte[]>> saveFinalContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody ContractPasswordDTO dto);
@@ -151,7 +151,8 @@ public interface ContractController {
       @ApiOperation(value = "[내보내기] 4 최종 계약서 PDF를 보여줍니다.", notes = "최종 계약서 PDF를 보여줍니다.")
       ResponseEntity<ApiResponse<byte[]>> selectContractPDF(
               @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails)
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @RequestBody ContractPasswordDTO dto)
               throws Exception;
 
       //      @ApiOperation(value = "최종 계약서 PDF 파일 받아와서 암호화 후 S3에 저장", notes = "최종 계약서 PDF를 암호화하여 S3에

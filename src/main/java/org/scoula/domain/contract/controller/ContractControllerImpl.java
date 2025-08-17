@@ -197,16 +197,6 @@ public class ContractControllerImpl implements ContractController {
                   ApiResponse.success(service.sendStep4(contractChatId, userDetails.getUserId())));
       }
 
-      @Override
-      @GetMapping("/finalContract")
-      public ResponseEntity<ApiResponse<byte[]>> selectContractPDF(
-              @PathVariable Long contractChatId,
-              @AuthenticationPrincipal CustomUserDetails userDetails) {
-          return ResponseEntity.ok(
-                  ApiResponse.success(
-                          service.selectContractPDF(contractChatId, userDetails.getUserId())));
-      }
-
       // ========================================
 
       //      @Override
@@ -264,13 +254,24 @@ public class ContractControllerImpl implements ContractController {
 
       @Override
       @PostMapping("/finalContract/p")
-      public ResponseEntity<ApiResponse<Void>> saveFinalContract(
+      public ResponseEntity<ApiResponse<byte[]>> saveFinalContract(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody ContractPasswordDTO dto) {
           return ResponseEntity.ok(
                   ApiResponse.success(
                           service.saveFinalContract(contractChatId, userDetails.getUserId(), dto)));
+      }
+
+      @Override
+      @GetMapping("/finalContract")
+      public ResponseEntity<ApiResponse<byte[]>> selectContractPDF(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetail,
+              @RequestBody ContractPasswordDTO dto) {
+          return ResponseEntity.ok(
+                  ApiResponse.success(
+                          service.selectContractPDF(contractChatId, userDetail.getUserId(), dto)));
       }
 
       //      @Override

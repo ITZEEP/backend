@@ -179,7 +179,7 @@ public interface ContractService {
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디
        */
-      Void saveFinalContract(Long contractChatId, Long userId, ContractPasswordDTO dto);
+      byte[] saveFinalContract(Long contractChatId, Long userId, ContractPasswordDTO dto);
 
       /**
        * 최종 계약서를 불러와서 보내주기
@@ -187,7 +187,7 @@ public interface ContractService {
        * @param contractChatId 채팅방 아이디
        * @param userId 유저 아이디
        */
-      byte[] selectContractPDF(Long contractChatId, Long userId);
+      byte[] selectContractPDF(Long contractChatId, Long userId, ContractPasswordDTO dto);
 
       //      /**
       //       * 계약서 PDF 파일 암호화 후 S3에 저장 (암호화 형식이 다름)
