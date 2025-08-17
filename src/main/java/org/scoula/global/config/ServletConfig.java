@@ -14,6 +14,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -94,5 +95,21 @@ public class ServletConfig implements WebMvcConfigurer {
                           return LocalDate.parse(source, DateTimeFormatter.ISO_LOCAL_DATE);
                       }
                   });
+      }
+
+      @Override
+      public void addCorsMappings(CorsRegistry registry) {
+          registry.addMapping("/**")
+                  .allowedOrigins(
+                          "http://localhost:5173",
+                          "http://localhost:8080",
+                          "https://itzeep.ariogi.kr",
+                          "https://www.itzeep.ariogi.kr",
+                          "http://itzeep.ariogi.kr",
+                          "http://www.itzeep.ariogi.kr")
+                  .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                  .allowedHeaders("*")
+                  .allowCredentials(true)
+                  .maxAge(3600);
       }
 }
