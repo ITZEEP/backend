@@ -28,7 +28,8 @@ import lombok.extern.log4j.Log4j2;
 @ComponentScan(
           basePackages = {
               "org.scoula.domain.chat.repository",
-              "org.scoula.domain.precontract.repository"
+              "org.scoula.domain.precontract.repository",
+              "org.scoula.domain.contract.repository",
           })
 @Log4j2
 @EnableTransactionManagement

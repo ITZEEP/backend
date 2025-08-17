@@ -8,7 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class FinalContractModificationRequestDto {
-      private Long contractChatId;
       private Integer clauseOrder;
       private String newTitle;
       private String newContent;

@@ -8,8 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class ModificationRequestData {
-      private Long contractChatId;
-      private Integer clauseOrder;
       private String newTitle;
       private String newContent;
       private Long requesterId;

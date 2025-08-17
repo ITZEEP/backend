@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.scoula.domain.contract.mapper.ContractMapper">
+
+    <select id="getOwnerId" resultType="Long">
+        SELECT owner_id
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
+    <select id="getBuyerId" resultType="Long">
+        SELECT buyer_id
+        FROM contract_chat
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+
+    <select id="getContract" resultType="org.scoula.domain.contract.dto.ContractDTO">
+        SELECT
+            cc.contract_chat_id,
+            oiv.name AS ownerName, CONCAT_WS(' ', oiv.addr1, oiv.addr2) AS ownerAddr, oiv.phone_number AS ownerPhoneNum,
+               biv.name AS buyerName, CONCAT_WS(' ', biv.addr1, biv.addr2) AS buyerAddr, biv.phone_number AS buyerPhoneNum,
+        h.addr1 AS homeAddr1, h.addr2 AS homeAddr2, h.residence_type, h.exclusive_area,
+        h.deposit_price, h.monthly_rent, h.maintenance_fee,
+        hd.home_floor,
+        tpc.expected_move_in_date AS contractStartDate
+        FROM contract_chat cc
+        LEFT JOIN identity_verification oiv
+            ON oiv.user_id = cc.owner_id
+            AND oiv.contract_id = cc.contract_chat_id
+        LEFT JOIN identity_verification biv
+            ON biv.user_id = cc.buyer_id
+            AND biv.contract_id = cc.contract_chat_id
+        LEFT JOIN home h
+            ON cc.home_id = h.home_id
+        LEFT JOIN home_detail hd
+            ON cc.home_id = hd.home_id
+        LEFT JOIN tenant_precontract_check tpc
+            ON cc.contract_chat_id = tpc.contract_chat_id
+        WHERE cc.contract_chat_id = #{contractChatId}
+    </select>
+
+    <select id="getDuration" resultType="String">
+        SELECT tpc.contract_duration
+        FROM tenant_precontract_check tpc
+        WHERE tpc.contract_chat_id = #{contractChatId}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE contract_chat
+        SET status = #{step}
+        WHERE contract_chat_id = #{contractChatId}
+    </update>
+
+    <select id="selectFinalContractId" resultType="Long">
+        SELECT fc.contract_id
+        FROM contract_chat cc
+                 INNER JOIN final_contract fc
+                            ON cc.home_id = fc.home_id AND cc.owner_id = fc.owner_id
+        WHERE cc.contract_chat_id = #{contractChatId}
+    </select>
+
+    <insert id = "insertSignatureInit">
+        INSERT INTO electronic_signature (contract_id, identity_verification_id, owner_id, buyer_id, created_at)
+        SELECT fc.contract_id, iv.identity_id, cc.owner_id, cc.buyer_id, NOW()
+        FROM contract_chat cc
+                 INNER JOIN final_contract fc
+                            ON cc.home_id = fc.home_id AND cc.owner_id = fc.owner_id
+                 LEFT JOIN identity_verification iv
+                           ON iv.contract_id = cc.contract_chat_id
+        WHERE cc.contract_chat_id = 4;
+    </insert>
+
+    <update id="updateTaxSignature">
+        UPDATE electronic_signature
+        SET owner_tax_signature_file_url = #{url}, owner_tax_file_hash = #{hashKey}, owner_tax_signed_at = NOW()
+            WHERE contract_id = #{finalContractId}
+    </update>
+
+    <insert id="insertFinalContract">
+        INSERT INTO final_contract (
+            home_id,
+            owner_id,
+            buyer_id,
+            contract_pdf_url,
+                                    contract_pdf_hash,
+            contract_date,
+            contract_expire_date,
+                                    owner_identity_verified_at,
+                                    buyer_identity_verified_at,
+                                    owner_signed_at,
+                                    buyer_signed_at,
+            deposit_price,
+            monthly_rent,
+            maintenance_fee,
+            created_at
+        )
+        SELECT
+            cc.home_id,
+            cc.owner_id,
+            cc.buyer_id,
+            #{contractPdfUrl},
+            #{contractPdfHash},
+            #{contractDate},
+            #{contractExpireDate},
+            oiv.identity_verified_at,
+            biv.identity_verified_at,
+            es.owner_signed_at,
+            es.buyer_signed_at,
+            h.deposit_price,
+            h.monthly_rent,
+            h.maintenance_fee,
+            NOW()
+        FROM contract_chat cc
+                        LEFT JOIN home h ON cc.home_id = h.home_id
+            LEFT JOIN identity_verification oiv ON oiv.user_id = cc.owner_id AND oiv.contract_id = cc.contract_chat_id
+            LEFT JOIN identity_verification biv ON biv.user_id = cc.buyer_id AND biv.contract_id = cc.contract_chat_id
+            LEFT JOIN electronic_signature es ON cc.home_id = fc.home_id AND cc.owner_id = fc.owner_id
+                                           WHERE cc.contract_chat_id = #{contractChatId}
+    </insert>
+
+    <select id="selectOwnerTaxSignatureUrl" resultType="String">
+        SELECT es.owner_tax_signature_file_url
+        FROM electronic_signature es
+        WHERE es.contract_id = #{finalContractId}
+    </select>
+
+    <select id="getDepositAdjustment" resultType="boolean">
+        SELECT deposit_adjustment
+        FROM tenant_precontract_check
+        WHERE contract_chat_id = #{contractChatId}
+    </select>
+</mapper>

@@ -2,6 +2,11 @@ package org.scoula.domain.precontract.service;
 
 import java.util.Optional;
 
+import org.scoula.domain.chat.dto.ChatMessageRequestDto;
+import org.scoula.domain.chat.mapper.ContractChatMapper;
+import org.scoula.domain.chat.service.ChatServiceInterface;
+import org.scoula.domain.chat.service.ContractChatServiceInterface;
+import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
@@ -11,6 +16,7 @@ import org.scoula.domain.precontract.vo.TenantJeonseInfoVO;
 import org.scoula.domain.precontract.vo.TenantPreContractCheckVO;
 import org.scoula.domain.precontract.vo.TenantWolseInfoVO;
 import org.scoula.global.common.exception.BusinessException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +27,19 @@ import lombok.extern.log4j.Log4j2;
 @Service
 @RequiredArgsConstructor
 @Log4j2
-public class PreContractServiceImpl implements PreContractService {
+public class TenantPreContractServiceImpl implements TenantPreContractService {
 
       private final TenantPreContractMapper tenantMapper;
       private final TenantMongoRepository mongoRepository;
+      private final ChatServiceInterface chatService;
+      private final ContractChatMapper contractChatMapper;
+      private final ContractChatServiceInterface contractChatService;
+
+      @Value("${front.base.url}")
+      private String URL;
+
+      private String precontractUrl = "/pre-contract/";
+      private String ownerUrl = "/owner?step=1";
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
@@ -342,6 +357,22 @@ public class PreContractServiceImpl implements PreContractService {
           } catch (DataAccessException e) {
               throw new BusinessException(PreContractErrorCode.TENANT_INSERT, e);
           }
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+
+          String contractChatUrls = URL + precontractUrl + (contractChatId.toString()) + ownerUrl;
+
+          ChatMessageRequestDto linkMessages =
+                  ChatMessageRequestDto.builder()
+                          .chatRoomId(contractChatId)
+                          .senderId(contractChat.getBuyerId())
+                          .receiverId(contractChat.getOwnerId())
+                          .content(contractChatUrls)
+                          .type("URLLINK")
+                          .build();
+          contractChatService.AiMessage(contractChatId, "안녕하세요!\n" + "임대인이 입장하면 바로 계약서 작성을 시작할게요.");
+          contractChatService.AiMessageBtn(contractChatId, "기다리는 동안 \n" + "어려운 법률 용어와 법률 팁을 알아볼까요?");
+          chatService.handleChatMessage(linkMessages);
 
           return null;
       }

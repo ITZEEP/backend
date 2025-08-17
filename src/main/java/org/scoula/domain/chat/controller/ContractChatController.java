@@ -133,6 +133,14 @@ public interface ContractChatController {
       ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>> getIncompleteSpecialContracts(
               @PathVariable Long contractChatId, Authentication authentication);
 
+      @ApiOperation(
+              value = "메시지 미포함 미완료 특약 문서 목록 조회",
+              notes = "메시지 내역이 포함되지 않은 미완료된 모든 특약 문서를 조회합니다.")
+      @GetMapping("/special-contract/{contractChatId}/incomplete/now")
+      ResponseEntity<ApiResponse<List<SpecialContractFixDocument>>>
+              getIncompleteSpecialContractsWithoutMessage(
+                      @PathVariable Long contractChatId, Authentication authentication);
+
       @ApiOperation(value = "특약 대화 시작 AI 메시지", notes = "선택된 특약 번호 대화를 시작한다는 메시지를 AI가 전송합니다.")
       @PostMapping("/special-contract/{contractChatId}/ai")
       ResponseEntity<ApiResponse<String>> sendAiMessage(
@@ -179,12 +187,9 @@ public interface ContractChatController {
       @ApiOperation(value = "최종 특약 확정 수락 (임차인)", notes = "임차인이 임대인의 최종 특약서 확정 요청을 수락합니다.")
       @PostMapping("/{contractChatId}/final-contract/accept-confirmation")
       ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractConfirmation(
-              @PathVariable Long contractChatId, Authentication authentication);
-
-      @ApiOperation(value = "최종 특약 확정 거절 (임차인)", notes = "임차인이 임대인의 최종 특약서 확정 요청을 거절합니다.")
-      @PostMapping("/{contractChatId}/final-contract/reject-confirmation")
-      ResponseEntity<ApiResponse<String>> rejectFinalContractConfirmation(
-              @PathVariable Long contractChatId, Authentication authentication);
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
+              Authentication authentication);
 
       @ApiOperation(value = "최종 특약 삭제 요청 (임대인)", notes = "임대인이 최종 특약서의 특정 조항 삭제를 요청합니다.")
       @PostMapping("/final-contract/{contractChatId}/deletion-request/{clauseOrder}")
@@ -193,17 +198,25 @@ public interface ContractChatController {
               @PathVariable Integer clauseOrder,
               Authentication authentication);
 
-      @ApiOperation(value = "최종 특약 삭제 수락 (임차인)", notes = "임차인이 임대인의 최종 특약 삭제 요청을 수락합니다.")
-      @PostMapping("/final-contract/{contractChatId}/accept-deletion/{clauseOrder}")
-      ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContractDeletion(
+      @ApiOperation(value = "현재 스텝 조회", notes = "현재 진행 상황을 조회합니다.")
+      @GetMapping("/{contractChatId}/status")
+      ResponseEntity<ApiResponse<String>> getContractStatus(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "전체 라운드 특약 문서 조회", notes = "모든 라운드의 특약 문서를 조회합니다.")
+      @GetMapping("/special-contract/{contractChatId}/all-rounds")
+      ResponseEntity<ApiResponse<Map<String, Object>>> getAllRoundsSpecialContract(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "최종 특약 삭제 요청 응답", notes = "임차인이 삭제 요청을 수락 또는 거절합니다.")
+      @PostMapping("/final-contract/{contractChatId}/deletion-response")
+      ResponseEntity<ApiResponse<Map<String, Object>>> respondToFinalContractDeletion(
               @PathVariable Long contractChatId,
-              @PathVariable Integer clauseOrder,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
               Authentication authentication);
 
-      @ApiOperation(value = "최종 특약 삭제 거절 (임차인)", notes = "임차인이 임대인의 최종 특약 삭제 요청을 거절합니다.")
-      @PostMapping("/final-contract/{contractChatId}/reject-deletion/{clauseOrder}")
-      ResponseEntity<ApiResponse<String>> rejectFinalContractDeletion(
-              @PathVariable Long contractChatId,
-              @PathVariable Integer clauseOrder,
-              Authentication authentication);
+      @ApiOperation(value = "계약 채팅방 URL 이동", notes = "계약 채팅방 URL로 이동하는 API")
+      @GetMapping("/{chatRoomId}/moveContractChat")
+      ResponseEntity<ApiResponse<String>> moveContractChat(
+              @PathVariable Long chatRoomId, Authentication authentication);
 }

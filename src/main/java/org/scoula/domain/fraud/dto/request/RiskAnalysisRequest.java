@@ -31,7 +31,7 @@ public class RiskAnalysisRequest {
 
       @ApiModelProperty(value = "매물 가격 (전세인 경우 전세금, 월세인 경우 보증금)", required = true, example = "50000")
       @NotNull(message = "매물 가격은 필수입니다")
-      private Long propertyPrice;
+      private Integer propertyPrice;
 
       @ApiModelProperty(value = "거래 유형", required = true, example = "JEONSE")
       @NotBlank(message = "거래 유형은 필수입니다")
@@ -46,7 +46,7 @@ public class RiskAnalysisRequest {
       private String registeredUserName;
 
       @ApiModelProperty(value = "월세 (거래 유형이 WOLSE인 경우)", example = "100")
-      private Long monthlyRent;
+      private Integer monthlyRent;
 
       @ApiModelProperty(value = "등기부등본 정보", required = true)
       @NotNull(message = "등기부등본 정보는 필수입니다")

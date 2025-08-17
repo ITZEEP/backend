@@ -11,6 +11,12 @@
         WHERE contract_chat_id = #{contractChatId}
     </select>
 
+    <select id="selectContractOwnerId" resultType="Long">
+    SELECT owner_id
+    FROM contract_chat
+    WHERE contract_chat_id=#{contractChatId}
+</select>
+
     <select id="selectBuyerId" resultType="Long">
         SELECT cc.buyer_id
         FROM tenant_precontract_check tpc
