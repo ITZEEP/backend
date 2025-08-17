@@ -24,4 +24,5 @@ public class HomeDetailVO {
       private Boolean isParking;
       private Float area;
       private String landCategory;
+      private String description;
 }

@@ -61,6 +61,8 @@ public class HomeCreateDTO {
 
       private List<MaintenanceFeeDTO> maintenanceFees;
 
+      private String description;
+
       @Data
       @NoArgsConstructor
       @AllArgsConstructor

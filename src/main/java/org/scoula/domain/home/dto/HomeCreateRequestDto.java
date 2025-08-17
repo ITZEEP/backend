@@ -98,6 +98,9 @@ public class HomeCreateRequestDto {
       @ApiModelProperty(value = "매물 이미지 목록")
       private List<MultipartFile> images;
 
+      @ApiModelProperty(value = "상세 정보", example = "남향이라 햇살이 잘 들고, 근처에 공원이 있어 산책하기 좋습니다.")
+      private String description;
+
       @ApiModel(description = "관리비 항목 DTO")
       @Data
       @NoArgsConstructor

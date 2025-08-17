@@ -42,6 +42,10 @@ public class HomeControllerImpl implements HomeController {
       public ResponseEntity<ApiResponse<Integer>> createHome(
               @Valid @RequestPart HomeCreateRequestDto requestDto, Authentication authentication) {
 
+          // ✨ 매물 등록 요청 데이터와 description 값을 로그로 확인
+          log.info("매물 등록 요청 데이터: {}", requestDto);
+          log.info("컨트롤러에서 확인한 description 값: {}", requestDto.getDescription());
+
           Integer userId = getCurrentUserId(authentication);
 
           // 이미지 파일 리스트 처리
@@ -70,6 +74,7 @@ public class HomeControllerImpl implements HomeController {
                           .isPet(requestDto.getIsPet())
                           .isParking(requestDto.getIsParking())
                           .facilityItemIds(requestDto.getFacilityItemIds())
+                          .description(requestDto.getDescription())
                           .maintenanceFees(
                                   requestDto.getMaintenanceFees() != null
                                           ? requestDto.getMaintenanceFees().stream()
