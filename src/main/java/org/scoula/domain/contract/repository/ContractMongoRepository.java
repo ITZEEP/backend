@@ -102,23 +102,24 @@ public class ContractMongoRepository {
           // Step 4: 저장
           mongoTemplate.save(contractDoc);
       }
-    public void clearSpecialContracts(Long contractChatId) {
-        Query contractQuery = new Query(Criteria.where("contractChatId").is(contractChatId));
-        ContractMongoDocument contractDoc =
-                mongoTemplate.findOne(contractQuery, ContractMongoDocument.class);
 
-        if (contractDoc == null) {
-            throw new BusinessException(ContractException.CONTRACT_GET, "계약서를 찾을 수 없습니다.");
-        }
+      public void clearSpecialContracts(Long contractChatId) {
+          Query contractQuery = new Query(Criteria.where("contractChatId").is(contractChatId));
+          ContractMongoDocument contractDoc =
+                  mongoTemplate.findOne(contractQuery, ContractMongoDocument.class);
 
-        // 특약 내용을 빈 리스트로 설정
-        contractDoc.setSpecialContracts(new ArrayList<>());
+          if (contractDoc == null) {
+              throw new BusinessException(ContractException.CONTRACT_GET, "계약서를 찾을 수 없습니다.");
+          }
 
-        // 저장
-        mongoTemplate.save(contractDoc);
+          // 특약 내용을 빈 리스트로 설정
+          contractDoc.setSpecialContracts(new ArrayList<>());
 
-        System.out.println("특약 내용 삭제 완료 - contractChatId: " + contractChatId);
-    }
+          // 저장
+          mongoTemplate.save(contractDoc);
+
+          System.out.println("특약 내용 삭제 완료 - contractChatId: " + contractChatId);
+      }
 
       public void updateSpecialContract(Long contractChatId, SpecialContractUpdateDTO dto) {
           Query query = new Query(Criteria.where("contractChatId").is(contractChatId));

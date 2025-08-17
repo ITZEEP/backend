@@ -839,7 +839,13 @@ public class ChatServiceImpl implements ChatServiceInterface {
                           .build();
 
           handleChatMessage(acceptMessage);
-          String contractChatUrl = URL + PRECONTRACTURL + (contractChatRoomId.toString()) + BUYERURL+"&homeId="+(originalChatRoom.getHomeId());
+          String contractChatUrl =
+                  URL
+                          + PRECONTRACTURL
+                          + (contractChatRoomId.toString())
+                          + BUYERURL
+                          + "&homeId="
+                          + (originalChatRoom.getHomeId());
 
           ChatMessageRequestDto linkMessage =
                   ChatMessageRequestDto.builder()
