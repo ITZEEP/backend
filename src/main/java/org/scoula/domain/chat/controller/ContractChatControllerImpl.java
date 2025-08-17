@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.scoula.domain.chat.document.ContractChatDocument;
@@ -433,7 +434,7 @@ public class ContractChatControllerImpl implements ContractChatController {
               if (contractChat == null) {
                   throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
               }
-              String role = userId == contractChat.getOwnerId() ? "임대인입니다" : "임차인입니다";
+              String role = Objects.equals(userId, contractChat.getOwnerId()) ? "임대인" : "임차인";
 
               Map<String, Object> contractInfo =
                       Map.of(
