@@ -539,6 +539,7 @@ public class ContractServiceImpl implements ContractService {
         return null;
     }
 
+
     // 임차인 거절
     @Override
     @Transactional
