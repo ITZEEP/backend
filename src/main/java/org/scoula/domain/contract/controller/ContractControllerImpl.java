@@ -1,6 +1,8 @@
 package org.scoula.domain.contract.controller;
 
+import org.scoula.domain.chat.service.ContractChatServiceInterface;
 import org.scoula.domain.contract.dto.*;
+import org.scoula.domain.contract.service.ContractFixServiceInterface;
 import org.scoula.domain.contract.service.ContractService;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
@@ -17,7 +19,10 @@ import lombok.extern.log4j.Log4j2;
 @RequestMapping("/api/contract/{contractChatId}")
 public class ContractControllerImpl implements ContractController {
 
+      private final ContractFixServiceInterface contractFixService;
+
       private final ContractService service;
+      private final ContractChatServiceInterface contractChatService;
 
       @Override
       @PostMapping("")
@@ -107,7 +112,8 @@ public class ContractControllerImpl implements ContractController {
               @AuthenticationPrincipal CustomUserDetails userDetails) {
           return ResponseEntity.ok(
                   ApiResponse.success(
-                          service.saveSpecialContract(contractChatId, userDetails.getUserId())));
+                          contractFixService.saveSpecialContract(
+                                  contractChatId, userDetails.getUserId())));
       }
 
       @Override
@@ -116,7 +122,8 @@ public class ContractControllerImpl implements ContractController {
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
           return ResponseEntity.ok(
-                  ApiResponse.success(service.getLegality(contractChatId, userDetails.getUserId())));
+                  ApiResponse.success(
+                          contractFixService.getLegality(contractChatId, userDetails.getUserId())));
       }
 
       @Override
