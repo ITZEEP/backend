@@ -1,6 +1,9 @@
 package org.scoula.domain.contract.service;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.scoula.domain.contract.dto.*;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface ContractService {
 
@@ -142,4 +145,81 @@ public interface ContractService {
        * @param userId 유저 아이디 @Parma step 계약서 단계
        */
       Void sendStep4(Long contractChatId, Long userId);
+
+      // ============================================
+      //      /**
+      //       * 최종 계약서, 전자 서명 테이블 초기 세팅
+      //       *
+      //       * @param contractChatId 채팅방 아이디
+      //       * @param userId 유저 아이디
+      //       */
+      //      Void finalContractInit(Long contractChatId, Long userId);
+
+      /**
+       * 최종 계약서 작성하기 PDF -> AI
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       */
+      MultipartFile finalContractPDF(Long contractChatId, Long userId);
+
+      /**
+       * 전자서명 파일 암호화 후 S3에 저장 (암호화 형식이 다름)
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       */
+      Boolean saveSignature(
+              Long contractChatId, Long userId, SaveSignatureDTO signatureDTO, MultipartFile imgFiles)
+              throws Exception;
+
+      /**
+       * 최종계약서 S3에 저장
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       */
+      Void saveFinalContract(Long contractChatId, Long userId, ContractPasswordDTO dto);
+
+      /**
+       * 최종 계약서를 불러와서 보내주기
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       */
+      byte[] selectContractPDF(Long contractChatId, Long userId);
+
+      //      /**
+      //       * 계약서 PDF 파일 암호화 후 S3에 저장 (암호화 형식이 다름)
+      //       *
+      //       * @param contractChatId 채팅방 아이디
+      //       * @param userId 유저 아이디 @Parma step 계약서 단계 @Param dto 실제 계약서에 있는 내역들
+      //       */
+      //      Void saveContractPDF(Long contractChatId, Long userId, FinalContractDTO dto);
+
+      //      /**
+      //       * 전자서명 다운로드 (복호화하기)
+      //       *
+      //       * @param contractChatId 채팅방 아이디
+      //       * @param userId 유저 아이디 @Parma step 계약서 단계 @Param dto 실제 계약서에 있는 내역들
+      //       */
+      //      Void selectSignaturePDF(Long contractChatId, Long userId, HttpServletResponse response);
+
+      /**
+       * 계약서 PDF 파일 다운로드/인쇄하기 -> 프론트에 보내기
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디 @Parma step 계약서 단계
+       */
+      Void selectContractPDF(
+              Long contractChatId, Long userId, HttpServletResponse response, FindContractDTO dto)
+              throws Exception;
+
+      /**
+       * 계약서 PDF를 이메일로 전송
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디 @Parma step 계약서 단계
+       */
+      Void sendContractPDF(Long contractChatId, Long userId, FindContractDTO dto) throws Exception;
 }
