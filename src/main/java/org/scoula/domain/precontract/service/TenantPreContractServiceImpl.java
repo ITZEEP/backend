@@ -3,11 +3,6 @@ package org.scoula.domain.precontract.service;
 import java.util.Optional;
 
 import org.scoula.domain.chat.dto.ChatMessageRequestDto;
-import org.scoula.domain.chat.mapper.ContractChatMapper;
-import org.scoula.domain.chat.service.ChatServiceInterface;
-import org.scoula.domain.chat.service.ContractChatServiceInterface;
-import org.scoula.domain.chat.vo.ContractChat;
-import org.scoula.domain.chat.dto.ChatMessageRequestDto;
 import org.scoula.domain.chat.mapper.ChatRoomMapper;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.service.ChatServiceInterface;
