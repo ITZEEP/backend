@@ -138,12 +138,14 @@ public class ContractServiceImpl implements ContractService {
         contractChatService.AiMessage(
                 contractChatId,
                 """
-      👋🏻 안녕하세요!
+        🎉 안녕하세요!
       이 계약은 임대인 %s님과 임차인 %s님의 계약입니다. 
-      시작하기 전, 정보를 먼저 확인할게요.
-      제출된 정보를 토대로 계약서를 추출할게요.
+      이번 단계는 정보 확인 단계에요.
       """.formatted(aiDto.getOwnerName(), aiDto.getBuyerName())
         );
+
+      // 스텝 변경
+      contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP0);
 
         // 2초 대기
         try {
@@ -154,13 +156,21 @@ public class ContractServiceImpl implements ContractService {
 
           contractChatService.AiMessageBtn(contractChatId, """
                   %s님과 %s님이 작성한 사전 조사를 토대로
-                  정보를 추출한 결과가 다음과 같습니다.
-                  매물 정보, 조건을 확인하셨나요?
+                  정보를 추출한 결과, 👉오른쪽 계약서와 같아요.
+                  🏠매물 정보, 조건을 확인해주세요.
                   다음 단계로 넘어갈까요?
-                  """.formatted(aiDto.getBuyerName(), aiDto.getOwnerName()));
+                  """.formatted(aiDto.getOwnerName(), aiDto.getBuyerName()));
 
         return null;
     }
+
+    String step3StartMessage = "다음은 3단계: ‘특약 조율' 단계입니다.\n"
+        + "\n"
+        + "'특약'은 계약 당사자 간의 특별한 상호 합의로서 명확한 권리, 의무 관계를 명시해야 해요. \n"
+        + "\n"
+        + "하지만, 특약으로 기재했다고 모든 조항이 효력을 갖는 것이 아니에요. \n"
+        + "\n"
+        + "주택임대차보호법의 범위를 넘어서지 않도록 AI가 도와줄게요.";
 
     @Override
     public Boolean nextStep(Long contractChatId, Long userId, NextStepDTO dto) {
@@ -173,8 +183,11 @@ public class ContractServiceImpl implements ContractService {
         if (nextSteps) {
             boolean deposit = contractMapper.getDepositAdjustment(contractChatId);
 
+          // 스텝 변경
+          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
+
             if (deposit) {
-                contractChatService.AiMessage(contractChatId, "다음 단계는 '금액 조율' 단계입니다");
+                contractChatService.AiMessage(contractChatId, "다음은 2단계 '금액 조율' 단계입니다.");
             } else if (!deposit) {
                 contractChatService.AiMessageBtn(contractChatId, """
                         다음은 2단계 '금액 조율' 단계입니다.
@@ -186,15 +199,21 @@ public class ContractServiceImpl implements ContractService {
                 // 2초 대기
                 try {
                     Thread.sleep(2000);
+
+                  // 다음 단계 메세지 보내기
+                  contractChatService.AiMessage(contractChatId, step3StartMessage);
+
+                  // 스텝 변경
+                  contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
+
+                  // 특약 초안 메시지
+                  contractChatService.AiMessageBtn(contractChatId, "특약 초안이 생성되었습니다. 각 조항을 검토하고 수락 / 거절을 선택하세요.");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
 
-                // 다음 단계 메세지 보내기
-                contractChatService.AiMessage(contractChatId, "이번 단계는 '금액 조율' 단계입니다");
             }
-//            // 스텝 변경
-//            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP1);
+
         }
 
         return nextSteps;
@@ -212,15 +231,13 @@ public class ContractServiceImpl implements ContractService {
           AIMessageDTO aiDto = AIMessageDTO.toDTO(doc);
 
           long contract = ChronoUnit.YEARS.between(aiDto.getContractStartDate(), aiDto.getContractEndDate());
-          String rentType = tenantMapper.selectRentType(contractChatId, userId)
+          String rentType = tenantMapper.selectRentTypeAll(contractChatId, userId)
                   .orElseThrow(() -> new BusinessException(ContractException.CONTRACT_GET, "전/월세 타입 조회 실패"));
 
           // 시작 메세지 보내기
           contractChatService.AiMessage(
                   contractChatId,
                   """
-        다음은 2단계: ‘금액 조율’ 단계입니다.
-
               이 계약은 계약기간 %d년의 %s 계약입니다.
       전세 보증금은 %s,
       관리비는 %s입니다.
@@ -322,62 +339,25 @@ public class ContractServiceImpl implements ContractService {
               // 7. Redis 값 삭제
               stringRedisTemplate.delete(redisKey);
 
+
+            // 스텝 변경
+            contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
+
+            // 다음 단계 메세지 보내기
+            contractChatService.AiMessage(contractChatId, step3StartMessage);
+
+            Thread.sleep(2000);
+
+            // 특약 초안 메시지
+            contractChatService.AiMessageBtn(contractChatId, "특약 초안이 생성되었습니다. 각 조항을 검토하고 수락 / 거절을 선택하세요.");
+
+
           } catch (Exception e) {
               throw new BusinessException(ContractException.CONTRACT_UPDATE, e);
           }
 
-          // 스텝 변경
-          contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
-
-          // 다음 단계 메세지 보내기
-          contractChatService.AiMessage(contractChatId, "이번 단계는 '특약 조율' 단계입니다");
-
           return null;
       }
-
-
-      // 적법성 검사
-//      @Override
-//      public ContractDTO getContracts (Long contractChatId, Long userId){
-//          // userId 검증
-//          validateUserId(contractChatId, userId);
-//
-//          ContractDTO dto;
-//
-//          // 몽고 DB에서 특약부분을 받아서 저장한다.
-////          try {
-//              repository.saveSpecialContract(contractChatId);
-//
-//              ContractMongoDocument document = repository.getContract(contractChatId);
-//              if (document == null) {
-//                  throw new BusinessException(ContractException.CONTRACT_GET);
-//              }
-//              Long ownerContractId = contractMapper.getOwnerId(contractChatId);
-//              Long buyerContractId = contractMapper.getBuyerId(contractChatId);
-//              IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
-//              IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
-//
-//
-//              // 찾은 값을 Dto에 넣고 반환하기
-//              dto = ContractDTO.toDTO(document, ownerVO, buyerVO);
-////          } catch (Exception e) {
-////              // 예외 로그 기록 및 사용자에게 전달할 메시지 등 처리
-////              log.error("특약사항 저장 실패 ❌", e);
-////              throw new BusinessException(ContractException.CONTRACT_INSERT, e);
-////          }
-//
-////          ContractMongoDocument document = repository.getContract(contractChatId);
-////          if (document == null) {
-////              throw new BusinessException(ContractException.CONTRACT_GET);
-////          }
-////
-////          // 찾은 값을 Dto에 넣고 반환하기
-////          ContractDTO dto = ContractDTO.toDTO(document);
-//
-////          ContractDTO dto = getContract(contractChatId, userId);
-//
-//          return dto;
-//      }
 
     @Override
     public Void saveSpecialContract(Long contractChatId, Long userId) {
