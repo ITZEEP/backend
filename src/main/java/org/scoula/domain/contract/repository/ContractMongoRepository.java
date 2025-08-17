@@ -1,6 +1,7 @@
 package org.scoula.domain.contract.repository;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -101,6 +102,23 @@ public class ContractMongoRepository {
           // Step 4: 저장
           mongoTemplate.save(contractDoc);
       }
+    public void clearSpecialContracts(Long contractChatId) {
+        Query contractQuery = new Query(Criteria.where("contractChatId").is(contractChatId));
+        ContractMongoDocument contractDoc =
+                mongoTemplate.findOne(contractQuery, ContractMongoDocument.class);
+
+        if (contractDoc == null) {
+            throw new BusinessException(ContractException.CONTRACT_GET, "계약서를 찾을 수 없습니다.");
+        }
+
+        // 특약 내용을 빈 리스트로 설정
+        contractDoc.setSpecialContracts(new ArrayList<>());
+
+        // 저장
+        mongoTemplate.save(contractDoc);
+
+        System.out.println("특약 내용 삭제 완료 - contractChatId: " + contractChatId);
+    }
 
       public void updateSpecialContract(Long contractChatId, SpecialContractUpdateDTO dto) {
           Query query = new Query(Criteria.where("contractChatId").is(contractChatId));
