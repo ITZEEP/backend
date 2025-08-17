@@ -254,7 +254,7 @@ public class ContractServiceImpl implements ContractService {
 
           // 대기
           try {
-              Thread.sleep(1000);
+              Thread.sleep(2000);
           } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
           }
@@ -372,6 +372,8 @@ public class ContractServiceImpl implements ContractService {
             stringRedisTemplate.delete(redisKey);
 
             contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
+            Thread.sleep(2000);
+
 
             contractChatService.AiMessage(contractChatId, step3StartMessage);
 

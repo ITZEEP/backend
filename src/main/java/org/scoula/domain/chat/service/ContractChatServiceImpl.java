@@ -2471,10 +2471,20 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
           AiMessage(contractChatId, confirmationMessage);
+
           // [적법성 검사] 계약서 1 몽고DB에 특약 저장
           contractFixService.saveSpecialContract(contractChatId, buyerId);
-
+          try {
+              Thread.sleep(2000);
+          } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+          }
           AiMessageNext(contractChatId, "다음은 마지막 4단계: '적법성 검토' 단계입니다.");
+          try {
+              Thread.sleep(2000);
+          } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+          }
           AiMessage(contractChatId, "AI가 지금까지 작성된 계약서의 적법성을 분석중이에요!\n 잠시만 기다려주세요!");
 
           // api/contract/{contractChatId}/legality
@@ -2581,6 +2591,11 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   } else {
                       log.info("위반 사항 없음");
                       AiMessage(contractChatId, "✅ 적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
+                      try {
+                          Thread.sleep(2000);
+                      } catch (InterruptedException e) {
+                          Thread.currentThread().interrupt();
+                      }
                       AiMessage(contractChatId, "최종 계약서 서명하러 갈께요!");
                   }
               } else if (legalityResponse instanceof Map) {
