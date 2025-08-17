@@ -100,16 +100,6 @@ public class ContractControllerImpl implements ContractController {
                           service.updateDepositPrice(contractChatId, userDetails.getUserId())));
       }
 
-      //      @Override
-      //      @PostMapping("/getContracts")
-      //      public ResponseEntity<ApiResponse<ContractDTO>> getContracts(
-      //              @PathVariable Long contractChatId,
-      //              @AuthenticationPrincipal CustomUserDetails userDetails) {
-      //          return ResponseEntity.ok(
-      //                  ApiResponse.success(service.getContract(contractChatId,
-      // userDetails.getUserId())));
-      //      }
-
       @Override
       @PostMapping("/save/special-contract")
       public ResponseEntity<ApiResponse<Void>> saveSpecialContract(
