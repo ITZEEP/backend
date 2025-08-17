@@ -90,7 +90,7 @@ public class ContractMongoRepository {
                           .map(
                                   fc ->
                                           ContractMongoDocument.SpecialContract.builder()
-                                                  .order(fc.getOrder() + 1)
+                                                  .order(fc.getOrder())
                                                   .title(fc.getTitle())
                                                   .content(fc.getContent())
                                                   .build())
