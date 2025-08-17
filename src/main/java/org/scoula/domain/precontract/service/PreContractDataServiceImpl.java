@@ -88,7 +88,7 @@ public class PreContractDataServiceImpl implements PreContractDataService {
                       "Tenant 데이터를 찾을 수 없습니다. contractChatId: " + contractChatId);
           }
 
-          Long identityId = tenantMapper.selectIdentityId(buyerId).orElse(null);
+          Long identityId = tenantMapper.selectIdentityId(contractChatId, buyerId).orElse(null);
 
           ClauseImproveRequestDto.TenantData tenantData =
                   buildTenantData(tenantDto, contractChatId, identityId);
