@@ -1,8 +1,9 @@
 package org.scoula.global.config;
 
 import javax.servlet.Filter;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
 
-import org.scoula.global.auth.config.SecurityConfig;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
 
@@ -12,6 +13,15 @@ public class WebConfig extends AbstractAnnotationConfigDispatcherServletInitiali
       final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
       final long MAX_REQUEST_SIZE = 20L * 1024 * 1024; // 20MB
       final int FILE_SIZE_THRESHOLD = 5 * 1024 * 1024; // 5MB
+
+      @Override
+      public void onStartup(ServletContext servletContext) throws ServletException {
+          System.out.println("========================================");
+          System.out.println("WebConfig.onStartup() called!");
+          System.out.println("Starting Spring Web Application...");
+          System.out.println("========================================");
+          super.onStartup(servletContext);
+      }
 
       protected Filter[] getServletFilters() {
           CharacterEncodingFilter characterEncodingFilter = new CharacterEncodingFilter();
@@ -24,7 +34,7 @@ public class WebConfig extends AbstractAnnotationConfigDispatcherServletInitiali
 
       @Override
       protected Class<?>[] getRootConfigClasses() {
-          return new Class<?>[] {RootConfig.class, SecurityConfig.class};
+          return new Class<?>[] {RootConfig.class};
       }
 
       @Override

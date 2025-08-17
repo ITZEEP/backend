@@ -23,7 +23,6 @@ import lombok.extern.log4j.Log4j2;
 /** 암호화/복호화 테스트 컨트롤러 - 이미지와 PDF 파일의 암호화 및 복호화 기능 제공 */
 @RestController
 @RequestMapping("/api/test/encryption")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 @Log4j2
 public class EncryptionTestController {
@@ -150,21 +149,19 @@ public class EncryptionTestController {
 
       // ==================== PDF 암호화/복호화 ====================
 
-      /** 3. PDF 암호화 1차 - Redis에 파일과 첫 번째 패스워드 저장 */
+      /** 3. PDF 암호화 1차 - Redis에 첫 번째 패스워드만 저장 */
       @PostMapping("/pdf/encrypt-step1")
       public ResponseEntity<?> encryptPDFStep1(
-              @RequestParam("file") MultipartFile pdfFile,
               @RequestParam("contractChatId") String contractChatId,
               @RequestParam("password1") String password1) {
           try {
-              // 서비스 호출
-              String message = encryptionService.uploadPdfStep1(pdfFile, contractChatId, password1);
+              // 서비스 호출 (PDF 파일 없이)
+              String message = encryptionService.uploadPdfStep1(contractChatId, password1);
 
               Map<String, Object> response = new HashMap<>();
               response.put("status", "success");
               response.put("message", message);
               response.put("contractChatId", contractChatId);
-              response.put("originalFilename", pdfFile.getOriginalFilename());
               response.put("step", 1);
 
               return ResponseEntity.ok(response);
@@ -176,16 +173,17 @@ public class EncryptionTestController {
           }
       }
 
-      /** 4. PDF 암호화 2차 - 봉투키 암호화로 최종 암호화 파일 생성 */
+      /** 4. PDF 암호화 2차 - PDF 파일 업로드 및 봉투키 암호화로 최종 암호화 파일 생성 */
       @PostMapping("/pdf/encrypt-step2")
       public void encryptPDFStep2(
+              @RequestParam("file") MultipartFile pdfFile,
               @RequestParam("contractChatId") String contractChatId,
               @RequestParam("password2") String password2,
               HttpServletResponse response) {
           FileWithHashDto result = null;
           try {
-              // 서비스 호출
-              result = encryptionService.encryptPdfStep2(contractChatId, password2);
+              // 서비스 호출 (PDF 파일 포함)
+              result = encryptionService.encryptPdfStep2(pdfFile, contractChatId, password2);
               File encryptedPdf = result.getFile();
 
               String encryptedFilename = result.getFileName();

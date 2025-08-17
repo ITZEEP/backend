@@ -1,5 +1,6 @@
 package org.scoula.domain.fraud.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -7,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.scoula.domain.fraud.dto.ai.FraudRiskCheckDto;
 import org.scoula.domain.fraud.dto.common.BuildingDocumentDto;
+import org.scoula.domain.fraud.dto.common.MortgageeDto;
 import org.scoula.domain.fraud.dto.common.RegistryDocumentDto;
 import org.scoula.domain.fraud.dto.request.ExternalRiskAnalysisRequest;
 import org.scoula.domain.fraud.dto.request.RiskAnalysisRequest;
@@ -22,6 +24,9 @@ import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.scoula.domain.fraud.mapper.FraudRiskMapper;
 import org.scoula.domain.fraud.mapper.HomeLikeMapper;
+import org.scoula.domain.fraud.vo.BuildingDocumentVO;
+import org.scoula.domain.fraud.vo.MortgageInfoVO;
+import org.scoula.domain.fraud.vo.RegistryDocumentVO;
 import org.scoula.domain.fraud.vo.RiskCheckDetailVO;
 import org.scoula.domain.fraud.vo.RiskCheckVO;
 import org.scoula.global.common.dto.PageRequest;
@@ -133,6 +138,13 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               throw new FraudRiskException(FraudErrorCode.FRAUD_CHECK_NOT_FOUND, "유효한 매물 ID가 필요합니다.");
           }
 
+          // 매물 존재 여부 확인
+          if (!fraudRiskMapper.existsHome(request.getHomeId())) {
+              throw new FraudRiskException(
+                      FraudErrorCode.FRAUD_CHECK_NOT_FOUND,
+                      "존재하지 않는 매물입니다. 서비스 외 매물의 경우 '서비스 외 매물 분석' 기능을 사용해주세요.");
+          }
+
           try {
               // 1. risk_check 레코드 생성
               RiskCheckVO riskCheck =
@@ -178,11 +190,19 @@ public class FraudRiskServiceImpl implements FraudRiskService {
               // 5. AI 분석 결과를 risk_check_detail에 저장
               saveAnalysisResultsToDb(aiResponse, riskCheck.getRiskckId());
 
-              // 6. 저장된 상세 분석 결과 조회 및 그룹화
+              // 6. 문서 정보가 있다면 DB에 저장
+              if (request.getRegistryDocument() != null) {
+                  saveRegistryDocumentToDb(request.getRegistryDocument(), riskCheck.getRiskckId());
+              }
+              if (request.getBuildingDocument() != null) {
+                  saveBuildingDocumentToDb(request.getBuildingDocument(), riskCheck.getRiskckId());
+              }
+
+              // 7. 저장된 상세 분석 결과 조회 및 그룹화
               List<RiskCheckDetailResponse.DetailGroup> detailGroups =
                       getDetailGroupsFromDb(riskCheck.getRiskckId());
 
-              // 7. 응답 반환
+              // 8. 응답 반환
               return RiskAnalysisResponse.builder()
                       .riskCheckId(riskCheck.getRiskckId())
                       .riskType(riskType)
@@ -696,15 +716,15 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       }
 
       @Override
-      public RiskCheckSummaryResponse getTodayRiskCheckSummary(Long userId, Long homeId) {
-          log.info("오늘 분석한 위험도 체크 요약 조회 - userId: {}, homeId: {}", userId, homeId);
+      public RiskCheckSummaryResponse getTodayRiskCheckSummary(Long userId, Long contractChatId) {
+          log.info("오늘 분석한 위험도 체크 요약 조회 - userId: {}, contractChatId: {}", userId, contractChatId);
 
           LocalDateTime[] todayRange = getTodayDateRange();
 
-          // 오늘 분석한 위험도 체크 ID 조회
+          // 오늘 분석한 위험도 체크 ID 조회 (contractChatId 기반)
           Long riskCheckId =
                   fraudRiskMapper.selectTodayRiskCheckId(
-                          userId, homeId, todayRange[0], todayRange[1]);
+                          userId, contractChatId, todayRange[0], todayRange[1]);
 
           if (riskCheckId == null) {
               return null; // 오늘 분석한 결과가 없는 경우
@@ -775,5 +795,107 @@ public class FraudRiskServiceImpl implements FraudRiskService {
                                       .build();
                           })
                   .collect(Collectors.toList());
+      }
+
+      /**
+       * 등기부등본 정보를 DB에 저장
+       *
+       * @param registryDoc 등기부등본 DTO
+       * @param riskCheckId risk_check ID
+       */
+      private void saveRegistryDocumentToDb(RegistryDocumentDto registryDoc, Long riskCheckId) {
+          if (registryDoc == null || riskCheckId == null) {
+              return;
+          }
+
+          try {
+              // RegistryDocumentVO 생성 및 저장
+              RegistryDocumentVO registryVO =
+                      RegistryDocumentVO.builder()
+                              .riskckId(riskCheckId)
+                              .regionAddress(registryDoc.getRegionAddress())
+                              .roadAddress(registryDoc.getRoadAddress())
+                              .buildingNumber(registryDoc.getBuildingNumber())
+                              .buildingDetail(registryDoc.getBuildingDetail())
+                              .ownerName(registryDoc.getOwnerName())
+                              .ownerBirthDate(registryDoc.getOwnerBirthDate())
+                              .debtor(registryDoc.getDebtor())
+                              .hasSeizure(registryDoc.getHasSeizure())
+                              .hasAuction(registryDoc.getHasAuction())
+                              .hasLitigation(registryDoc.getHasLitigation())
+                              .hasAttachment(registryDoc.getHasAttachment())
+                              .issueDate(registryDoc.getIssueDate())
+                              .build();
+
+              fraudRiskMapper.insertRegistryDocument(registryVO);
+              log.debug(
+                      "등기부등본 정보 저장 성공 - riskCheckId: {}, registryId: {}",
+                      riskCheckId,
+                      registryVO.getRegistryId());
+
+              // 근저당권 정보 저장
+              if (registryDoc.getMortgageeList() != null
+                      && !registryDoc.getMortgageeList().isEmpty()) {
+                  for (MortgageeDto mortgageDto : registryDoc.getMortgageeList()) {
+                      MortgageInfoVO mortgageVO =
+                              MortgageInfoVO.builder()
+                                      .registryId(registryVO.getRegistryId())
+                                      .priorityNumber(mortgageDto.getPriorityNumber())
+                                      .maxClaimAmount(mortgageDto.getMaxClaimAmount())
+                                      .debtor(mortgageDto.getDebtor())
+                                      .mortgagee(mortgageDto.getMortgagee())
+                                      .build();
+
+                      fraudRiskMapper.insertMortgageInfo(mortgageVO);
+                      log.debug(
+                              "근저당권 정보 저장 성공 - registryId: {}, priorityNumber: {}",
+                              registryVO.getRegistryId(),
+                              mortgageDto.getPriorityNumber());
+                  }
+              }
+          } catch (Exception e) {
+              log.error("등기부등본 정보 저장 실패 - riskCheckId: {}", riskCheckId, e);
+              // 저장 실패해도 전체 프로세스는 계속 진행
+          }
+      }
+
+      /**
+       * 건축물대장 정보를 DB에 저장
+       *
+       * @param buildingDoc 건축물대장 DTO
+       * @param riskCheckId risk_check ID
+       */
+      private void saveBuildingDocumentToDb(BuildingDocumentDto buildingDoc, Long riskCheckId) {
+          if (buildingDoc == null || riskCheckId == null) {
+              return;
+          }
+
+          try {
+              BuildingDocumentVO buildingVO =
+                      BuildingDocumentVO.builder()
+                              .riskckId(riskCheckId)
+                              .siteLocation(buildingDoc.getSiteLocation())
+                              .roadAddress(buildingDoc.getRoadAddress())
+                              .landArea(
+                                      buildingDoc.getLandArea() != null
+                                              ? BigDecimal.valueOf(buildingDoc.getLandArea())
+                                              : null)
+                              .totalFloorArea(BigDecimal.valueOf(buildingDoc.getTotalFloorArea()))
+                              .purpose(buildingDoc.getPurpose())
+                              .floorNumber(buildingDoc.getFloorNumber())
+                              .approvalDate(buildingDoc.getApprovalDate())
+                              .isViolationBuilding(buildingDoc.getIsViolationBuilding())
+                              .issueDate(buildingDoc.getIssueDate())
+                              .build();
+
+              fraudRiskMapper.insertBuildingDocument(buildingVO);
+              log.debug(
+                      "건축물대장 정보 저장 성공 - riskCheckId: {}, buildingId: {}",
+                      riskCheckId,
+                      buildingVO.getBuildingId());
+          } catch (Exception e) {
+              log.error("건축물대장 정보 저장 실패 - riskCheckId: {}", riskCheckId, e);
+              // 저장 실패해도 전체 프로세스는 계속 진행
+          }
       }
 }

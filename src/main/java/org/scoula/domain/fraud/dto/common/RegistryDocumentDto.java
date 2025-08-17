@@ -29,6 +29,12 @@ public class RegistryDocumentDto {
       @NotBlank(message = "도로명 주소는 필수입니다")
       private String roadAddress;
 
+      @ApiModelProperty(value = "건물번호", example = "제44층 제4409호")
+      private String buildingNumber;
+
+      @ApiModelProperty(value = "건물구조", example = "철골철근콘크리트구조")
+      private String buildingDetail;
+
       @ApiModelProperty(value = "소유자 이름", required = true, example = "홍길동")
       @NotBlank(message = "소유자 이름은 필수입니다")
       private String ownerName;
@@ -54,4 +60,8 @@ public class RegistryDocumentDto {
 
       @ApiModelProperty(value = "압류 여부", example = "false")
       private Boolean hasAttachment;
+
+      @ApiModelProperty(value = "발급일", example = "2025-07-12")
+      @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+      private LocalDate issueDate;
 }

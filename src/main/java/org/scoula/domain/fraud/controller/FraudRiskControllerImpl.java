@@ -188,13 +188,14 @@ public class FraudRiskControllerImpl implements FraudRiskController {
       }
 
       @Override
-      @GetMapping("/today-check/{homeId}")
+      @GetMapping("/today-check/{contractChatId}")
       public ResponseEntity<ApiResponse<TodayRiskCheckResponse>> getTodayRiskCheckSummary(
-              @AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long homeId) {
+              @AuthenticationPrincipal CustomUserDetails userDetails,
+              @PathVariable Long contractChatId) {
 
           Long userId = userDetails.getUserId();
           RiskCheckSummaryResponse summary =
-                  fraudRiskService.getTodayRiskCheckSummary(userId, homeId);
+                  fraudRiskService.getTodayRiskCheckSummary(userId, contractChatId);
 
           TodayRiskCheckResponse response =
                   summary != null

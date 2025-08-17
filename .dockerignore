@@ -1,6 +1,6 @@
 # Gradle
 .gradle/
-build/
+!build/libs/*.war
 !gradle/wrapper/gradle-wrapper.jar
 
 # IDE

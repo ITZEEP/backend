@@ -536,14 +536,25 @@ public class EncryptionUtil {
               String fileId, MultipartFile pdfFile, String keyType, String password)
               throws Exception {
 
-          // pdfFile이 null인 경우 (두 번째 키 추가)
+          // pdfFile이 null인 경우 - Step1: 첫 번째 키만 저장
+          if (pdfFile == null && "owner".equals(keyType)) {
+              log.info("Step 1: Saving first key only - fileId: {}, keyType: {}", fileId, keyType);
+              return saveFirstKeyOnly(fileId, keyType, password);
+          }
+
+          // pdfFile이 있는 경우 - Step2: PDF 파일과 두 번째 키 저장
+          if (pdfFile != null && "tenant".equals(keyType)) {
+              log.info(
+                      "Step 2: Saving PDF file and second key - fileId: {}, keyType: {}",
+                      fileId,
+                      keyType);
+              return savePdfAndSecondKey(fileId, pdfFile, keyType, password);
+          }
+
+          // 기존 로직 (호환성 유지)
           if (pdfFile == null) {
               log.info("Adding second key - fileId: {}, keyType: {}", fileId, keyType);
-
-              // 두 번째 키 추가 및 암호화 수행
               ContractEncryptionResult result = addSecondKey(fileId, keyType, password);
-
-              // ContractKeyStatus로 변환
               return ContractKeyStatus.builder()
                       .fileId(fileId)
                       .status(result.getStatus())
@@ -554,17 +565,92 @@ public class EncryptionUtil {
                       .build();
           }
 
-          // 첫 번째 키 추가 (파일 업로드)
+          // 첫 번째 키 추가 (파일 업로드) - 기존 로직
           log.info("Uploading contract from MultipartFile: {}", pdfFile.getOriginalFilename());
+          validateMultipartFile(pdfFile, "pdf");
+          byte[] pdfData = pdfFile.getBytes();
+          return uploadContractInternal(fileId, pdfData, keyType, password);
+      }
+
+      /** Step1: 첫 번째 패스워드만 저장 (PDF 파일 없이) */
+      private ContractKeyStatus saveFirstKeyOnly(String fileId, String keyType, String password)
+              throws Exception {
+          String redisKey = String.format(REDIS_KEY_PATTERN, fileId);
+
+          log.info("Saving first key only - fileId: {}, keyType: {}", fileId, keyType);
+
+          ContractKeys contractKeys = new ContractKeys();
+          contractKeys.setCreatedTimestamp(new Date());
+          contractKeys.setOwnerKey(password);
+          contractKeys.setStatus("WAITING_PDF_AND_TENANT_KEY");
+
+          // Redis에 저장
+          redisTemplate.opsForValue().set(redisKey, contractKeys, 60L, TimeUnit.MINUTES);
+
+          return ContractKeyStatus.builder()
+                  .fileId(fileId)
+                  .status("WAITING_PDF_AND_TENANT_KEY")
+                  .message("First key saved. Waiting for PDF file and second key.")
+                  .hasOwnerKey(true)
+                  .hasTenantKey(false)
+                  .build();
+      }
+
+      /** Step2: PDF 파일과 두 번째 패스워드 저장 및 암호화 수행 */
+      private ContractKeyStatus savePdfAndSecondKey(
+              String fileId, MultipartFile pdfFile, String keyType, String password)
+              throws Exception {
+          String redisKey = String.format(REDIS_KEY_PATTERN, fileId);
+
+          log.info("Saving PDF and second key - fileId: {}, keyType: {}", fileId, keyType);
+
+          // Redis에서 기존 데이터 조회
+          ContractKeys existingKeys = (ContractKeys) redisTemplate.opsForValue().get(redisKey);
+          if (existingKeys == null) {
+              throw new IllegalArgumentException(
+                      "Contract not found. Please complete Step 1 first: " + fileId);
+          }
 
           // 파일 유효성 검증
           validateMultipartFile(pdfFile, "pdf");
-
-          // MultipartFile을 byte array로 변환
           byte[] pdfData = pdfFile.getBytes();
 
-          // 내부 메서드 호출
-          return uploadContractInternal(fileId, pdfData, keyType, password);
+          // PDF 데이터와 두 번째 키 추가
+          existingKeys.setPdfData(Base64.encodeBase64String(pdfData));
+          existingKeys.setTenantKey(password);
+          existingKeys.setStatus("READY_FOR_ENCRYPTION");
+
+          // Redis 업데이트
+          redisTemplate.opsForValue().set(redisKey, existingKeys, 60L, TimeUnit.MINUTES);
+
+          // 두 키가 모두 있으므로 암호화 수행
+          if (existingKeys.getOwnerKey() != null && existingKeys.getTenantKey() != null) {
+              log.info("Both keys present. Performing 2-of-3 encryption");
+
+              EncryptedPDF encryptedPDF =
+                      encryptPDFInternal(
+                              pdfData, existingKeys.getOwnerKey(), existingKeys.getTenantKey());
+
+              // Redis에서 삭제 (암호화 완료)
+              redisTemplate.delete(redisKey);
+
+              return ContractKeyStatus.builder()
+                      .fileId(fileId)
+                      .status("ENCRYPTION_COMPLETE")
+                      .message("PDF encrypted successfully with 2-of-3 scheme")
+                      .encryptedPDF(encryptedPDF)
+                      .hasOwnerKey(true)
+                      .hasTenantKey(true)
+                      .build();
+          }
+
+          return ContractKeyStatus.builder()
+                  .fileId(fileId)
+                  .status("ERROR")
+                  .message("Unexpected state")
+                  .hasOwnerKey(true)
+                  .hasTenantKey(true)
+                  .build();
       }
 
       /** 두 번째 키 추가 및 자동 암호화 (결과에 파일 정보 포함) */
@@ -982,5 +1068,20 @@ public class EncryptionUtil {
       public static class EncryptedShare {
           public String data;
           public String iv;
+      }
+
+      /**
+       * Redis에서 계약 ID에 대한 키 존재 여부 확인
+       *
+       * @param contractChatId 계약 채팅 ID
+       * @return 키 존재 여부 (true: 키가 존재함, false: 키가 없음)
+       */
+      public boolean hasKey(String contractChatId) {
+          if (contractChatId == null || contractChatId.trim().isEmpty()) {
+              return false;
+          }
+
+          String redisKey = String.format(REDIS_KEY_PATTERN, contractChatId);
+          return Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
       }
 }

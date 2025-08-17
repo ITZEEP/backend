@@ -18,7 +18,7 @@ import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.scoula.domain.home.mapper.HomeMapper;
-import org.scoula.domain.home.vo.HomeRegisterVO;
+import org.scoula.domain.home.vo.HomeVO;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -308,11 +308,12 @@ public class AiFraudAnalyzerService {
       private FraudRiskCheckDto.Request buildAiRequest(Long userId, RiskAnalysisRequest request) {
 
           Long homeId = request.getHomeId();
-          HomeRegisterVO home =
-                  homeMapper
-                          .findHomeById(homeId)
-                          .orElseThrow(() -> new BusinessException(FraudErrorCode.INVALID_HOME_ID));
-
+          HomeVO home = null;
+          try {
+              home = homeMapper.findHomeById(homeId);
+          } catch (Exception e) {
+              throw new BusinessException(FraudErrorCode.INVALID_HOME_ID);
+          }
           request.setAddress(home.getAddr1() + " " + home.getAddr2());
           request.setPropertyPrice(home.getDepositPrice());
           request.setMonthlyRent(home.getMonthlyRent() != null ? home.getMonthlyRent() : 0);
@@ -639,6 +640,10 @@ public class AiFraudAnalyzerService {
           builder.regionAddress(getStringValue(ocrResult, "regionAddress", ""));
           builder.roadAddress(getStringValue(ocrResult, "roadAddress", ""));
 
+          // 건물 정보 (새로 추가된 필드)
+          builder.buildingNumber(getStringValue(ocrResult, "buildingNumber", ""));
+          builder.buildingDetail(getStringValue(ocrResult, "buildingDetail", ""));
+
           // 소유자 정보
           builder.ownerName(getStringValue(ocrResult, "ownerName", ""));
           String birthDateStr = getStringValue(ocrResult, "ownerBirthDate", null);
@@ -681,6 +686,17 @@ public class AiFraudAnalyzerService {
           builder.hasLitigation(getBooleanValue(ocrResult, "hasLitigation", false));
           builder.hasAttachment(getBooleanValue(ocrResult, "hasAttachment", false));
 
+          // 발급일 (새로 추가된 필드)
+          String issueDateStr = getStringValue(ocrResult, "issueDate", null);
+          if (issueDateStr != null && !issueDateStr.isEmpty()) {
+              try {
+                  LocalDate issueDate = LocalDate.parse(issueDateStr, DateTimeFormatter.ISO_DATE);
+                  builder.issueDate(issueDate);
+              } catch (Exception e) {
+                  log.warn("발급일 파싱 실패: {}", LogSanitizerUtil.sanitize(issueDateStr));
+              }
+          }
+
           return builder.build();
       }
 
@@ -693,6 +709,7 @@ public class AiFraudAnalyzerService {
           builder.roadAddress(getStringValue(ocrResult, "roadAddress", ""));
 
           // 건물 정보
+          builder.landArea(getDoubleValue(ocrResult, "landArea", null)); // 대지면적 (새로 추가)
           builder.totalFloorArea(getDoubleValue(ocrResult, "totalFloorArea", 0.0));
           builder.purpose(getStringValue(ocrResult, "purpose", ""));
           builder.floorNumber(getIntValue(ocrResult, "floorNumber", 1));
@@ -711,6 +728,17 @@ public class AiFraudAnalyzerService {
 
           // 위반건축물 여부 (AI 서버 응답 키 이름에 맞춤)
           builder.isViolationBuilding(getBooleanValue(ocrResult, "isViolationBuilding", false));
+
+          // 발급일 (새로 추가된 필드)
+          String issueDateStr = getStringValue(ocrResult, "issueDate", null);
+          if (issueDateStr != null && !issueDateStr.isEmpty()) {
+              try {
+                  LocalDate issueDate = LocalDate.parse(issueDateStr, DateTimeFormatter.ISO_DATE);
+                  builder.issueDate(issueDate);
+              } catch (Exception e) {
+                  log.warn("발급일 파싱 실패: {}", LogSanitizerUtil.sanitize(issueDateStr));
+              }
+          }
 
           return builder.build();
       }

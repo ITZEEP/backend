@@ -62,17 +62,17 @@ import org.springframework.web.multipart.MultipartFile;
  * <h3>PDF 2단계 암호화 예제</h3>
  *
  * <pre>{@code
- * // Step 1: 첫 번째 사용자가 PDF와 패스워드 제공
+ * // Step 1: 첫 번째 사용자가 패스워드만 제공
  * String contractId = "contract123";
- * MultipartFile pdfFile = ...;
  * String password1 = "owner-password";
  *
- * String status = encryptionService.uploadPdfStep1(pdfFile, contractId, password1);
- * // Redis에 저장됨, 두 번째 패스워드 대기
+ * String status = encryptionService.uploadPdfStep1(contractId, password1);
+ * // Redis에 패스워드 저장됨, PDF 파일과 두 번째 패스워드 대기
  *
- * // Step 2: 두 번째 사용자가 패스워드 제공
+ * // Step 2: 두 번째 사용자가 PDF 파일과 패스워드 제공
+ * MultipartFile pdfFile = ...;
  * String password2 = "tenant-password";
- * File encryptedPdf = encryptionService.encryptPdfStep2(contractId, password2);
+ * FileWithHashDto encryptedPdf = encryptionService.encryptPdfStep2(pdfFile, contractId, password2);
  *
  * // 암호화된 PDF 저장 또는 전송
  * saveToDatabase(encryptedPdf);
@@ -133,22 +133,30 @@ public interface EncryptionService {
       // ==================== PDF 2단계 암호화 (계약 프로세스용) ====================
 
       /**
-       * PDF 암호화 1차 - Redis에 파일과 첫 번째 패스워드 저장
+       * PDF 암호화 1차 - Redis에 첫 번째 패스워드만 저장
        *
-       * @param pdfFile PDF 파일
        * @param contractChatId 계약 채팅 ID
        * @param password1 첫 번째 패스워드
        * @return 처리 상태
        */
-      String uploadPdfStep1(MultipartFile pdfFile, String contractChatId, String password1)
-              throws Exception;
+      String uploadPdfStep1(String contractChatId, String password1) throws Exception;
 
       /**
-       * PDF 암호화 2차 - 봉투키 암호화로 최종 암호화
+       * PDF 암호화 2차 - PDF 파일 업로드 및 봉투키 암호화로 최종 암호화
        *
+       * @param pdfFile PDF 파일
        * @param contractChatId 계약 채팅 ID
        * @param password2 두 번째 패스워드
        * @return 암호화된 파일과 해시값 (FileWithHashDto 객체)
        */
-      FileWithHashDto encryptPdfStep2(String contractChatId, String password2) throws Exception;
+      FileWithHashDto encryptPdfStep2(MultipartFile pdfFile, String contractChatId, String password2)
+              throws Exception;
+
+      /**
+       * 계약 ID로 키 존재 여부 확인
+       *
+       * @param contractChatId 계약 채팅 ID
+       * @return 키 존재 여부 (true: 키가 존재함, false: 키가 없음)
+       */
+      boolean hasKey(String contractChatId);
 }
