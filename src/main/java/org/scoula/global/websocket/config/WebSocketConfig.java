@@ -29,7 +29,18 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
       @Override
       public void registerStompEndpoints(StompEndpointRegistry registry) {
           System.err.println("🚨🚨🚨 STOMP 엔드포인트 등록 시작");
-          registry.addEndpoint("/ws").setAllowedOriginPatterns("*").withSockJS();
+          // Nginx가 CORS 헤더를 추가하지만, Spring WebSocket도 Origin 검증이 필요
+          // setAllowedOriginPatterns를 사용하여 Spring의 Origin 검증은 허용하되
+          // 실제 CORS 헤더는 Nginx에서 관리
+          registry.addEndpoint("/ws")
+                  .setAllowedOriginPatterns(
+                          "http://localhost:5173",
+                          "https://localhost:5173",
+                          "https://itzeep.ariogi.kr",
+                          "https://www.itzeep.ariogi.kr",
+                          "http://itzeep.ariogi.kr",
+                          "http://www.itzeep.ariogi.kr")
+                  .withSockJS();
           System.err.println("🚨🚨🚨 STOMP 엔드포인트 등록 완료");
       }
 }

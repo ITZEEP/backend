@@ -11,6 +11,7 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -20,9 +21,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 
 @Configuration
 @EnableWebMvc
+@EnableAsync
+@Log4j2
 @ComponentScan(
           basePackages = {
               "org.scoula.domain",
@@ -39,7 +43,6 @@ import lombok.RequiredArgsConstructor;
               "org.scoula.domain.home.controller",
               "org.scoula.domain.mypage.controller",
               "org.scoula.domain.contract.controller",
-              "org.scoula.global.common.util.encryptionTest.controller"
           })
 @RequiredArgsConstructor
 public class ServletConfig implements WebMvcConfigurer {
