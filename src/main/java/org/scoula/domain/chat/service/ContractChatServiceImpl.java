@@ -2517,28 +2517,32 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           log.info("위반 사항 {}: {}", i + 1, violation);
 
                           StringBuilder violationMessage = new StringBuilder();
-                          violationMessage.append(String.format("📋 문제점 %d\n", i + 1));
                           violationMessage.append(
+                                  // 위반 유형
                                   String.format(
-                                          "🚨 위반 유형: %s\n",
+                                          "%s\n",
                                           violation.getViolationType() != null
                                                   ? violation.getViolationType()
                                                   : "정보 없음"));
                           violationMessage.append(
+                                  // 관련 법령
                                   String.format(
-                                          "📖 관련 법령: %s\n",
+                                          "%s\n" + "\n",
                                           violation.getLawName() != null
                                                   ? violation.getLawName()
                                                   : "정보 없음"));
+
                           violationMessage.append(
+                                  // 위반 내용
                                   String.format(
-                                          "⚠️ 위반 내용: %s\n",
+                                          i + ". %s\n" + "\n",
                                           violation.getViolationContent() != null
                                                   ? violation.getViolationContent()
                                                   : "정보 없음"));
                           violationMessage.append(
+                                  // 설명
                                   String.format(
-                                          "💡 설명: %s\n",
+                                          "%s\n" + "\n",
                                           violation.getExplanation() != null
                                                   ? violation.getExplanation()
                                                   : "정보 없음"));
@@ -2547,21 +2551,22 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                                   && !violation.getOriginalClause().trim().isEmpty()) {
                               violationMessage.append(
                                       String.format(
-                                              "📝 문제가 된 조항: %s\n", violation.getOriginalClause()));
+                                              "📝 문제가 된 조항\n %s\n", violation.getOriginalClause()));
+                          }
+
+                          if (violation.getLegalBasis() != null
+                                  && !violation.getLegalBasis().trim().isEmpty()) {
+                              violationMessage.append(
+                                      String.format("📚 법적 근거\n %s\n", violation.getLegalBasis()));
                           }
 
                           if (violation.getImprovementExample() != null
                                   && !violation.getImprovementExample().trim().isEmpty()) {
                               violationMessage.append(
                                       String.format(
-                                              "✅ 개선 방안: %s\n", violation.getImprovementExample()));
+                                              "✅ 개선 방안\n %s\n", violation.getImprovementExample()));
                           }
 
-                          if (violation.getLegalBasis() != null
-                                  && !violation.getLegalBasis().trim().isEmpty()) {
-                              violationMessage.append(
-                                      String.format("📚 법적 근거: %s", violation.getLegalBasis()));
-                          }
 
                           log.info("전송할 메시지: {}", violationMessage.toString());
                           AiMessageLegal(contractChatId, violationMessage.toString());
