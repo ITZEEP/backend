@@ -61,64 +61,146 @@
         WHERE cc.contract_chat_id = #{contractChatId}
     </select>
 
-    <insert id = "insertSignatureInit">
-        INSERT INTO electronic_signature (contract_id, identity_verification_id, owner_id, buyer_id, created_at)
-        SELECT fc.contract_id, iv.identity_id, cc.owner_id, cc.buyer_id, NOW()
+    <!-- 최종 계약서 Init -->
+    <insert id="insertFinalContractInit">
+        insert into final_contract (contract_id, home_id, owner_id, buyer_id, owner_identity_verified_at, buyer_identity_verified_at, deposit_price, monthly_rent, maintenance_fee, created_at)
+        select #{contractChatId}, cc.home_id, cc.owner_id, cc.buyer_id, oiv.identity_verified_at, biv.identity_verified_at, #{depositPrice}, #{monthlyRent}, #{maintenanceFee}, NOW()
         FROM contract_chat cc
-                 INNER JOIN final_contract fc
-                            ON cc.home_id = fc.home_id AND cc.owner_id = fc.owner_id
-                 LEFT JOIN identity_verification iv
-                           ON iv.contract_id = cc.contract_chat_id
-        WHERE cc.contract_chat_id = 4;
+                 LEFT JOIN identity_verification oiv
+                           ON oiv.user_id = cc.owner_id
+                               AND oiv.contract_id = cc.contract_chat_id
+                 LEFT JOIN identity_verification biv
+                           ON biv.user_id = cc.buyer_id
+                               AND biv.contract_id = cc.contract_chat_id
+        WHERE cc.contract_chat_id = #{contractChatId}
     </insert>
 
-    <update id="updateTaxSignature">
-        UPDATE electronic_signature
-        SET owner_tax_signature_file_url = #{url}, owner_tax_file_hash = #{hashKey}, owner_tax_signed_at = NOW()
-            WHERE contract_id = #{finalContractId}
+
+
+    <update id="insertContract">
+        update final_contract
+        set contract_pdf_key = #{s3Key}
+        WHERE contract_id = #{contractChatId}
     </update>
 
-    <insert id="insertFinalContract">
-        INSERT INTO final_contract (
+    <select id="selectFinalContractPDF" resultType="org.scoula.domain.contract.dto.DBFinalContractDTO">
+        SELECT
+            h.lease_type AS leaseType,
+            hd.land_category AS landCategory,
+            hd.area AS area,
+--             rc.purpose AS purpose,
+--             rc.total_floor_area AS totalFloorArea,
+            opc.has_tax_arrears AS hasTaxArrears,
+            opc.has_prior_fixed_date AS hasPriorFixedDate,
+            owi.payment_due_day AS paymentDueDay,
+            CONCAT(opc.owner_bank_name, ' ', opc.owner_account_number) AS bankAccount,
+            tpc.expected_move_in_date AS expectedMoveInDate,
+            CURDATE() AS contractDate,
+            tpc.contract_duration AS contractDuration,
+            oiv.ssn_front AS ownerSsnFront,
+            oiv.ssn_back AS ownerSsnBack,
+            biv.ssn_front AS buyerSsnFront,
+            biv.ssn_back AS buyerSsnBack
+        FROM contract_chat cc
+                 LEFT JOIN home h ON cc.home_id = h.home_id
+                 LEFT JOIN home_detail hd ON cc.home_id = hd.home_id
+        LEFT JOIN risk_check rc
+        ON rc.home_id = cc.home_id
+            AND rc.checked_at >= CURDATE()
+            AND rc.checked_at &lt; CURDATE() + INTERVAL 1 DAY
+                 LEFT JOIN owner_precontract_check opc ON cc.contract_chat_id = opc.contract_chat_id
+                 LEFT JOIN owner_wolse_info owi ON cc.contract_chat_id = owi.contract_chat_id
+                 LEFT JOIN tenant_precontract_check tpc ON cc.contract_chat_id = tpc.contract_chat_id
+                 LEFT JOIN identity_verification oiv ON oiv.user_id = cc.owner_id AND oiv.contract_id = cc.contract_chat_id
+                 LEFT JOIN identity_verification biv ON biv.user_id = cc.buyer_id AND biv.contract_id = cc.contract_chat_id
+        WHERE cc.contract_chat_id = #{contractChatId}
+    </select>
+
+    <resultMap id="FinalContractResultMap" type="org.scoula.domain.contract.vo.FinalContract">
+        <result property="homeId" column="home_id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="buyerId" column="buyer_id"/>
+        <result property="contractPdfKey" column="contract_pdf_key"/>
+        <result property="contractPdfHash" column="contract_pdf_hash"/>
+        <result property="contractDate" column="contract_date"/>
+        <result property="contractExpireDate" column="contract_expire_date"/>
+        <result property="ownerIdentityVerifiedAt" column="owner_identity_verified_at"/>
+        <result property="buyerIdentityVerifiedAt" column="buyer_identity_verified_at"/>
+        <result property="depositPrice" column="deposit_price"/>
+        <result property="monthlyRent" column="monthly_rent"/>
+        <result property="maintenanceFee" column="maintenance_fee"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="selectFinalContract"
+            parameterType="long"
+            resultMap="FinalContractResultMap">
+        SELECT
             home_id,
             owner_id,
             buyer_id,
-            contract_pdf_url,
-                                    contract_pdf_hash,
+            contract_pdf_key,
+            contract_pdf_hash,
             contract_date,
             contract_expire_date,
-                                    owner_identity_verified_at,
-                                    buyer_identity_verified_at,
-                                    owner_signed_at,
-                                    buyer_signed_at,
+            owner_identity_verified_at,
+            buyer_identity_verified_at,
             deposit_price,
             monthly_rent,
             maintenance_fee,
             created_at
-        )
-        SELECT
-            cc.home_id,
-            cc.owner_id,
-            cc.buyer_id,
-            #{contractPdfUrl},
-            #{contractPdfHash},
-            #{contractDate},
-            #{contractExpireDate},
-            oiv.identity_verified_at,
-            biv.identity_verified_at,
-            es.owner_signed_at,
-            es.buyer_signed_at,
-            h.deposit_price,
-            h.monthly_rent,
-            h.maintenance_fee,
-            NOW()
-        FROM contract_chat cc
-                        LEFT JOIN home h ON cc.home_id = h.home_id
-            LEFT JOIN identity_verification oiv ON oiv.user_id = cc.owner_id AND oiv.contract_id = cc.contract_chat_id
-            LEFT JOIN identity_verification biv ON biv.user_id = cc.buyer_id AND biv.contract_id = cc.contract_chat_id
-            LEFT JOIN electronic_signature es ON cc.home_id = fc.home_id AND cc.owner_id = fc.owner_id
-                                           WHERE cc.contract_chat_id = #{contractChatId}
+        FROM final_contract
+        WHERE contract_id = #{contractChatId}
+    </select>
+
+<!--    <update id="updateSignature">-->
+<!--        UPDATE electronic_signature-->
+<!--        SET signature_file_key = #{S3Key}, signature_file_hash = #{hashKey}, signed_type = #{signedType}, created_at = NOW()-->
+<!--            WHERE contract_id = #{contractChatId}-->
+<!--    </update>-->
+    <insert id="insertSignature">
+    insert into electronic_signature (contract_id, identity_verification_id, signature_file_key, signature_file_hash, signed_type, created_at)
+    select #{contractChatId}, iv.identity_id , #{s3Key}, #{hashKey}, #{signedType},NOW()
+    FROM contract_chat cc
+             JOIN identity_verification iv
+                  ON iv.contract_id = cc.contract_chat_id
+    WHERE cc.contract_chat_id = #{contractChatId} AND iv.user_id= #{userId}
     </insert>
+
+    <select id="selectSignature"
+            resultType="org.scoula.domain.contract.vo.ElectronicSignature">
+        SELECT
+            es.signature_id AS signatureId,
+            es.contract_id AS contractId,
+            es.identity_verification_id AS identityVerificationId,
+            es.signature_file_key AS signatureFileKey,
+            es.signature_file_hash AS signatureFileHash,
+            es.signed_type AS signedType,
+            es.created_at AS createdAt
+        FROM electronic_signature es
+                 JOIN identity_verification iv
+                      ON iv.identity_id = es.identity_verification_id
+        WHERE es.contract_id = #{contractChatId}
+          AND iv.user_id = #{userId}
+    </select>
+
+    <update id="updateFinalContract">
+        UPDATE final_contract
+        SET contract_pdf_key = #{contractPdfKey}, contract_pdf_hash = #{contractPdfHash}, contract_date = NOW(), contract_expire_date = ,
+            WHERE contractChatId = #{contractChatId}
+    </update>
+
+    <select id="selectBirth" resultType="String">
+        select birth_date
+        from user
+        where user_id = #{userId}
+    </select>
+
+    <select id="selectMail" resultType="String">
+        select email
+        from user
+        where user_id = #{userId}
+    </select>
 
     <select id="selectOwnerTaxSignatureUrl" resultType="String">
         SELECT es.owner_tax_signature_file_url
