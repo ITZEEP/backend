@@ -2472,7 +2472,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
           AiMessage(contractChatId, confirmationMessage);
-
           // [적법성 검사] 계약서 1 몽고DB에 특약 저장
           contractFixService.saveSpecialContract(contractChatId, buyerId);
 
@@ -2489,8 +2488,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   LegalityDTO legalityDTO = (LegalityDTO) legalityResponse;
                   log.info("LegalityDTO로 응답 파싱 성공");
 
-                  if (legalityDTO.getData() != null && legalityDTO.getData().getViolations() != null) {
-                      List<LegalityDTO.Violation> violations = legalityDTO.getData().getViolations();
+                  if (legalityDTO.getViolations() != null) {  // getData() 제거
+                      List<LegalityDTO.Violation> violations = legalityDTO.getViolations();
                       log.info("violations 크기: {}", violations.size());
 
                       if (!violations.isEmpty()) {
@@ -2540,7 +2539,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           AiMessage(contractChatId, "✅ 적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
                       }
                   } else {
-                      log.warn("LegalityDTO의 data 또는 violations가 null");
+                      log.warn("LegalityDTO의 violations가 null");
                       AiMessage(contractChatId, "❌ 적법성 검사 데이터를 처리할 수 없습니다.");
                   }
               } else if (legalityResponse instanceof Map) {
