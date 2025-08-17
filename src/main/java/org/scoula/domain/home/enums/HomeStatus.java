@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum HomeStatus {
       AVAILABLE("입주가능"),
       RESERVED("예약중"),
-      SOLD("계약완료");
+      CONTRACTED("계약완료");
 
       private final String description;
 
@@ -17,6 +17,10 @@ public enum HomeStatus {
       @JsonValue
       public String getDescription() {
           return description;
+      }
+
+      public String getKey() {
+          return this.name();
       }
 
       @JsonCreator(mode = JsonCreator.Mode.DELEGATING)

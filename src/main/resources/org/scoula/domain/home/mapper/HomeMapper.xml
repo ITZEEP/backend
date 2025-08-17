@@ -1,356 +1,376 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="org.scoula.domain.home.mapper.HomeMapper">
 
-    <select id="findUserNameById" parameterType="long" resultType="string">
-        SELECT name
-        FROM identity_verification
-        WHERE user_id = #{userId}
-    </select>
-
-    <insert id="insertHome" parameterType="map" useGeneratedKeys="true" keyProperty="home.homeId">
+    <insert id="insertHome" parameterType="org.scoula.domain.home.vo.HomeVO" useGeneratedKeys="true" keyProperty="homeId">
         INSERT INTO home (
-            user_id, user_name,
-            addr1, addr2, residence_type, lease_type, deposit_price,
-            monthly_rent, maintenance_fee, supply_area, exclusive_area, home_status,
-            view_cnt, like_cnt, chat_cnt, report_cnt,
-            room_cnt, created_at, updated_at
+            user_id, addr1, addr2, residence_type, lease_type,
+            deposit_price, monthly_rent, maintenance_fee, home_status,
+            view_cnt, like_cnt, chat_cnt, room_cnt, supply_area, exclusive_area
         ) VALUES (
-                     #{userId}, #{userName},
-                     #{home.addr1}, #{home.addr2}, #{home.residenceType}, #{home.leaseType}, #{home.depositPrice},
-                     #{home.monthlyRent}, #{home.maintenanceFee}, #{home.supplyArea}, #{home.exclusiveArea}, #{home.homeStatus},
-                     0, 0, 0, 0,
-                     #{home.roomCnt}, NOW(), NOW()
+                     #{userId}, #{addr1}, #{addr2}, #{residenceType}, #{leaseType},
+                     #{depositPrice}, #{monthlyRent}, #{maintenaceFee}, #{homeStatus},
+                     #{viewCnt}, #{likeCnt}, #{chatCnt}, #{roomCnt}, #{supplyArea}, #{exclusiveArea}
                  )
     </insert>
 
-    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeRegisterVO" useGeneratedKeys="true" keyProperty="homeDetailId">
+    <insert id="insertHomeDetail" parameterType="org.scoula.domain.home.vo.HomeDetailVO" useGeneratedKeys="true" keyProperty="homeDetailId">
         INSERT INTO home_detail (
-            home_id,
-            home_detail_id,
-            build_date,
-            home_floor,
-            building_total_floors,
-            home_direction,
-            bathroom_count,
-            is_pet,
-            is_parking_available
+            home_id, build_date, home_floor, building_total_floors,
+            home_direction, bathroom_count, is_pet, is_parking_available,area,land_category
+
         ) VALUES (
-                     #{homeId},
-                     #{homeDetailId},
-                     #{buildDate},
-                     #{homeFloor},
-                     #{buildingTotalFloors},
-                     #{homeDirection},
-                     #{bathroomCount},
-                     #{isPet},
-                     #{isParkingAvailable}
+                     #{homeId}, #{buildDate}, #{homeFloor}, #{buildingTotalFloors},
+                     #{homeDirection}, #{bathroomCnt}, #{isPet}, #{isParking}, #{area}, #{landCategory}
                  )
     </insert>
 
-    <insert id="insertHomeFacilities" parameterType="map">
-        INSERT INTO home_facility (home_detail_id, item_id)
-        VALUES
-        <foreach collection="facilityItemIds" item="itemId" separator=",">
-            (#{homeDetailId}, #{itemId})
-        </foreach>
-    </insert>
-
-    <insert id="insertHomeImages" parameterType="map">
+    <insert id="insertHomeImage" parameterType="org.scoula.domain.home.vo.HomeImageVO" useGeneratedKeys="true" keyProperty="imageId">
         INSERT INTO home_image (home_id, image_url)
-        VALUES
-        <foreach collection="imageUrls" item="imageUrl" separator=",">
-            (#{homeId}, #{imageUrl})
-        </foreach>
+        VALUES (#{homeId}, #{imageUrl})
     </insert>
 
-    <insert id="insertHomeLike" parameterType="map">
-        INSERT INTO home_like (user_id, home_id, liked_at)
-        VALUES (#{userId}, #{homeId}, NOW())
+    <insert id="insertHomeFacility" parameterType="org.scoula.domain.home.vo.HomeFacilityVO">
+        INSERT INTO home_facility (home_detail_id, item_id)
+        VALUES (#{homeDetailId}, #{itemId})
     </insert>
 
-    <insert id="insertHomeMaintenanceFees" parameterType="map">
+    <insert id="insertHomeMaintenanceFee" parameterType="org.scoula.domain.home.vo.HomeMaintenanceFeeVO">
         INSERT INTO home_maintenance_fee (home_id, maintenance_id, fee)
-        VALUES
-        <foreach collection="fees.entrySet()" item="feeItem" separator=",">
-            (#{homeId}, #{feeItem.key}, #{feeItem.value})
-        </foreach>
+        VALUES (#{homeId}, #{maintenanceId}, #{fee})
     </insert>
 
-    <insert id="insertHomeReport" parameterType="org.scoula.domain.home.vo.HomeReportVO">
-        INSERT INTO home_report (
-            report_id, user_id, home_id, report_reason, report_at, report_status
-        ) VALUES (
-                     #{reportId},
-                     #{userId},
-                     #{homeId},
-                     #{reportReason},
-                     #{reportAt},
-                     #{reportStatus}
-                 )
+    <insert id="insertHomeLike" parameterType="org.scoula.domain.home.vo.HomeLikeVO">
+        INSERT INTO home_like (user_id, home_id, liked_at)
+        VALUES (#{userId}, #{homeId}, #{likedAt})
     </insert>
 
-    <select id="findHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
+    <select id="selectHomeById" parameterType="int" resultType="org.scoula.domain.home.vo.HomeVO">
         SELECT
-            h.home_id AS homeId,
-            h.user_id AS userId,
-            h.user_name AS userName,
-            h.addr1,
-            h.addr2,
-            h.residence_type AS residenceType,
-            h.lease_type AS leaseType,
-            h.deposit_price AS depositPrice,
-            h.monthly_rent AS monthlyRent,
-            h.maintenance_fee AS maintenanceFee,
-            h.supply_area AS supplyArea,
-            h.exclusive_area AS exclusiveArea,
-            h.room_cnt AS roomCnt,
-            h.home_status AS homeStatus,
-            h.view_cnt AS viewCnt,
-            h.like_cnt AS likeCnt,
-            h.chat_cnt AS chatCnt,
-            h.report_cnt AS reportCnt,
-            h.created_at AS createdAt,
-            h.updated_at AS updatedAt,
-            d.home_detail_id AS homeDetailId,
-            d.build_date AS buildDate,
-            d.home_floor AS homeFloor,
-            d.building_total_floors AS buildingTotalFloors,
-            d.home_direction AS homeDirection,
-            d.bathroom_count AS bathroomCount,
-            d.is_pet AS isPet,
-            d.is_parking_available AS isParkingAvailable,
-            hi.image_id AS imageId,
-            hi.image_url AS imageUrl
+            h.home_id as homeId, h.user_id as userId, h.addr1, h.addr2,
+            h.residence_type as residenceType, h.lease_type as leaseType,
+            h.deposit_price as depositPrice, h.monthly_rent as monthlyRent,
+            h.maintenance_fee as maintenaceFee, h.home_status as homeStatus,
+            h.view_cnt as viewCnt, h.like_cnt as likeCnt, h.chat_cnt as chatCnt,
+            h.room_cnt as roomCnt, h.supply_area as supplyArea, h.exclusive_area as exclusiveArea,
+            h.created_at as createdAt, h.updated_at as updatedAt, u.nickname as userName
         FROM home h
-                 LEFT JOIN home_detail d ON h.home_id = d.home_id
-                 LEFT JOIN (
-            SELECT home_id, MIN(image_id) AS image_id, MIN(image_url) AS image_url
-            FROM home_image
-            GROUP BY home_id
-        ) hi ON h.home_id = hi.home_id
-        ORDER BY h.created_at DESC
-            LIMIT #{offset}, #{size}
-    </select>
-
-    <select id="countHomes" resultType="long">
-        SELECT COUNT(*) FROM home
-    </select>
-
-    <resultMap id="HomeDetailResultMap" type="org.scoula.domain.home.vo.HomeRegisterVO">
-        <id property="homeId" column="home_id"/>
-        <result property="userId" column="user_id"/>
-        <result property="userName" column="user_name"/>
-        <result property="addr1" column="addr1"/>
-        <result property="addr2" column="addr2"/>
-        <result property="residenceType" column="residence_type"/>
-        <result property="leaseType" column="lease_type"/>
-        <result property="depositPrice" column="deposit_price"/>
-        <result property="monthlyRent" column="monthly_rent"/>
-        <result property="maintenanceFee" column="maintenance_fee"/>
-        <result property="supplyArea" column="supply_area"/>
-        <result property="exclusiveArea" column="exclusive_area"/>
-        <result property="homeStatus" column="home_status"/>
-        <result property="viewCnt" column="view_cnt"/>
-        <result property="likeCnt" column="like_cnt"/>
-        <result property="chatCnt" column="chat_cnt"/>
-        <result property="reportCnt" column="report_cnt"/>
-        <result property="roomCnt" column="room_cnt"/>
-        <result property="homeFloor" column="home_floor"/>
-        <result property="createdAt" column="created_at"/>
-        <result property="updatedAt" column="updated_at"/>
-        <result property="homeDetailId" column="home_detail_id"/>
-        <result property="buildDate" column="build_date"/>
-        <result property="buildingTotalFloors" column="building_total_floors"/>
-        <result property="homeDirection" column="home_direction"/>
-        <result property="bathroomCount" column="bathroom_count"/>
-        <result property="isPet" column="is_pet"/>
-        <result property="isParkingAvailable" column="is_parking_available"/>
-        <result property="moveInDate" column="move_in_date"/>
-
-        <collection property="imageUrls" ofType="string">
-            <result column="image_url"/>
-        </collection>
-
-        <collection property="maintenanceItems" ofType="org.scoula.domain.home.vo.HomeRegisterVO$MaintenanceFeeItem">
-            <result property="maintenanceId" column="maintenance_id"/>
-            <result property="fee" column="fee"/>
-        </collection>
-    </resultMap>
-
-    <select id="findHomeById" parameterType="long" resultMap="HomeDetailResultMap">
-        SELECT
-            h.*,
-            d.*,
-            hi.image_url,
-            hf.maintenance_id,
-            hf.fee,
-            fi.item_name
-        FROM home h
-                 LEFT JOIN home_detail d ON h.home_id = d.home_id
-                 LEFT JOIN home_image hi ON h.home_id = hi.home_id
-                 LEFT JOIN home_maintenance_fee hf ON h.home_id = hf.home_id
-                 LEFT JOIN home_facility hfl ON d.home_detail_id = hfl.home_detail_id  LEFT JOIN facility_item fi ON hfl.item_id = fi.item_id
+                 LEFT JOIN user u ON h.user_id = u.user_id
         WHERE h.home_id = #{homeId}
-        ORDER BY hi.image_id, hf.maintenance_id, fi.item_id
     </select>
 
-    <select id="findHomeFacilities" parameterType="long" resultType="org.scoula.domain.home.dto.response.FacilityResponseDto">
+    <select id="selectHomeDetailByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeDetailVO">
         SELECT
-            fi.item_id AS itemId,
-            fi.item_name AS itemName,
-            fc.category_id AS categoryId,
-            fc.category_type AS categoryType
-        FROM home_facility hf
-                 JOIN home_detail hd ON hf.home_detail_id = hd.home_detail_id
-                 JOIN facility_item fi ON hf.item_id = fi.item_id
-                 JOIN facility_category fc ON fi.category_id = fc.category_id
-        WHERE hd.home_id = #{homeId}
+            home_detail_id, home_id, build_date, home_floor, building_total_floors,
+            home_direction, bathroom_count as bathroomCnt, is_pet as isPet, is_parking_available as isParking
+        FROM home_detail
+        WHERE home_id = #{homeId}
     </select>
 
-    <select id="findHomeImagesByHomeId" parameterType="long" resultType="string">
-        SELECT image_url
+    <select id="selectHomeList" resultType="org.scoula.domain.home.vo.HomeVO">
+        SELECT
+            h.home_id as homeId, h.user_id as userId, h.addr1, h.addr2,
+            h.residence_type as residenceType, h.lease_type as leaseType,
+            h.deposit_price as depositPrice, h.monthly_rent as monthlyRent,
+            h.maintenance_fee as maintenaceFee, h.home_status as homeStatus,
+            h.view_cnt as viewCnt, h.like_cnt as likeCnt, h.chat_cnt as chatCnt,
+            h.room_cnt as roomCnt, h.supply_area as supplyArea, h.exclusive_area as exclusiveArea,
+            h.created_at as createdAt, h.updated_at as updatedAt,
+            hd.home_floor as homeFloor
+        FROM home h
+                 LEFT JOIN home_detail hd ON h.home_id = hd.home_id
+        WHERE h.home_status = 'AVAILABLE' AND EXISTS(select * from home_identity_verification as hiv where h.home_id = hiv.home_id)
+        ORDER BY h.created_at DESC
+            LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectHomeListByCondition" resultType="org.scoula.domain.home.vo.HomeVO">
+        SELECT
+        h.home_id as homeId, h.user_id as userId, h.addr1, h.addr2,
+        h.residence_type as residenceType, h.lease_type as leaseType,
+        h.deposit_price as depositPrice, h.monthly_rent as monthlyRent,
+        h.maintenance_fee as maintenaceFee, h.home_status as homeStatus,
+        h.view_cnt as viewCnt, h.like_cnt as likeCnt, h.chat_cnt as chatCnt,
+        h.room_cnt as roomCnt, h.supply_area as supplyArea, h.exclusive_area as exclusiveArea,
+        h.created_at as createdAt, h.updated_at as updatedAt,
+        hd.home_floor as homeFloor, hd.building_total_floors as buildingTotalFloors
+        FROM home h
+        LEFT JOIN home_detail hd ON h.home_id = hd.home_id
+        <where>
+            h.home_status = 'AVAILABLE'
+            <if test="search.residenceType != null">
+                AND h.residence_type = #{search.residenceType}
+            </if>
+            <if test="search.leaseType != null">
+                AND h.lease_type = #{search.leaseType}
+            </if>
+            <if test="search.addr1 != null and search.addr1 != ''">
+                AND h.addr1 LIKE CONCAT('%', #{search.addr1}, '%')
+            </if>
+            <if test="search.maxDepositPrice != null and search.maxDepositPrice &gt; 0">
+                AND h.deposit_price &lt;= #{search.maxDepositPrice}
+            </if>
+            <if test="search.maxMonthlyRent != null and search.maxMonthlyRent &gt; 0">
+                AND h.monthly_rent &lt;= #{search.maxMonthlyRent}
+            </if>
+            <if test="search.maxMaintenanceFee != null and search.maxMaintenanceFee &gt; 0">
+                AND h.maintenance_fee &lt;= #{search.maxMaintenanceFee}
+            </if>
+            <if test="search.minSupplyArea != null and search.minSupplyArea &gt; 0">
+                AND h.supply_area &gt;= #{search.minSupplyArea}
+            </if>
+            <if test="search.maxSupplyArea != null and search.maxSupplyArea &gt; 0">
+                AND h.supply_area &lt;= #{search.maxSupplyArea}
+            </if>
+            <if test="search.minRoomCnt != null">
+                AND h.room_cnt &gt;= #{search.minRoomCnt}
+            </if>
+            <if test="search.maxRoomCnt != null">
+                AND h.room_cnt &lt;= #{search.maxRoomCnt}
+            </if>
+            <if test="search.exclusiveArea != null">
+                AND h.exclusive_area= #{search.exclusiveArea}
+            </if>
+            <if test="search.homeDirection != null">
+                AND hd.home_direction = #{search.homeDirection}
+            </if>
+            <if test="search.homeFloor != null">
+                AND hd.home_floor = #{search.homeFloor}
+            </if>
+            <if test="search.minFloor != null">
+                AND hd.home_floor &gt;= #{search.minFloor}
+            </if>
+            <if test="search.maxFloor != null">
+                AND hd.home_floor &lt;= #{search.maxFloor}
+            </if>
+            <if test="search.isPet != null">
+                AND hd.is_pet = #{search.isPet}
+            </if>
+            <if test="search.isParking != null">
+                AND hd.is_parking_available = #{search.isParking}
+            </if>
+        </where>
+        <choose>
+            <when test="search.sortBy != null and search.sortBy != ''">
+                ORDER BY
+                <if test="search.sortBy == 'price'">
+                    h.deposit_price, h.monthly_rent
+                </if>
+                <if test="search.sortBy == 'viewCnt'">
+                    h.view_cnt
+                </if>
+                <if test="search.sortBy == 'likeCnt'">
+                    h.like_cnt
+                </if>
+                <if test="search.sortBy == 'createdAt'">
+                    h.created_at
+                </if>
+                <if test="search.sortDirection == 'DESC'">
+                    DESC
+                </if>
+                <if test="search.sortDirection == 'ASC'">
+                    ASC
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY h.created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{search.size} OFFSET #{search.offset}
+    </select>
+
+    <select id="selectHomeImagesByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeImageVO">
+        SELECT image_id as imageId, home_id as homeId, image_url as imageUrl
         FROM home_image
         WHERE home_id = #{homeId}
-        ORDER BY image_id
     </select>
 
-    <select id="findHomeMaintenanceItemsByHomeId" parameterType="long" resultType="org.scoula.domain.home.dto.response.MaintenanceFeeItemResponseDto">
-        SELECT
-            mi.item_name AS itemName,
-            hf.fee
-        FROM home_maintenance_fee hf
-                 JOIN maintenance_item mi ON hf.maintenance_id = mi.maintenance_id
-        WHERE hf.home_id = #{homeId}
+    <select id="selectHomeFacilitiesByHomeDetailId" parameterType="int" resultType="org.scoula.domain.home.vo.FacilityItem">
+        SELECT fi.item_id as itemId, fi.category_id as categoryId, fi.item_name as itemName
+        FROM home_facility hf
+                 JOIN facility_item fi ON hf.item_id = fi.item_id
+        WHERE hf.home_detail_id = #{homeDetailId}
     </select>
 
-    <update id="updateHome" parameterType="org.scoula.domain.home.vo.HomeRegisterVO">
-        UPDATE home
-        SET
-            addr1 = #{addr1},
-            addr2 = #{addr2},
-            residence_type = #{residenceType},
-            lease_type = #{leaseType},
-            deposit_price = #{depositPrice},
-            monthly_rent = #{monthlyRent},
-            maintenance_fee = #{maintenanceFee},
-            supply_area = #{supplyArea},
-            exclusive_area = #{exclusiveArea},
-            room_cnt = #{roomCnt},
-            updated_at = NOW()
-        WHERE home_id = #{homeId}
-    </update>
-
-    <delete id="deleteHome">
-        DELETE FROM home
-        WHERE home_id = #{homeId}
-    </delete>
-
-    <select id="findLikedHomes" parameterType="long" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
-        SELECT
-            h.home_id AS homeId,
-            h.user_id AS userId,
-            h.user_name AS userName,
-            h.addr1,
-            h.addr2,
-            h.residence_type AS residenceType,
-            h.lease_type AS leaseType,
-            h.deposit_price AS depositPrice,
-            h.monthly_rent AS monthlyRent,
-            h.maintenance_fee AS maintenanceFee,
-            h.supply_area AS supplyArea,
-            h.exclusive_area AS exclusiveArea,
-            h.room_cnt AS roomCnt,
-            h.home_status AS homeStatus,
-            h.view_cnt AS viewCnt,
-            h.like_cnt AS likeCnt,
-            h.chat_cnt AS chatCnt,
-            h.report_cnt AS reportCnt,
-            h.created_at AS createdAt,
-            h.updated_at AS updatedAt,
-            d.home_detail_id AS homeDetailId,
-            d.build_date AS buildDate,
-            d.home_floor AS homeFloor,
-            d.building_total_floors AS buildingTotalFloors,
-            d.home_direction AS homeDirection,
-            d.bathroom_count AS bathroomCount,
-            d.is_pet AS isPet,
-            d.is_parking_available AS isParkingAvailable,
-            hi.image_id AS imageId,
-            hi.image_url AS imageUrl
-        FROM home_like hl
-                 JOIN home h ON hl.home_id = h.home_id
-                 LEFT JOIN home_detail d ON h.home_id = d.home_id
-                 LEFT JOIN (
-            SELECT home_id, MIN(image_id) AS image_id, MIN(image_url) AS image_url
-            FROM home_image
-            GROUP BY home_id
-        ) hi ON h.home_id = hi.home_id
-        WHERE hl.user_id = #{userId}
-        ORDER BY hl.liked_at DESC
+    <select id="selectHomeMaintenanceFeesByHomeId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeMaintenanceFeeVO">
+        SELECT hmf.home_id as homeId, hmf.maintenance_id as maintenanceId, hmf.fee,
+               mi.item_name as itemName
+        FROM home_maintenance_fee hmf
+                 JOIN maintenance_item mi ON hmf.maintenance_id = mi.maintenance_id
+        WHERE hmf.home_id = #{homeId}
     </select>
 
-    <update id="incrementViewCount">
-        UPDATE home
-        SET view_cnt = view_cnt + 1
-        WHERE home_id = #{homeId}
-    </update>
+    <select id="selectFacilityCategories" resultType="org.scoula.domain.home.vo.FacilityCategory">
+        SELECT category_id as categoryId, category_type as categoryType
+        FROM facility_category
+        ORDER BY category_id
+    </select>
 
-    <delete id="deleteLike" parameterType="map">
+    <select id="selectFacilityItemsByCategoryId" parameterType="int" resultType="org.scoula.domain.home.vo.FacilityItem">
+        SELECT item_id as itemId, category_id as categoryId, item_name as itemName
+        FROM facility_item
+        WHERE category_id = #{categoryId}
+        ORDER BY item_id
+    </select>
+
+    <select id="selectHomeLikeExists" resultType="int">
+        SELECT COUNT(*)
+        FROM home_like
+        WHERE user_id = #{userId} AND home_id = #{homeId}
+    </select>
+
+    <delete id="deleteHomeLike">
         DELETE FROM home_like
         WHERE user_id = #{userId} AND home_id = #{homeId}
     </delete>
 
-    <select id="findMyHomes" parameterType="map" resultType="org.scoula.domain.home.vo.HomeRegisterVO">
+    <select id="selectHomeLikesByUserId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeVO">
         SELECT
-            h.home_id AS homeId,
-            h.user_id AS userId,
-            h.user_name AS userName,
-            h.addr1,
-            h.addr2,
-            h.residence_type AS residenceType,
-            h.lease_type AS leaseType,
-            h.deposit_price AS depositPrice,
-            h.monthly_rent AS monthlyRent,
-            h.maintenance_fee AS maintenanceFee,
-            h.supply_area AS supplyArea,
-            h.exclusive_area AS exclusiveArea,
-            h.room_cnt AS roomCnt,
-            h.home_status AS homeStatus,
-            h.view_cnt AS viewCnt,
-            h.like_cnt AS likeCnt,
-            h.chat_cnt AS chatCnt,
-            h.report_cnt AS reportCnt,
-            h.created_at AS createdAt,
-            h.updated_at AS updatedAt,
-            d.home_detail_id AS homeDetailId,
-            d.build_date AS buildDate,
-            d.home_floor AS homeFloor,
-            d.building_total_floors AS buildingTotalFloors,
-            d.home_direction AS homeDirection,
-            d.bathroom_count AS bathroomCount,
-            d.is_pet AS isPet,
-            d.is_parking_available AS isParkingAvailable,
-            hi.image_id AS imageId,
-            hi.image_url AS imageUrl
+            h.home_id as homeId, h.user_id as userId, h.addr1, h.addr2,
+            h.residence_type as residenceType, h.lease_type as leaseType,
+            h.deposit_price as depositPrice, h.monthly_rent as monthlyRent,
+            h.maintenance_fee as maintenaceFee, h.home_status as homeStatus,
+            h.view_cnt as viewCnt, h.like_cnt as likeCnt, h.chat_cnt as chatCnt,
+            h.room_cnt as roomCnt, h.supply_area as supplyArea, h.exclusive_area as exclusiveArea,
+            h.created_at as createdAt, h.updated_at as updatedAt
         FROM home h
-                 LEFT JOIN home_detail d ON h.home_id = d.home_id
-                 LEFT JOIN (
-            SELECT home_id, MIN(image_id) AS image_id, MIN(image_url) AS image_url
-            FROM home_image
-            GROUP BY home_id
-        ) hi ON h.home_id = hi.home_id
-        WHERE h.user_id = #{userId}
-        ORDER BY h.created_at DESC
-            LIMIT #{offset}, #{size}
+                 JOIN home_like hl ON h.home_id = hl.home_id
+        WHERE hl.user_id = #{userId}
+        ORDER BY hl.liked_at DESC
     </select>
 
-    <select id="countMyHomes" parameterType="long" resultType="long">
-        SELECT COUNT(*)
-        FROM home
-        WHERE user_id = #{userId}
+    <select id="selectHomeListByUserId" parameterType="int" resultType="org.scoula.domain.home.vo.HomeVO">
+        SELECT
+            h.home_id as homeId, h.user_id as userId, h.addr1, h.addr2,
+            h.residence_type as residenceType, h.lease_type as leaseType,
+            h.deposit_price as depositPrice, h.monthly_rent as monthlyRent,
+            h.maintenance_fee as maintenaceFee, h.home_status as homeStatus,
+            h.view_cnt as viewCnt, h.like_cnt as likeCnt, h.chat_cnt as chatCnt,
+            h.room_cnt as roomCnt, h.supply_area as supplyArea, h.exclusive_area as exclusiveArea,
+            h.created_at as createdAt, h.updated_at as updatedAt
+        FROM home h
+        WHERE h.user_id = #{userId}
+        ORDER BY h.created_at DESC
     </select>
+    <select id="findHomeById" resultType="org.scoula.domain.home.vo.HomeVO">
+        SELECT * FROM home WHERE home_id=#{id}
+    </select>
+
+    <update id="updateHome" parameterType="org.scoula.domain.home.vo.HomeVO">
+        UPDATE home SET
+                        addr1 = #{addr1},
+                        addr2 = #{addr2},
+                        residence_type = #{residenceType},
+                        lease_type = #{leaseType},
+                        deposit_price = #{depositPrice},
+                        monthly_rent = #{monthlyRent},
+                        maintenance_fee = #{maintenaceFee},
+                        room_cnt = #{roomCnt},
+                        supply_area = #{supplyArea},
+                        exclusive_area = #{exclusiveArea},
+                        updated_at = #{updatedAt}
+        WHERE home_id = #{homeId}
+    </update>
+
+    <update id="updateHomeDetail" parameterType="org.scoula.domain.home.vo.HomeDetailVO">
+        UPDATE home_detail SET
+                               build_date = #{buildDate},
+                               home_floor = #{homeFloor},
+                               building_total_floors = #{buildingTotalFloors},
+                               home_direction = #{homeDirection},
+                               bathroom_count = #{bathroomCnt},
+                               is_pet = #{isPet},
+                               is_parking_available = #{isParking}
+        WHERE home_detail_id = #{homeDetailId}
+    </update>
+
+    <update id="updateHomeStatus">
+        UPDATE home
+        SET home_status = #{status}
+        WHERE home_id = #{homeId}
+    </update>
+
+    <delete id="deleteHome" parameterType="int">
+        DELETE FROM home WHERE home_id = #{homeId}
+    </delete>
+
+    <delete id="deleteHomeImagesByHomeId" parameterType="int">
+        DELETE FROM home_image WHERE home_id = #{homeId}
+    </delete>
+
+    <delete id="deleteHomeMaintenanceFeesByHomeId" parameterType="int">
+        DELETE FROM home_maintenance_fee WHERE home_id = #{homeId}
+    </delete>
+
+    <delete id="deleteHomeFacilitiesByHomeDetailId" parameterType="int">
+        DELETE FROM home_facility WHERE home_detail_id = #{homeDetailId}
+    </delete>
+
+    <select id="selectHomeCount" resultType="int">
+        SELECT COUNT(*) FROM home WHERE home_status = 'AVAILABLE'
+    </select>
+
+    <select id="selectHomeCountByCondition" resultType="int">
+        SELECT COUNT(h.home_id)
+        FROM home h
+        LEFT JOIN home_detail hd ON h.home_id = hd.home_id
+        <where>
+            h.home_status = 'AVAILABLE'
+            <if test="search.residenceType != null">
+                AND h.residence_type = #{search.residenceType}
+            </if>
+            <if test="search.leaseType != null">
+                AND h.lease_type = #{search.leaseType}
+            </if>
+            <if test="search.addr1 != null and search.addr1 != ''">
+                AND h.addr1 LIKE CONCAT('%', #{search.addr1}, '%')
+            </if>
+            <if test="search.maxDepositPrice != null and search.maxDepositPrice &gt; 0">
+                AND h.deposit_price &lt;= #{search.maxDepositPrice}
+            </if>
+            <if test="search.maxMonthlyRent != null and search.maxMonthlyRent &gt; 0">
+                AND h.monthly_rent &lt;= #{search.maxMonthlyRent}
+            </if>
+            <if test="search.maxMaintenanceFee != null and search.maxMaintenanceFee &gt; 0">
+                AND h.maintenance_fee &lt;= #{search.maxMaintenanceFee}
+            </if>
+            <if test="search.minSupplyArea != null and search.minSupplyArea &gt; 0">
+                AND h.supply_area &gt;= #{search.minSupplyArea}
+            </if>
+            <if test="search.maxSupplyArea != null and search.maxSupplyArea &gt; 0">
+                AND h.supply_area &lt;= #{search.maxSupplyArea}
+            </if>
+            <if test="search.minRoomCnt != null">
+                AND h.room_cnt &gt;= #{search.minRoomCnt}
+            </if>
+            <if test="search.maxRoomCnt != null">
+                AND h.room_cnt &lt;= #{search.maxRoomCnt}
+            </if>
+            <if test="search.homeDirection != null">
+                AND hd.home_direction = #{search.homeDirection}
+            </if>
+            <if test="search.homeFloor != null">
+                AND hd.home_floor = #{search.homeFloor}
+            </if>
+            <if test="search.minFloor != null">
+                AND hd.home_floor &gt;= #{search.minFloor}
+            </if>
+            <if test="search.maxFloor != null">
+                AND hd.home_floor &lt;= #{search.maxFloor}
+            </if>
+            <if test="search.isPet != null">
+                AND hd.is_pet = #{search.isPet}
+            </if>
+            <if test="search.isParking != null">
+                AND hd.is_parking_available = #{search.isParking}
+            </if>
+        </where>
+    </select>
+
+    <update id="incrementViewCount" parameterType="int">
+        UPDATE home
+        SET view_cnt = view_cnt + 1
+        WHERE home_id = #{homeId}
+    </update>
 </mapper>

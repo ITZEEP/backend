@@ -18,7 +18,7 @@ import org.scoula.domain.fraud.enums.RiskType;
 import org.scoula.domain.fraud.exception.FraudErrorCode;
 import org.scoula.domain.fraud.exception.FraudRiskException;
 import org.scoula.domain.home.mapper.HomeMapper;
-import org.scoula.domain.home.vo.HomeRegisterVO;
+import org.scoula.domain.home.vo.HomeVO;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -308,11 +308,12 @@ public class AiFraudAnalyzerService {
       private FraudRiskCheckDto.Request buildAiRequest(Long userId, RiskAnalysisRequest request) {
 
           Long homeId = request.getHomeId();
-          HomeRegisterVO home =
-                  homeMapper
-                          .findHomeById(homeId)
-                          .orElseThrow(() -> new BusinessException(FraudErrorCode.INVALID_HOME_ID));
-
+          HomeVO home = null;
+          try {
+              home = homeMapper.findHomeById(homeId);
+          } catch (Exception e) {
+              throw new BusinessException(FraudErrorCode.INVALID_HOME_ID);
+          }
           request.setAddress(home.getAddr1() + " " + home.getAddr2());
           request.setPropertyPrice(home.getDepositPrice());
           request.setMonthlyRent(home.getMonthlyRent() != null ? home.getMonthlyRent() : 0);
