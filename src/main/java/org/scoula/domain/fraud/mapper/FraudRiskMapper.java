@@ -135,14 +135,14 @@ public interface FraudRiskMapper {
        * 오늘 분석한 위험도 체크 ID 조회
        *
        * @param userId 사용자 ID
-       * @param homeId 매물 ID
+       * @param contractChatId 계약 채팅 ID
        * @param startOfDay 오늘 시작 시간
        * @param endOfDay 오늘 종료 시간
        * @return 위험도 체크 ID (없으면 null)
        */
       Long selectTodayRiskCheckId(
               @Param("userId") Long userId,
-              @Param("homeId") Long homeId,
+              @Param("contractChatId") Long contractChatId,
               @Param("startOfDay") java.time.LocalDateTime startOfDay,
               @Param("endOfDay") java.time.LocalDateTime endOfDay);
 

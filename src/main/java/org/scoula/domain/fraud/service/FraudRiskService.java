@@ -93,8 +93,8 @@ public interface FraudRiskService {
        * 오늘 분석한 사기 위험도 요약 정보 조회
        *
        * @param userId 사용자 ID
-       * @param homeId 매물 ID
+       * @param contractChatId 계약 채팅 ID
        * @return 오늘 분석한 위험도 체크 요약 정보 (없으면 null)
        */
-      RiskCheckSummaryResponse getTodayRiskCheckSummary(Long userId, Long homeId);
+      RiskCheckSummaryResponse getTodayRiskCheckSummary(Long userId, Long contractChatId);
 }
