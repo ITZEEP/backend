@@ -96,9 +96,10 @@ public interface FraudRiskController {
       @ApiOperation(
               value = "오늘 분석한 사기 위험도 요약 정보 조회",
               notes =
-                      "매물 ID와 사용자 ID로 오늘 분석한 결과가 있는지 확인하고, 결과를 반환합니다. hasAnalysis 필드로 분석 결과 존재 여부를"
+                      "계약 채팅 ID와 사용자 ID로 오늘 분석한 결과가 있는지 확인하고, 결과를 반환합니다. hasAnalysis 필드로 분석 결과 존재 여부를"
                               + " 확인할 수 있습니다.")
       ResponseEntity<ApiResponse<TodayRiskCheckResponse>> getTodayRiskCheckSummary(
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @ApiParam(value = "매물 ID", required = true, example = "1") @PathVariable Long homeId);
+              @ApiParam(value = "계약 채팅 ID", required = true, example = "1") @PathVariable
+                      Long contractChatId);
 }

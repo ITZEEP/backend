@@ -233,13 +233,14 @@
     </select>
 
     <select id="selectTodayRiskCheckId" resultType="long">
-        SELECT riskck_id
-        FROM risk_check
-        WHERE user_id = #{userId}
-          AND home_id = #{homeId}
-          AND checked_at &gt;= #{startOfDay}
-          AND checked_at &lt;= #{endOfDay}
-        ORDER BY checked_at DESC
+        SELECT rc.riskck_id
+        FROM risk_check rc
+        INNER JOIN contract_chat cc ON rc.home_id = cc.home_id
+        WHERE rc.user_id = #{userId}
+          AND cc.contract_chat_id = #{contractChatId}
+          AND rc.checked_at &gt;= #{startOfDay}
+          AND rc.checked_at &lt;= #{endOfDay}
+        ORDER BY rc.checked_at DESC
         LIMIT 1
     </select>
     

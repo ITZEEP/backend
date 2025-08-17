@@ -716,15 +716,15 @@ public class FraudRiskServiceImpl implements FraudRiskService {
       }
 
       @Override
-      public RiskCheckSummaryResponse getTodayRiskCheckSummary(Long userId, Long homeId) {
-          log.info("오늘 분석한 위험도 체크 요약 조회 - userId: {}, homeId: {}", userId, homeId);
+      public RiskCheckSummaryResponse getTodayRiskCheckSummary(Long userId, Long contractChatId) {
+          log.info("오늘 분석한 위험도 체크 요약 조회 - userId: {}, contractChatId: {}", userId, contractChatId);
 
           LocalDateTime[] todayRange = getTodayDateRange();
 
-          // 오늘 분석한 위험도 체크 ID 조회
+          // 오늘 분석한 위험도 체크 ID 조회 (contractChatId 기반)
           Long riskCheckId =
                   fraudRiskMapper.selectTodayRiskCheckId(
-                          userId, homeId, todayRange[0], todayRange[1]);
+                          userId, contractChatId, todayRange[0], todayRange[1]);
 
           if (riskCheckId == null) {
               return null; // 오늘 분석한 결과가 없는 경우
