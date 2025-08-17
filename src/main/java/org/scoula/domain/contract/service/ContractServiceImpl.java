@@ -233,7 +233,7 @@ public class ContractServiceImpl implements ContractService {
           long contract = ChronoUnit.YEARS.between(aiDto.getContractStartDate(), aiDto.getContractEndDate());
           String rentType = tenantMapper.selectRentTypeAll(contractChatId, userId)
                   .orElseThrow(() -> new BusinessException(ContractException.CONTRACT_GET, "전/월세 타입 조회 실패"));
-String rentTypeKr;
+          String rentTypeKr;
           if(rentType.equals("JEONSE")){
               rentTypeKr = "전세";
           }else{
