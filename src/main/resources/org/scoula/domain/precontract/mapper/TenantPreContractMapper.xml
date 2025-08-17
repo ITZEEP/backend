@@ -54,6 +54,9 @@
                             ON cc.home_id = h.home_id
         WHERE cc.contract_chat_id = #{contractChatId} AND cc.buyer_id = #{userId}
     </select>
+
+
+
     
     <select id="selectRiskType" resultType="String">
         select rc.risk_type
@@ -256,4 +259,11 @@
 
         WHERE tpc.contract_chat_id = #{contractChatId}
     </select>
+  <select id="selectRentTypeAll" resultType="string">
+    select h.lease_type
+    FROM contract_chat cc
+           INNER JOIN home h
+                      ON cc.home_id = h.home_id
+    WHERE cc.contract_chat_id = #{contractChatId}
+  </select>
 </mapper>

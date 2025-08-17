@@ -38,6 +38,9 @@ public interface TenantPreContractMapper {
       Optional<String> selectRentType(
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
 
+      Optional<String> selectRentTypeAll(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
+
       // tenant_preCheck_check에 기본 세팅 하기 (나머지는 다 Null)
       int insertPreContractSet(
               @Param("contractChatId") Long contractChatId,
