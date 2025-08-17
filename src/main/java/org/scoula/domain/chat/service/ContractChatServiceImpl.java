@@ -17,13 +17,14 @@ import org.scoula.domain.chat.repository.ContractChatMessageRepository;
 import org.scoula.domain.chat.repository.SpecialContractMongoRepository;
 import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
-import org.scoula.domain.contract.service.ContractService;
+import org.scoula.domain.contract.service.ContractFixServiceInterface;
 import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,11 +46,10 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final ChatServiceInterface chatService;
       private final AiClauseImproveService aiClauseImproveService;
       private final PreContractDataService preContractDataService;
-
+      private final ContractFixServiceInterface contractFixService;
       private final Map<String, Set<Long>> contractChatOnlineUsers = new ConcurrentHashMap<>();
       private final RedisTemplate<String, String> stringRedisTemplate;
       private final ObjectMapper objectMapper = new ObjectMapper();
-      private final ContractService contractService;
       @Autowired private SpecialContractMongoRepository specialContractMongoRepository;
 
       @Value("${front.base.url}")
@@ -2451,14 +2451,98 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
           AiMessage(contractChatId, confirmationMessage);
-          /// api/contract/{contractChatId}/save/special-contract
-          // [적법성 검사] 계약서 1 몽고DB에 특약 저장
-          contractService.saveSpecialContract(contractChatId, buyerId);
 
-          AiMessageNext(contractChatId, "다음은 마지막 4단계: ‘적법성 검토' 단계입니다.");
+          // [적법성 검사] 계약서 1 몽고DB에 특약 저장
+          contractFixService.saveSpecialContract(contractChatId, buyerId);
+
+          AiMessageNext(contractChatId, "다음은 마지막 4단계: '적법성 검토' 단계입니다.");
           AiMessage(contractChatId, "AI가 지금까지 작성된 계약서의 적법성을 분석중이에요!\n 잠시만 기다려주세요!");
+
           // api/contract/{contractChatId}/legality
-          contractService.getLegality(contractChatId, buyerId);
+          try {
+              Object legalityResponse = contractFixService.getLegality(contractChatId, buyerId);
+
+              if (legalityResponse instanceof Map) {
+                  Map<String, Object> responseMap = (Map<String, Object>) legalityResponse;
+                  Map<String, Object> data = (Map<String, Object>) responseMap.get("data");
+                  if (data != null) {
+                      Map<String, Object> innerData = (Map<String, Object>) data.get("data");
+                      if (innerData != null) {
+                          List<Map<String, Object>> violations =
+                                  (List<Map<String, Object>>) innerData.get("violations");
+
+                          if (violations != null && !violations.isEmpty()) {
+                              AiMessage(contractChatId, "적법성 검사 결과, 일부 문제점이 발견되었습니다:");
+
+                              for (int i = 0; i < violations.size(); i++) {
+                                  Map<String, Object> violation = violations.get(i);
+
+                                  String violationType = (String) violation.get("violation_type");
+                                  String lawName = (String) violation.get("law_name");
+                                  String violationContent =
+                                          (String) violation.get("violation_content");
+                                  String explanation = (String) violation.get("explanation");
+                                  String improvementExample =
+                                          (String) violation.get("improvement_example");
+                                  String legalBasis = (String) violation.get("legal_basis");
+                                  String originalClause = (String) violation.get("original_clause");
+
+                                  StringBuilder violationMessage = new StringBuilder();
+                                  violationMessage.append(String.format("문제점 %d\n", i + 1));
+                                  violationMessage.append(
+                                          String.format(
+                                                  "위반 유형: %s\n",
+                                                  violationType != null ? violationType : "정보 없음"));
+                                  violationMessage.append(
+                                          String.format(
+                                                  "관련 법령: %s\n",
+                                                  lawName != null ? lawName : "정보 없음"));
+                                  violationMessage.append(
+                                          String.format(
+                                                  "위반 내용: %s\n",
+                                                  violationContent != null
+                                                          ? violationContent
+                                                          : "정보 없음"));
+                                  violationMessage.append(
+                                          String.format(
+                                                  "설명: %s\n",
+                                                  explanation != null ? explanation : "정보 없음"));
+
+                                  if (originalClause != null && !originalClause.trim().isEmpty()) {
+                                      violationMessage.append(
+                                              String.format("문제가 된 조항: %s\n", originalClause));
+                                  }
+
+                                  if (improvementExample != null
+                                          && !improvementExample.trim().isEmpty()) {
+                                      violationMessage.append(
+                                              String.format("개선 방안: %s\n", improvementExample));
+                                  }
+
+                                  if (legalBasis != null && !legalBasis.trim().isEmpty()) {
+                                      violationMessage.append(String.format("법적 근거: %s", legalBasis));
+                                  }
+
+                                  AiMessage(contractChatId, violationMessage.toString());
+
+                                  try {
+                                      Thread.sleep(1000);
+                                  } catch (InterruptedException e) {
+                                      Thread.currentThread().interrupt();
+                                  }
+                              }
+
+                              AiMessageBtn(contractChatId, "위 문제점들을 검토하시고 필요시 수정 요청을 해주세요.");
+                          } else {
+                              AiMessage(contractChatId, "적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
+                          }
+                      }
+                  }
+              }
+          } catch (Exception e) {
+              log.error("적법성 검사 결과 처리 중 오류 발생", e);
+              AiMessage(contractChatId, "적법성 검사 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+          }
 
           return Map.of(
                   "message",
