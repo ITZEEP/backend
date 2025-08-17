@@ -367,7 +367,13 @@ public class TenantPreContractServiceImpl implements TenantPreContractService {
                           contractChat.getOwnerId(),
                           contractChat.getBuyerId(),
                           contractChat.getHomeId());
-          String contractChatUrls = URL + precontractUrl + (contractChatId.toString()) + ownerUrl+"&homeId="+(contractChat.getHomeId().toString());
+          String contractChatUrls =
+                  URL
+                          + precontractUrl
+                          + (contractChatId.toString())
+                          + ownerUrl
+                          + "&homeId="
+                          + (contractChat.getHomeId().toString());
           ChatMessageRequestDto linkMessages =
                   ChatMessageRequestDto.builder()
                           .chatRoomId(chatRoom.getChatRoomId())
