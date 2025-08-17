@@ -287,6 +287,9 @@
         WHERE h.user_id = #{userId}
         ORDER BY h.created_at DESC
     </select>
+    <select id="findHomeById" resultType="org.scoula.domain.home.vo.HomeVO">
+        SELECT * FROM home WHERE home_id=#{id}
+    </select>
 
     <!-- 매물 수정 -->
     <update id="updateHome" parameterType="org.scoula.domain.home.vo.HomeVO">
