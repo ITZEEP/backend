@@ -244,7 +244,7 @@ public class ContractServiceImpl implements ContractService {
                   contractChatId,
                   """
               이 계약은 계약기간 %d년의 %s 계약입니다.
-      전세 보증금은 %s,
+      보증금은 %s,
       관리비는 %s입니다.
       """.formatted(
                           contract,
@@ -614,28 +614,32 @@ public class ContractServiceImpl implements ContractService {
 
     private static String formatWonShort(int amount) {
         if (amount == 0) return "0원";
+
         long eok = amount / 100_000_000;           // 억
         long man = (amount % 100_000_000) / 10_000; // 만원 단위
 
         StringBuilder sb = new StringBuilder();
+
         if (eok > 0) {
             sb.append(eok).append("억");
-            long cheon = man / 1000; // 천만원 단위
-            long remainMan = man % 1000;
-            if (cheon > 0) sb.append(" ").append(cheon).append("천");
-            if (cheon == 0 && remainMan > 0) sb.append(" ").append(remainMan).append("만");
+            if (man > 0) {
+                sb.append(" ").append(man).append("만");
+            }
             sb.append("원");
         } else {
-            if (man >= 1000) {
-                long cheon = man / 1000;
-                long remainMan = man % 1000;
-                sb.append(cheon).append("천");
-                if (remainMan > 0) sb.append(" ").append(remainMan).append("만");
-                sb.append("원");
-            } else {
+            if (man > 0) {
                 sb.append(man).append("만원");
+            } else {
+                // 만원 미만인 경우
+                long cheon = (amount % 10_000) / 1_000;
+                if (cheon > 0) {
+                    sb.append(cheon).append("천원");
+                } else {
+                    sb.append(amount).append("원");
+                }
             }
         }
-        return sb.toString().replaceAll("\\s+", " ");
+
+        return sb.toString();
     }
 }
