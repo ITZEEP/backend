@@ -204,6 +204,7 @@ public class ContractServiceImpl implements ContractService {
 
                   // 스텝 변경
                   contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
+                    Thread.sleep(2000);
 
                   // 특약 초안 메시지
                   contractChatService.AiMessageBtn(contractChatId, "특약 초안이 생성되었습니다. 각 조항을 검토하고 수락 / 거절을 선택하세요.");
