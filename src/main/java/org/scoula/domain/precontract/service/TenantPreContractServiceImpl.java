@@ -85,7 +85,7 @@ public class TenantPreContractServiceImpl implements TenantPreContractService {
           // 1-1. identity_id 가져오기
           Long identityId =
                   tenantMapper
-                          .selectIdentityId(userId)
+                          .selectIdentityId(contractChatId, userId)
                           .orElseThrow(
                                   () -> new BusinessException(PreContractErrorCode.TENANT_SELECT));
 
