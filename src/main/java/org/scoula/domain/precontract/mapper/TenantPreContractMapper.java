@@ -24,7 +24,8 @@ public interface TenantPreContractMapper {
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
       // identity_verification에서 identity_id 가져오기
-      Optional<Long> selectIdentityId(@Param("userId") Long userId);
+      Optional<Long> selectIdentityId(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       // risk_check에 맞는 risk_id가 있는지 확인하기
       Optional<Long> selectRiskId(
