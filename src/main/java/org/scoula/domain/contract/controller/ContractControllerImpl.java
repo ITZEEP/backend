@@ -96,7 +96,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @PostMapping("/price")
+      @PostMapping("/price/request")
       public ResponseEntity<ApiResponse<Void>> saveDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -107,7 +107,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @DeleteMapping("/price")
+      @PostMapping("/price/reject")
       public ResponseEntity<ApiResponse<Void>> deleteDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -117,7 +117,7 @@ public class ContractControllerImpl implements ContractController {
       }
 
       @Override
-      @PatchMapping("/price")
+      @PatchMapping("/price/accept")
       public ResponseEntity<ApiResponse<Void>> updateDepositPrice(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails) {
