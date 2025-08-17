@@ -275,28 +275,37 @@ public class ContractServiceImpl implements ContractService {
           return dto;
       }
 
-      /** {@inheritDoc} */
-      @Override
-      public Void saveDepositPrice(Long contractChatId, Long userId, PaymentDTO dto) {
-          // Userid 검증
-          validateUserId(contractChatId, userId);
+    /** {@inheritDoc} */
+    @Override
+    public Void saveDepositPrice(Long contractChatId, Long userId, PaymentDTO dto) {
+        // Userid 검증
+        validateUserId(contractChatId, userId);
 
-          // 레디스에 내용 저장하기 / value 값 넛기
-          String redisKey = "contract:payment:" + contractChatId;
-          try {
-              // 3. DTO를 JSON 문자열로 변환
-              ObjectMapper objectMapper = new ObjectMapper();
-              String json = objectMapper.writeValueAsString(dto);
+        String redisKey = "contract:payment:" + contractChatId;
 
-              // 4. Redis에 저장
-              stringRedisTemplate.opsForValue().set(redisKey, json);
+        String paymentValue = dto.getDepositPrice() + "," + dto.getMonthlyRent();
+        stringRedisTemplate.opsForValue().set(redisKey, paymentValue);
 
-          } catch (JsonProcessingException e) {
-              throw new BusinessException(ContractException.CONTRACT_REDIS, e);
-          }
+        Long ownerId = contractMapper.getOwnerId(contractChatId);
 
-          return null;
-      }
+        String userRole = userId.equals(ownerId) ? "임대인" : "임차인";
+
+        String depositFormatted = formatWonShort(dto.getDepositPrice());
+        String monthlyRentFormatted = formatWonShort(dto.getMonthlyRent());
+
+        String message;
+        if (dto.getMonthlyRent() > 0) {
+            message = String.format("%s이 보증금 %s, 월세 %s로 금액 조정을 요청했습니다.",
+                    userRole, depositFormatted, monthlyRentFormatted);
+        } else {
+            message = String.format("%s이 전세금 %s로 금액 조정을 요청했습니다.",
+                    userRole, depositFormatted);
+        }
+
+        contractChatService.AiMessage(contractChatId, message);
+
+        return null;
+    }
 
       /** {@inheritDoc} */
       @Override
@@ -319,51 +328,65 @@ public class ContractServiceImpl implements ContractService {
           return null;
       }
 
-      /** {@inheritDoc} */
-      @Override
-      public Void updateDepositPrice(Long contractChatId, Long userId) {
-          // Userid 검증
-          validateUserId(contractChatId, userId);
+    /** {@inheritDoc} */
+    @Override
+    public Void updateDepositPrice(Long contractChatId, Long userId) {
+        validateUserId(contractChatId, userId);
 
-          // 2. Redis에서 해당 금액 정보 가져오기
-          String redisKey = "contract:payment:" + contractChatId; // value : 임대인 id -> 거절시 Delete
-          String json = stringRedisTemplate.opsForValue().get(redisKey);
+        String redisKey = "contract:payment:" + contractChatId;
+        String paymentValue = stringRedisTemplate.opsForValue().get(redisKey);
 
-          if (json == null) {
-              throw new BusinessException(ContractException.CONTRACT_REDIS, "금액 정보가 Redis에 없습니다.");
-          }
+        if (paymentValue == null) {
+            throw new BusinessException(ContractException.CONTRACT_REDIS, "금액 정보가 Redis에 없습니다.");
+        }
 
-          try {
-              // 3. JSON -> DTO로 변환
-              ObjectMapper objectMapper = new ObjectMapper();
-              PaymentDTO dto = objectMapper.readValue(json, PaymentDTO.class);
+        try {
+            String[] amounts = paymentValue.split(",");
+            if (amounts.length != 2) {
+                throw new BusinessException(ContractException.CONTRACT_REDIS, "Redis 금액 데이터 형식이 올바르지 않습니다.");
+            }
 
-              // 4. MongoDB에서 계약서 불러오기
-              repository.updateDepositPrice(contractChatId, dto);
+            int depositPrice = Integer.parseInt(amounts[0]);
+            int monthlyRent = Integer.parseInt(amounts[1]);
 
-              // 7. Redis 값 삭제
-              stringRedisTemplate.delete(redisKey);
+            PaymentDTO dto = PaymentDTO.builder()
+                    .depositPrice(depositPrice)
+                    .monthlyRent(monthlyRent)
+                    .build();
 
+            repository.updateDepositPrice(contractChatId, dto);
 
-            // 스텝 변경
+            String depositFormatted = formatWonShort(depositPrice);
+            String monthlyRentFormatted = formatWonShort(monthlyRent);
+
+            String acceptMessage;
+            if (monthlyRent > 0) {
+                acceptMessage = String.format("금액 조정이 수락되었습니다!\n보증금: %s\n월세: %s",
+                        depositFormatted, monthlyRentFormatted);
+            } else {
+                acceptMessage = String.format("금액 조정이 수락되었습니다!\n전세금: %s", depositFormatted);
+            }
+
+            contractChatService.AiMessage(contractChatId, acceptMessage);
+
+            stringRedisTemplate.delete(redisKey);
+
             contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
 
-            // 다음 단계 메세지 보내기
             contractChatService.AiMessage(contractChatId, step3StartMessage);
 
             Thread.sleep(2000);
 
-            // 특약 초안 메시지
             contractChatService.AiMessageBtn(contractChatId, "특약 초안이 생성되었습니다. 각 조항을 검토하고 수락 / 거절을 선택하세요.");
 
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ContractException.CONTRACT_REDIS, "Redis의 금액 데이터를 파싱할 수 없습니다.", e);
+        } catch (Exception e) {
+            throw new BusinessException(ContractException.CONTRACT_UPDATE, e);
+        }
 
-          } catch (Exception e) {
-              throw new BusinessException(ContractException.CONTRACT_UPDATE, e);
-          }
-
-          return null;
-      }
-
+        return null;
+    }
 
 
       /** {@inheritDoc} */
