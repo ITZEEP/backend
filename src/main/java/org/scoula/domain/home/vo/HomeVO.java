@@ -34,4 +34,7 @@ public class HomeVO {
       private LocalDate updatedAt;
       private String userName;
       private Float exclusiveArea;
+      private Float area;
+      private String landCategory;
+      private Integer homeFloor;
 }

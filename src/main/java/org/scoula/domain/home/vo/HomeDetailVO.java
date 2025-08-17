@@ -22,4 +22,6 @@ public class HomeDetailVO {
       private Integer bathroomCnt;
       private Boolean isPet;
       private Boolean isParking;
+      private Float area;
+      private String landCategory;
 }

@@ -31,6 +31,8 @@ public class HomeSearchDTO {
       private Float maxSupplyArea;
       private Integer minRoomCnt;
       private Integer maxRoomCnt;
+      private Float exclusiveArea;
+      private Integer homeFloor;
 
       // 층수 범위
       private Integer minFloor;
@@ -43,7 +45,7 @@ public class HomeSearchDTO {
 
       // 페이징
       private Integer page = 1;
-      private Integer size = 20;
+      private Integer size = 21;
 
       // 정렬
       private String sortBy = "createdAt"; // createdAt, price, viewCnt, likeCnt

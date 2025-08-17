@@ -24,8 +24,9 @@ public interface HomeService {
       // 매물 검색
       List<HomeResponseDTO> searchHomes(HomeSearchDTO searchDTO);
 
-      // 매물 수정
-      void updateHome(Integer homeId, HomeCreateDTO updateDTO, Integer userId);
+      // 매물 수정 (이미지 선택사항)
+      void updateHome(
+              Integer homeId, HomeCreateDTO updateDTO, List<MultipartFile> images, Integer userId);
 
       // 매물 삭제
       void deleteHome(Integer homeId, Integer userId);

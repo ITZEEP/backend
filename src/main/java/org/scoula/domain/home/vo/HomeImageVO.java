@@ -11,5 +11,5 @@ import lombok.*;
 public class HomeImageVO {
       private Integer imageId;
       private Integer homeId;
-      private String ImageUrl;
+      private String imageUrl;
 }

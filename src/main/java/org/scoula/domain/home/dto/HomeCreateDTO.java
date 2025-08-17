@@ -38,6 +38,10 @@ public class HomeCreateDTO {
 
       private Float supplyArea;
 
+      private Float area;
+
+      private String landCategory;
+
       private Float exclusiveArea;
 
       private LocalDate buildDate;
@@ -56,8 +60,6 @@ public class HomeCreateDTO {
       private List<Integer> facilityItemIds;
 
       private List<MaintenanceFeeDTO> maintenanceFees;
-
-      private List<String> imageUrls;
 
       @Data
       @NoArgsConstructor

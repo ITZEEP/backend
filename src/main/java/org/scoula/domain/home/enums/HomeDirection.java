@@ -24,6 +24,10 @@ public enum HomeDirection {
           return description;
       }
 
+      public String getKey() {
+          return this.name();
+      }
+
       @JsonCreator
       public static HomeDirection from(String value) {
           for (HomeDirection direction : HomeDirection.values()) {
