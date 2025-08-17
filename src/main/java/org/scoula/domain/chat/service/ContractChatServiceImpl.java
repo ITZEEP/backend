@@ -17,6 +17,7 @@ import org.scoula.domain.chat.repository.ContractChatMessageRepository;
 import org.scoula.domain.chat.repository.SpecialContractMongoRepository;
 import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
+import org.scoula.domain.contract.service.ContractService;
 import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
@@ -48,6 +49,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final Map<String, Set<Long>> contractChatOnlineUsers = new ConcurrentHashMap<>();
       private final RedisTemplate<String, String> stringRedisTemplate;
       private final ObjectMapper objectMapper = new ObjectMapper();
+      private final ContractService contractService;
       @Autowired private SpecialContractMongoRepository specialContractMongoRepository;
 
       @Value("${front.base.url}")
@@ -2449,11 +2451,14 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
           AiMessage(contractChatId, confirmationMessage);
-          AiMessageNext(
-                  contractChatId,
-                  "다음은 마지막 4단계: ‘적법성 검토' 단계입니다.\n"
-                          + "\n"
-                          + "해당 계약 내용을 기준으로 법률적 적합성을 분석할게요. 잠시만 기다려주세요.");
+          /// api/contract/{contractChatId}/save/special-contract
+          // [적법성 검사] 계약서 1 몽고DB에 특약 저장
+          contractService.saveSpecialContract(contractChatId, buyerId);
+
+          AiMessageNext(contractChatId, "다음은 마지막 4단계: ‘적법성 검토' 단계입니다.");
+          AiMessage(contractChatId, "AI가 지금까지 작성된 계약서의 적법성을 분석중이에요!\n 잠시만 기다려주세요!");
+          // api/contract/{contractChatId}/legality
+          contractService.getLegality(contractChatId, buyerId);
 
           return Map.of(
                   "message",
