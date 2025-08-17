@@ -17,6 +17,7 @@ import org.scoula.domain.chat.repository.ContractChatMessageRepository;
 import org.scoula.domain.chat.repository.SpecialContractMongoRepository;
 import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
+import org.scoula.domain.contract.repository.ContractMongoRepository;
 import org.scoula.domain.contract.service.ContractFixServiceInterface;
 import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.global.common.exception.BusinessException;
@@ -44,6 +45,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final ContractChatMessageRepository contractChatMessageRepository;
       private final SimpMessagingTemplate messagingTemplate;
       private final ChatServiceInterface chatService;
+      private final ContractMongoRepository contractMongoRepository;
       private final AiClauseImproveService aiClauseImproveService;
       private final PreContractDataService preContractDataService;
       private final ContractFixServiceInterface contractFixService;
@@ -2777,5 +2779,70 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                           "ownerId", c.getOwnerId(),
                           "buyerId", c.getBuyerId());
           messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, payload);
+      }
+      @Override
+    public void requestFinalContract(Long contractChatId, Long ownerId){
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!ownerId.equals(contractChat.getOwnerId())) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          Optional<FinalSpecialContractDocument> finalContractOpt =
+                  specialContractMongoRepository.findFinalContractByContractChatId(contractChatId);
+
+          if (finalContractOpt.isEmpty()) {
+              throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
+          }
+
+          AiMessageBtn(contractChatId, "임대인이 최종 특약 확정을 요청하였습니다");
+
+          String key = "final-contract:request:" + contractChatId;
+          String existingValue = stringRedisTemplate.opsForValue().get(key);
+          if (existingValue != null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_ALREADY_EXISTS, "이미 확정 요청이 진행 중입니다.");
+          }
+          String value = ownerId.toString();
+          stringRedisTemplate.opsForValue().set(key, value);
+      }
+
+      @Override
+      public Map<String, Object> acceptFinalContract(Long contractChatId, Long buyerId){
+          if (!isUserInContractChat(contractChatId, buyerId)) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          Long ownerId = contractChat.getOwnerId();
+
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 확정 수락을 할 수 있습니다.");
+          }
+
+          String redisKey = "final-contract:request:" + contractChatId;
+          String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (storedOwnerId == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "확정 요청이 존재하지 않습니다.");
+          }
+
+          if (!storedOwnerId.equals(ownerId.toString())) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
+          }
+          contractMongoRepository.clearSpecialContracts(contractChatId);
+          contractMongoRepository.saveSpecialContract(contractChatId);
+          AiMessage(contractChatId,"계약이 수락되었습니다.");
+          return Map.of();
       }
 }
