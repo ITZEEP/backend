@@ -2903,7 +2903,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                     ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
         }
 
-        // Redis 키 삭제
         stringRedisTemplate.delete(redisKey);
 
         if (isAccepted) {
