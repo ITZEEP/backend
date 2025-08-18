@@ -2860,7 +2860,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
           }
 
-          AiMessageBtn(contractChatId, "임대인이 최종 특약 확정을 요청하였습니다");
+          AiMessageBtn(contractChatId, "임대인이 최종 계약서 확인을 요청하였습니다");
 
           String key = "final-contract:request:" + contractChatId;
           String existingValue = stringRedisTemplate.opsForValue().get(key);
