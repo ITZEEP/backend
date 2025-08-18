@@ -180,9 +180,9 @@ public class ContractServiceImpl implements ContractService {
       // 스텝 변경
       contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP0);
 
-        // 2초 대기
+        // 짧은 대기 (200ms)
         try {
-            Thread.sleep(2000);
+            Thread.sleep(200);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -231,14 +231,14 @@ public class ContractServiceImpl implements ContractService {
 
                 // 2초 대기
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(200); // 200ms로 단축
 
                   // 다음 단계 메세지 보내기
                   contractChatService.AiMessage(contractChatId, step3StartMessage);
 
                   // 스텝 변경
                   contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
-                    Thread.sleep(2000);
+                    Thread.sleep(200); // 200ms로 단축
 
                   // 특약 초안 메시지
                   contractChatService.AiMessageBtn(contractChatId, "특약 초안이 생성되었습니다. 각 조항을 검토하고 수락 / 거절을 선택하세요.");
@@ -613,7 +613,7 @@ public class ContractServiceImpl implements ContractService {
     @Transactional
     public byte[] startContractExport(Long contractChatId, Long userId) {
         log.info("Starting contract export for contractChatId: {}, userId: {}", contractChatId, userId);
-        
+
         try {
             // userId 인증
             validateUserId(contractChatId, userId);
@@ -680,11 +680,11 @@ public class ContractServiceImpl implements ContractService {
             log.info("DTO 필드 확인 - leaseType: {}, ownerNickname: {}, buyerNickname: {}, addr1: {}",
                     dto.getLeaseType(), dto.getOwnerNickname(), dto.getBuyerNickname(), dto.getAddr1());
 
-            // 서명 이미지를 빈 문자열로 초기화 (서명 없는 미리보기용)
-            dto.setOwnerSign1Base64("");
-            dto.setOwnerSign2Base64("");
-            dto.setOwnerSign3Base64("");
-            dto.setBuyerSignBase64("");
+            // 서명 이미지를 빈 byte array로 초기화 (서명 없는 미리보기용)
+            dto.setOwnerSign1Base64(new byte[0]);
+            dto.setOwnerSign2Base64(new byte[0]);
+            dto.setOwnerSign3Base64(new byte[0]);
+            dto.setBuyerSignBase64(new byte[0]);
 
             // JSON으로 전송
             HttpHeaders headers = new HttpHeaders();
@@ -708,13 +708,13 @@ public class ContractServiceImpl implements ContractService {
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 byte[] pdfData = response.getBody();
-                
+
                 // PDF 데이터 크기 확인
                 if (pdfData.length == 0) {
                     log.error("AI 서버에서 빈 응답을 받았습니다");
                     return generateFallbackPdf(contractChatId, dto);
                 }
-                
+
                 // PDF 헤더 확인 (%PDF)
                 if (pdfData.length > 4) {
                     String header = new String(pdfData, 0, 4);
@@ -722,23 +722,23 @@ public class ContractServiceImpl implements ContractService {
                         // PDF가 아닌 경우, 텍스트 응답인지 확인
                         String textResponse = new String(pdfData, 0, Math.min(1000, pdfData.length));
                         log.error("AI 서버에서 PDF가 아닌 응답을 받았습니다. 처음 1000 바이트: {}", textResponse);
-                        
+
                         // URL 패턴인지 확인 (uploads/ 또는 http로 시작)
                         if (textResponse.contains("uploads/") || textResponse.startsWith("http")) {
                             log.info("응답이 URL 형식입니다. URL에서 PDF 다운로드 시도: {}", textResponse.trim());
-                            
+
                             try {
                                 String fullUrl = textResponse.trim();
                                 if (!fullUrl.startsWith("http")) {
                                     // 상대 경로인 경우 AI 서버 URL과 조합
                                     fullUrl = aiServerUrl + "/" + fullUrl;
                                 }
-                                
+
                                 ResponseEntity<byte[]> pdfResponse = restTemplate.getForEntity(fullUrl, byte[].class);
-                                
+
                                 if (pdfResponse.getStatusCode() == HttpStatus.OK && pdfResponse.getBody() != null) {
                                     byte[] downloadedPdf = pdfResponse.getBody();
-                                    
+
                                     // 다운로드한 파일이 PDF인지 확인
                                     if (downloadedPdf.length > 4) {
                                         String pdfHeader = new String(downloadedPdf, 0, 4);
@@ -752,12 +752,12 @@ public class ContractServiceImpl implements ContractService {
                                 log.error("URL에서 PDF 다운로드 실패: ", e);
                             }
                         }
-                        
+
                         // Fallback으로 기본 PDF 생성
                         return generateFallbackPdf(contractChatId, dto);
                     }
                 }
-                
+
                 log.info("PDF 생성 성공, 크기: {} bytes", pdfData.length);
                 return pdfData;
             } else {
@@ -774,7 +774,7 @@ public class ContractServiceImpl implements ContractService {
             if (e.getCause() != null) {
                 log.error("Cause: {}", e.getCause().getMessage());
             }
-            
+
             // Fallback PDF 생성 시도
             try {
                 log.info("Attempting to generate fallback PDF due to error");
@@ -789,61 +789,61 @@ public class ContractServiceImpl implements ContractService {
     // Fallback PDF 생성 메서드
     private byte[] generateFallbackPdf(Long contractChatId, SaveFinalContractDTO dto) {
         log.info("Fallback PDF 생성 시작 - contractChatId: {}", contractChatId);
-        
+
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
             com.itextpdf.kernel.pdf.PdfDocument pdfDoc = new com.itextpdf.kernel.pdf.PdfDocument(writer);
             com.itextpdf.layout.Document document = new com.itextpdf.layout.Document(pdfDoc);
-            
+
             // 한글 폰트 설정 (기본 폰트 사용)
             com.itextpdf.kernel.font.PdfFont font = com.itextpdf.kernel.font.PdfFontFactory.createFont(
                     "Helvetica", "Identity-H", com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-            
+
             // 제목
             document.add(new com.itextpdf.layout.element.Paragraph("부동산 임대차 계약서")
                     .setFont(font)
                     .setFontSize(20)
                     .setBold()
                     .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER));
-            
+
             document.add(new com.itextpdf.layout.element.Paragraph(""));
-            
+
             // 계약 정보
             document.add(new com.itextpdf.layout.element.Paragraph("계약 번호: " + contractChatId)
                     .setFont(font));
-            
+
             if (dto != null) {
-                document.add(new com.itextpdf.layout.element.Paragraph("임대 유형: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("임대 유형: " +
                         (dto.getLeaseType() ? "전세" : "월세"))
                         .setFont(font));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph(""));
-                
+
                 // 당사자 정보
                 document.add(new com.itextpdf.layout.element.Paragraph("[ 임대인 ]")
                         .setFont(font)
                         .setBold());
-                document.add(new com.itextpdf.layout.element.Paragraph("성명: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("성명: " +
                         (dto.getOwnerNickname() != null ? dto.getOwnerNickname() : "임대인"))
                         .setFont(font));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph(""));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph("[ 임차인 ]")
                         .setFont(font)
                         .setBold());
-                document.add(new com.itextpdf.layout.element.Paragraph("성명: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("성명: " +
                         (dto.getBuyerNickname() != null ? dto.getBuyerNickname() : "임차인"))
                         .setFont(font));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph(""));
-                
+
                 // 부동산 정보
                 document.add(new com.itextpdf.layout.element.Paragraph("[ 부동산 정보 ]")
                         .setFont(font)
                         .setBold());
-                document.add(new com.itextpdf.layout.element.Paragraph("주소: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("주소: " +
                         dto.getAddr1() + " " + (dto.getAddr2() != null ? dto.getAddr2() : ""))
                         .setFont(font));
             } else {
@@ -853,33 +853,33 @@ public class ContractServiceImpl implements ContractService {
                         .setFont(font)
                         .setItalic());
             }
-            
+
             document.add(new com.itextpdf.layout.element.Paragraph(""));
-            
+
             // 안내 메시지
             document.add(new com.itextpdf.layout.element.Paragraph(
                     "※ 이 문서는 임시 생성된 계약서입니다. AI 서버 연결 문제로 정식 계약서를 생성할 수 없습니다.")
                     .setFont(font)
                     .setFontSize(10)
                     .setItalic());
-            
+
             document.add(new com.itextpdf.layout.element.Paragraph("생성 일시: " + new java.util.Date())
                     .setFont(font)
                     .setFontSize(10));
-            
+
             document.close();
-            
+
             byte[] pdfBytes = baos.toByteArray();
             log.info("Fallback PDF 생성 완료, 크기: {} bytes", pdfBytes.length);
             return pdfBytes;
-            
+
         } catch (Exception e) {
             log.error("Fallback PDF 생성 실패: ", e);
             // 최후의 수단으로 빈 PDF 반환
             return new byte[0];
         }
     }
-    
+
     // SaveFinalContractDTO 빌드 헬퍼 메서드
     private SaveFinalContractDTO buildSaveFinalContractDTO(
             ContractMongoDocument document,
@@ -901,16 +901,16 @@ public class ContractServiceImpl implements ContractService {
         // 주소 정보 - 여러 소스에서 가져오기 (우선순위: DB -> MongoDB -> BuildingDocument)
         String addr1 = dbDTO.getHomeAddr1(); // DB에서 먼저 가져오기
         String addr2 = dbDTO.getHomeAddr2();
-        
+
         log.info("Address from DB - addr1: '{}', addr2: '{}'", addr1, addr2);
-        
+
         // DB의 주소가 비어있으면 MongoDB document에서 가져오기
         if (addr1 == null || addr1.trim().isEmpty()) {
             addr1 = document.getHomeAddr1();
             addr2 = document.getHomeAddr2();
             log.info("Address from MongoDB - addr1: '{}', addr2: '{}'", addr1, addr2);
         }
-        
+
         // MongoDB document의 주소도 비어있으면 BuildingDocument에서 가져오기
         if ((addr1 == null || addr1.trim().isEmpty()) && buildingDocument != null) {
             String roadAddress = buildingDocument.getRoadAddress();
@@ -920,16 +920,16 @@ public class ContractServiceImpl implements ContractService {
                 log.info("Using address from BuildingDocument: {}", addr1);
             }
         }
-        
+
         // 여전히 비어있으면 기본값 설정
         if (addr1 == null || addr1.trim().isEmpty()) {
             addr1 = "주소 정보 없음";
             log.warn("No address information found for contract {}, using default", document.getContractChatId());
         }
-        
+
         dto.setAddr1(addr1);
         dto.setAddr2(addr2 != null ? addr2 : "");
-        
+
         log.info("Final address set - addr1: '{}', addr2: '{}'", dto.getAddr1(), dto.getAddr2());
 
         // 건물 정보
@@ -949,9 +949,8 @@ public class ContractServiceImpl implements ContractService {
 
         dto.setSupplyArea(String.valueOf(document.getExclusiveArea()));
 
-        // 체크박스
-        dto.setHasTaxArrears(false); // 초기값
-        dto.setHasPriorFixedDate(false); // 초기값
+        // 체크박스 - 초기에는 설정하지 않음 (null로 유지)
+        // dto.setHasTaxArrears와 dto.setHasPriorFixedDate는 호출하지 않음
 
         // 금액 정보
         dto.setTextDepositPrice(convertToKoreanWon(document.getDepositPrice()));
@@ -2153,43 +2152,88 @@ public class ContractServiceImpl implements ContractService {
 
             // 실제 서명 이미지 설정 (이미 Base64로 변환되어 있음 - updateSignature에서 처리)
             log.info("Setting signatures from status data");
-            
+
             if (ownerSignatures != null && !ownerSignatures.isEmpty()) {
-                if (ownerSignatures.size() > 0 && ownerSignatures.get(0) != null) {
+                if (ownerSignatures.size() > 0 && ownerSignatures.get(0) != null && !ownerSignatures.get(0).isEmpty()) {
                     String ownerSign1 = ownerSignatures.get(0);
-                    // 이미 순수 Base64 문자열이므로 그대로 설정
-                    dto.setOwnerSign1Base64(ownerSign1);
-                    log.info("Owner signature 1 set - length: {}", ownerSign1.length());
+                    // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                    if (ownerSign1.startsWith("data:image")) {
+                        ownerSign1 = ownerSign1.substring(ownerSign1.indexOf(",") + 1);
+                    }
+                    // Base64 문자열을 byte array로 변환
+                    try {
+                        byte[] signatureBytes = Base64.getDecoder().decode(ownerSign1);
+                        dto.setOwnerSign1Base64(signatureBytes);
+                        log.info("Owner signature 1 set - byte array size: {}", signatureBytes.length);
+                    } catch (IllegalArgumentException e) {
+                        log.error("Failed to decode owner signature 1 from Base64: {}", e.getMessage());
+                        dto.setOwnerSign1Base64(new byte[0]);
+                    }
+                } else {
+                    dto.setOwnerSign1Base64(new byte[0]);
+                    log.warn("Owner signature 1 is null or empty");
                 }
-                if (ownerSignatures.size() > 1 && ownerSignatures.get(1) != null) {
+                if (ownerSignatures.size() > 1 && ownerSignatures.get(1) != null && !ownerSignatures.get(1).isEmpty()) {
                     String ownerSign2 = ownerSignatures.get(1);
-                    dto.setOwnerSign2Base64(ownerSign2);
-                    log.info("Owner signature 2 set - length: {}", ownerSign2.length());
+                    // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                    if (ownerSign2.startsWith("data:image")) {
+                        ownerSign2 = ownerSign2.substring(ownerSign2.indexOf(",") + 1);
+                    }
+                    try {
+                        byte[] signatureBytes = Base64.getDecoder().decode(ownerSign2);
+                        dto.setOwnerSign2Base64(signatureBytes);
+                        log.info("Owner signature 2 set - byte array size: {}", signatureBytes.length);
+                    } catch (IllegalArgumentException e) {
+                        log.error("Failed to decode owner signature 2 from Base64: {}", e.getMessage());
+                        dto.setOwnerSign2Base64(new byte[0]);
+                    }
+                } else {
+                    dto.setOwnerSign2Base64(new byte[0]);
                 }
-                if (ownerSignatures.size() > 2 && ownerSignatures.get(2) != null) {
+                if (ownerSignatures.size() > 2 && ownerSignatures.get(2) != null && !ownerSignatures.get(2).isEmpty()) {
                     String ownerSign3 = ownerSignatures.get(2);
-                    dto.setOwnerSign3Base64(ownerSign3);
-                    log.info("Owner signature 3 set - length: {}", ownerSign3.length());
+                    // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                    if (ownerSign3.startsWith("data:image")) {
+                        ownerSign3 = ownerSign3.substring(ownerSign3.indexOf(",") + 1);
+                    }
+                    try {
+                        byte[] signatureBytes = Base64.getDecoder().decode(ownerSign3);
+                        dto.setOwnerSign3Base64(signatureBytes);
+                        log.info("Owner signature 3 set - byte array size: {}", signatureBytes.length);
+                    } catch (IllegalArgumentException e) {
+                        log.error("Failed to decode owner signature 3 from Base64: {}", e.getMessage());
+                        dto.setOwnerSign3Base64(new byte[0]);
+                    }
+                } else {
+                    dto.setOwnerSign3Base64(new byte[0]);
                 }
             } else {
-                dto.setOwnerSign1Base64("");
-                dto.setOwnerSign2Base64("");
-                dto.setOwnerSign3Base64("");
+                dto.setOwnerSign1Base64(new byte[0]);
+                dto.setOwnerSign2Base64(new byte[0]);
+                dto.setOwnerSign3Base64(new byte[0]);
             }
 
-            if (buyerSignatures != null && !buyerSignatures.isEmpty() && buyerSignatures.get(0) != null) {
+            if (buyerSignatures != null && !buyerSignatures.isEmpty() && buyerSignatures.get(0) != null && !buyerSignatures.get(0).isEmpty()) {
                 String buyerSign1 = buyerSignatures.get(0);
                 log.info("Processing buyer signature - length: {}", buyerSign1.length());
-                
-                // 이미 순수 Base64 문자열이므로 그대로 설정
-                dto.setBuyerSignBase64(buyerSign1);
-                log.info("Buyer signature set - length: {}", buyerSign1.length());
-                if (buyerSign1.length() > 50) {
-                    log.info("Buyer signature preview: {}", buyerSign1.substring(0, 50) + "...");
+
+                // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                if (buyerSign1.startsWith("data:image")) {
+                    buyerSign1 = buyerSign1.substring(buyerSign1.indexOf(",") + 1);
+                }
+
+                // Base64 문자열을 byte array로 변환
+                try {
+                    byte[] signatureBytes = Base64.getDecoder().decode(buyerSign1);
+                    dto.setBuyerSignBase64(signatureBytes);
+                    log.info("Buyer signature set - byte array size: {}", signatureBytes.length);
+                } catch (IllegalArgumentException e) {
+                    log.error("Failed to decode buyer signature from Base64: {}", e.getMessage());
+                    dto.setBuyerSignBase64(new byte[0]);
                 }
             } else {
-                log.warn("No buyer signature provided - setting empty string");
-                dto.setBuyerSignBase64("");
+                log.warn("No buyer signature provided - setting empty byte array");
+                dto.setBuyerSignBase64(new byte[0]);
             }
 
             log.info("Signatures set - Owner: {}, Buyer: {}",
@@ -2198,18 +2242,15 @@ public class ContractServiceImpl implements ContractService {
 
             // 서명 데이터가 실제로 있는지 확인
             log.info("Final DTO check before sending to AI server:");
-            log.info("  - Owner Sign1 empty: {}, length: {}",
-                    dto.getOwnerSign1Base64().isEmpty(),
-                    dto.getOwnerSign1Base64().length());
-            log.info("  - Buyer Sign1 empty: {}, length: {}",
-                    dto.getBuyerSignBase64().isEmpty(),
-                    dto.getBuyerSignBase64().length());
+            log.info("  - Owner Sign1 byte array size: {}",
+                    dto.getOwnerSign1Base64() != null ? dto.getOwnerSign1Base64().length : 0);
+            log.info("  - Buyer Sign byte array size: {}",
+                    dto.getBuyerSignBase64() != null ? dto.getBuyerSignBase64().length : 0);
 
             // 임차인 서명이 정말 설정되었는지 최종 확인
-            if (dto.getBuyerSignBase64() != null && !dto.getBuyerSignBase64().isEmpty()) {
+            if (dto.getBuyerSignBase64() != null && dto.getBuyerSignBase64().length > 0) {
                 log.info("✓ Buyer signature is SET and will be sent to AI server");
-                log.info("  Buyer signature data starts with: {}",
-                        dto.getBuyerSignBase64().substring(0, Math.min(30, dto.getBuyerSignBase64().length())));
+                log.info("  Buyer signature byte array size: {}", dto.getBuyerSignBase64().length);
             } else {
                 log.error("✗ Buyer signature is NULL or EMPTY - AI server will NOT receive buyer signature!");
             }
