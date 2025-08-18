@@ -1,5 +1,7 @@
 package org.scoula.global.auth.config;
 
+import java.util.Arrays;
+
 import org.scoula.global.auth.filter.AuthenticationErrorFilter;
 import org.scoula.global.auth.filter.JwtAuthenticationFilter;
 import org.scoula.global.auth.filter.JwtUsernamePasswordAuthenticationFilter;
@@ -23,6 +25,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
@@ -53,6 +58,27 @@ public class SecurityConfig {
       }
 
       @Bean
+      public CorsConfigurationSource corsConfigurationSource() {
+          CorsConfiguration configuration = new CorsConfiguration();
+          configuration.setAllowedOrigins(
+                  Arrays.asList(
+                          "http://localhost:5173",
+                          "http://localhost:8080",
+                          "https://itzeep.ariogi.kr",
+                          "https://api.itzeep.ariogi.kr"));
+          configuration.setAllowedMethods(
+                  Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+          configuration.setAllowedHeaders(Arrays.asList("*"));
+          configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+          configuration.setAllowCredentials(true);
+          configuration.setMaxAge(3600L);
+
+          UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+          source.registerCorsConfiguration("/**", configuration);
+          return source;
+      }
+
+      @Bean
       public CharacterEncodingFilter encodingFilter() {
           CharacterEncodingFilter filter = new CharacterEncodingFilter();
           filter.setEncoding("UTF-8");
@@ -74,8 +100,8 @@ public class SecurityConfig {
                   .disable()
                   .csrf()
                   .disable()
-                  // .cors() // Nginx에서 CORS 처리하므로 비활성화
-                  // .and()
+                  .cors() // CORS 활성화 (multipart/form-data 지원을 위해)
+                  .and()
                   .formLogin()
                   .disable()
                   .sessionManagement()

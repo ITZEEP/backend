@@ -77,31 +77,53 @@ public class ContractExportSyncService {
                   status.isBuyerSignatureCompleted());
 
           if ("owner".equals(signatureData.getUserRole())) {
-              // 임대인 서명 업데이트 - data URL 접두사 제거
+              // 임대인 서명 업데이트 - data URL 접두사 추가 (없는 경우)
               String sig1 = signatureData.getSignature1();
               String sig2 = signatureData.getSignature2();
               String sig3 = signatureData.getSignature3();
 
-              // data:image/png;base64, 접두사 제거
-              if (sig1 != null && sig1.startsWith("data:")) {
-                  sig1 = sig1.substring(sig1.indexOf(",") + 1);
+              // data:image/png;base64, 접두사 추가 (없는 경우)
+              if (sig1 != null && !sig1.isEmpty()) {
+                  if (!sig1.startsWith("data:")) {
+                      sig1 = "data:image/png;base64," + sig1;
+                      log.info("Added data URL prefix to owner signature1");
+                  }
               }
-              if (sig2 != null && sig2.startsWith("data:")) {
-                  sig2 = sig2.substring(sig2.indexOf(",") + 1);
+              if (sig2 != null && !sig2.isEmpty()) {
+                  if (!sig2.startsWith("data:")) {
+                      sig2 = "data:image/png;base64," + sig2;
+                      log.info("Added data URL prefix to owner signature2");
+                  }
               }
-              if (sig3 != null && sig3.startsWith("data:")) {
-                  sig3 = sig3.substring(sig3.indexOf(",") + 1);
+              if (sig3 != null && !sig3.isEmpty()) {
+                  if (!sig3.startsWith("data:")) {
+                      sig3 = "data:image/png;base64," + sig3;
+                      log.info("Added data URL prefix to owner signature3");
+                  }
               }
 
-              status.setOwnerSignatures(List.of(sig1, sig2, sig3));
-              status.setOwnerSignatureCompleted(true);
+              // 최소한 첫 번째 서명은 있어야 함
+              if (sig1 != null && sig1.length() > 0) {
+                  // null 값을 빈 문자열로 대체
+                  status.setOwnerSignatures(
+                          List.of(sig1, sig2 != null ? sig2 : "", sig3 != null ? sig3 : ""));
+                  status.setOwnerSignatureCompleted(true);
+                  log.info(
+                          "Owner signatures stored with prefix - sig1: {}, sig2: {}, sig3: {}",
+                          sig1.length(),
+                          sig2 != null ? sig2.length() : 0,
+                          sig3 != null ? sig3.length() : 0);
+              } else {
+                  log.error("Owner signature1 is null or empty after processing!");
+                  status.setOwnerSignatureCompleted(false);
+              }
               status.setOwnerHasTaxArrears(signatureData.isHasTaxArrears());
               status.setOwnerHasPriorFixedDate(signatureData.isHasPriorFixedDate());
               // 중재 동의는 무조건 true로 설정
               status.setOwnerMediationAgree(true);
 
           } else if ("buyer".equals(signatureData.getUserRole())) {
-              // 임차인 서명 업데이트 - data URL 접두사 제거
+              // 임차인 서명 업데이트 - data URL 접두사 추가 (없는 경우)
               log.info("=== Buyer Signature Update ===");
               String buyerSig1 = signatureData.getSignature1();
 
@@ -109,21 +131,28 @@ public class ContractExportSyncService {
                       "Buyer signature1 received: {}",
                       buyerSig1 != null ? "present (length: " + buyerSig1.length() + ")" : "null");
 
-              // data:image/png;base64, 접두사 제거
-              if (buyerSig1 != null && buyerSig1.startsWith("data:")) {
-                  log.info("Removing data URL prefix from buyer signature");
-                  buyerSig1 = buyerSig1.substring(buyerSig1.indexOf(",") + 1);
-                  log.info("After removing prefix, length: {}", buyerSig1.length());
+              // data:image/png;base64, 접두사 추가 (없는 경우)
+              if (buyerSig1 != null && !buyerSig1.isEmpty()) {
+                  if (!buyerSig1.startsWith("data:")) {
+                      buyerSig1 = "data:image/png;base64," + buyerSig1;
+                      log.info("Added data URL prefix to buyer signature");
+                  }
+                  log.info("Buyer signature with prefix, length: {}", buyerSig1.length());
               }
 
               if (buyerSig1 != null && buyerSig1.length() > 0) {
                   log.info(
                           "Buyer signature1 preview after processing: {}",
                           buyerSig1.substring(0, Math.min(50, buyerSig1.length())));
+                  // null이나 빈 문자열이 아닌 경우에만 리스트에 추가
+                  status.setBuyerSignatures(List.of(buyerSig1));
+                  status.setBuyerSignatureCompleted(true);
+                  log.info("Buyer signature stored with data URL prefix");
+              } else {
+                  log.error("Buyer signature is null or empty after processing!");
+                  // 빈 리스트로 설정하지 않고 서명 완료를 false로 유지
+                  status.setBuyerSignatureCompleted(false);
               }
-
-              status.setBuyerSignatures(List.of(buyerSig1));
-              status.setBuyerSignatureCompleted(true);
               // 중재 동의는 무조건 true로 설정
               status.setBuyerMediationAgree(true);
 
@@ -147,6 +176,10 @@ public class ContractExportSyncService {
                               + " both signatures.",
                       contractChatId);
               status.setCurrentStep("generating");
+
+              // 먼저 상태를 저장하여 두 번째 서명도 확실히 저장되도록 함
+              saveExportStatus(contractChatId, status);
+              log.info("Saved both signatures to Redis before generating PDF");
 
               // 자동으로 최종 PDF 생성 시도
               try {
@@ -214,6 +247,7 @@ public class ContractExportSyncService {
               status.setCurrentStep("waiting");
           }
 
+          // 최종 상태 저장 (PDF 생성 완료 상태 포함)
           saveExportStatus(contractChatId, status);
 
           // WebSocket으로 상태 브로드캐스트 (상대방에게 알림)
@@ -538,6 +572,14 @@ public class ContractExportSyncService {
       private String generateSignedPdf(Long contractChatId, ContractExportStatusDTO status)
               throws Exception {
           log.info("Generating signed PDF for contract {} with signatures", contractChatId);
+
+          // Redis에서 최신 상태를 다시 읽어옴 (두 번째 서명이 저장되었는지 확인)
+          ContractExportStatusDTO latestStatus = getExportStatus(contractChatId);
+          if (latestStatus != null) {
+              status = latestStatus;
+              log.info("Reloaded latest status from Redis");
+          }
+
           log.info("Status - OwnerId: {}, BuyerId: {}", status.getOwnerId(), status.getBuyerId());
           log.info(
                   "Owner signatures count: {}",
