@@ -65,8 +65,8 @@ jobs:
         file: ./Dockerfile
         push: true
         tags: |
-          ${{ env.REGISTRY }}/itzeep/${{ steps.string.outputs.IMAGE_NAME_LOWER }}:${{ github.ref_name }}
-          ${{ env.REGISTRY }}/itzeep/${{ steps.string.outputs.IMAGE_NAME_LOWER }}:latest
+          ${{ env.REGISTRY }}/${{ steps.string.outputs.IMAGE_NAME_LOWER }}:${{ github.ref_name }}
+          ${{ env.REGISTRY }}/${{ steps.string.outputs.IMAGE_NAME_LOWER }}:latest
 
   deploy:
     needs: build-and-push
