@@ -91,15 +91,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                                   new String(
                                                           java.util.Base64.getDecoder()
                                                                   .decode(parts[1]));
-                                          log.info("🔍 JWT 페이로드: {}", payload);
-
                                           // 페이로드에서 sub (사용자 이메일) 추출
                                           if (payload.contains("\"sub\"")) {
                                               String[] subParts = payload.split("\"sub\":\"");
                                               if (subParts.length > 1) {
                                                   String userEmail = subParts[1].split("\"")[0];
-                                                  log.info("🔍 JWT에서 추출한 사용자: {}", userEmail);
-
                                                   // Principal 설정
                                                   UsernamePasswordAuthenticationToken auth =
                                                           new UsernamePasswordAuthenticationToken(
@@ -124,7 +120,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                           new UsernamePasswordAuthenticationToken(
                                                   userId, null, Collections.emptyList());
                                   accessor.setUser(auth);
-                                  log.info("✅ WebSocket 인증 성공 (User-Id) - UserId: {}", userId);
                               }
 
                               log.info(

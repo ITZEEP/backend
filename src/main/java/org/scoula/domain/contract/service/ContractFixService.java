@@ -71,8 +71,17 @@ public class ContractFixService implements ContractFixServiceInterface {
                       restTemplate.exchange(url, HttpMethod.POST, requestEntity, LegalityDTO.class);
               LegalityDTO res = response.getBody();
               assert res != null;
-              log.warn("AI 응답 값 확인: {}", res.toString());
 
+              String resStr;
+              try {
+                  ObjectMapper objectMapper = new ObjectMapper();
+                  resStr = objectMapper.writeValueAsString(res);
+              } catch (Exception ex) {
+                  resStr = res.toString();
+              }
+              // Remove newlines and carriage returns
+              resStr = resStr.replaceAll("[\\r\\n]", " ");
+              log.warn("AI 응답 값 확인: {}", resStr);
               log.warn("AI 응답 헤더 확인: {}", response.getStatusCode());
               if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                   return response.getBody();
@@ -86,8 +95,8 @@ public class ContractFixService implements ContractFixServiceInterface {
                       responseBodyStr = String.valueOf(response.getBody());
                   }
                   // Remove newlines and carriage returns
-                  responseBodyStr = responseBodyStr.replaceAll("[\\r\\n]", " ");
-                  log.error(responseBodyStr);
+                  responseBodyStr = responseBodyStr.replaceAll("[\\p{Cntrl}]", " ");
+                  log.error("AI server error response (sanitized): {}", responseBodyStr);
                   throw new BusinessException(ContractException.CONTRACT_AI_SERVER_ERROR);
               }
 
