@@ -54,7 +54,15 @@ public interface ContractMapper {
               @Param("contractPdfKey") String contractPdfKey,
               @Param("contractPdfHash") String contractPdfHash);
 
+      int insertOrUpdateFinalContract(
+              @Param("contractChatId") Long contractChatId,
+              @Param("contractPdfKey") String contractPdfKey,
+              @Param("contractPdfHash") String contractPdfHash);
+
       String selectBirth(@Param("userId") Long userId);
+
+      String selectSsnFront(
+              @Param("userId") Long userId, @Param("contractChatId") Long contractChatId);
 
       String selectMail(@Param("userId") Long userId);
 

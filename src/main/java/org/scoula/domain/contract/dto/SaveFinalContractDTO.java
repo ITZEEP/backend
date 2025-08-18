@@ -1,7 +1,8 @@
 package org.scoula.domain.contract.dto;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.scoula.domain.contract.document.ContractMongoDocument;
 import org.scoula.domain.precontract.vo.IdentityVerificationInfoVO;
@@ -19,60 +20,64 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SaveFinalContractDTO {
 
-      private Boolean leaseType; // home _ 전세 : True / 월세 : False
+      private Boolean leaseType; // 전세: true, 월세: false
       private String ownerNickname; // user _ 임대인 이름
       private String buyerNickname; // user_임차인 이름
 
       // 임차주택의 표시
       private String addr1; // home _ addr1
       private String landCategory; // home detail _ 토지 지목
-      private BigDecimal area; // home detail _ 토지 면적
+      private String area; // home detail _ 토지 면적 (String으로 변경)
 
       private String buildingStructure; // 건물 구조 _ '철근콘크리트 구조'로 고정하기
       private String purpose; // 성엽님 _ 건물 용도
-      private float totalFloorArea; // 성엽님 _ 건물 면적
+      private String totalFloorArea; // 성엽님 _ 건물 면적 (String으로 변경)
 
       private String addr2; // home_ addr2 _ 임차할 부분 주소
-      private float supplyArea; // home _ 임차할 부분 면적
+      private String supplyArea; // home _ 임차할 부분 면적 (String으로 변경)
 
-      private boolean hasTaxArrears; // owner pre contract check _ 미납 국세, 지방세 여부
-      private boolean hasPriorFixedDate; // owner pre contract check _ 선순위 확정일자 현황
+      private Boolean hasTaxArrears; // owner pre contract check _ 미납 국세, 지방세 여부
+      private Boolean hasPriorFixedDate; // owner pre contract check _ 선순위 확정일자 현황
 
       // 계약 내용
       private String textDepositPrice; // 보증금 금액 : 한글
-      private int depositPrice; // home_보증금 금액 : 숫자만 (,도 없음)
-      private int monthlyRent; // home _ 차임(월세)원정
-      private int paymentDueDay; // owner_wolse_info _ 매월 지불 일자
-      private String
-              bankAccount; // owner wolse info _ 입금 계좌 & 은행 : owner_bank_name & owner_account_number
+      private String depositPrice; // home_보증금 금액 : 숫자만 (String으로 변경)
+      private String monthlyRent; // home _ 차임(월세)원정 (String으로 변경)
+      private String paymentDueDay; // owner_wolse_info _ 매월 지불 일자 (String으로 변경)
+      private String bankAccount; // owner wolse info _ 입금 계좌 & 은행
       private String textMaintenanceFee; // home _ 관리비 : 한글
-      private int maintenanceFee; // home : 숫자만 (,도 없음)
+      private String maintenanceFee; // home : 숫자만 (String으로 변경)
 
       // 2조 임대차기간
-      private int expectedMoveInYear; // tenant pre contract check 입주 날짜 -> === 특약사항에도 들어감 ===
-      private int expectedMoveInMonth;
-      private int expectedMoveInDay; // -> 이거 그냥 하나로 넘겨서 나누면 될듯!
+      private String expectedMoveInYear; // tenant pre contract check 입주 날짜
+      private String expectedMoveInMonth;
+      private String expectedMoveInDay;
 
-      private int
-              expectedMoveOutYear; // Tenant pre contract check에서 contract_duration으로 퇴거 날짜 계산해서 넣기
-      private int expectedMoveOutMonth;
-      private int expectedMoveOutDay;
+      private String expectedMoveOutYear; // 퇴거 날짜
+      private String expectedMoveOutMonth;
+      private String expectedMoveOutDay;
 
-      private int contractDateYear; // 계약하는 날짜 now()써서 하기
-      private int contractDateMonth;
-      private int contractDateDay;
+      private String contractDateYear; // 계약하는 날짜
+      private String contractDateMonth;
+      private String contractDateDay;
 
       // 마지막 사인
       private String ownerAddr; // identity_verifiacation에서 addr1 + addr2 합쳐서 넣기
       private String ownerSsn; // identity verification ssnFront + ssnBack 합쳐서 넣기
       private String ownerPhoneNumber; // identity verification
-      // 임대인 이름은 위쪽에 있음
 
       private String buyerAddr;
       private String buyerSsn;
       private String buyerPhoneNumber;
 
-      // 임차인 이름은 위에 있음
+      // 특약사항
+      private List<String> special; // 특약사항 리스트
+
+      // 서명 이미지 (base64 인코딩)
+      private String ownerSign1Base64;
+      private String ownerSign2Base64;
+      private String ownerSign3Base64;
+      private String buyerSignBase64;
 
       public static SaveFinalContractDTO toDTO(
               DBFinalContractDTO dto,
@@ -87,41 +92,47 @@ public class SaveFinalContractDTO {
               IdentityVerificationInfoVO ownerVO,
               IdentityVerificationInfoVO buyerVO) {
           return SaveFinalContractDTO.builder()
-                  .leaseType(leaseType)
+                  .leaseType(leaseType) // boolean 값 그대로 전달
                   .ownerNickname(document.getOwnerName())
                   .buyerNickname(document.getBuyerName())
                   .addr1(document.getHomeAddr1())
                   .landCategory(dto.getLandCategory())
-                  .area(dto.getArea())
+                  .area(String.valueOf(dto.getArea()))
                   .buildingStructure(buildingStructure)
-                  //                  .purpose(dto.getPurpose())
-                  //                  .totalFloorArea(dto.getTotalFloorArea())
+                  .purpose("주택") // 기본값 설정
+                  .totalFloorArea("100") // 기본값 설정
                   .addr2(document.getHomeAddr2())
-                  .supplyArea(document.getExclusiveArea())
+                  .supplyArea(String.valueOf(document.getExclusiveArea()))
                   .hasTaxArrears(dto.isHasTaxArrears())
                   .hasPriorFixedDate(dto.isHasPriorFixedDate())
                   .textDepositPrice(textDepositPrice)
-                  .depositPrice(document.getDepositPrice())
-                  .monthlyRent(document.getMonthlyRent())
-                  .paymentDueDay(dto.getPaymentDueDay())
+                  .depositPrice(String.valueOf(document.getDepositPrice()))
+                  .monthlyRent(String.valueOf(document.getMonthlyRent()))
+                  .paymentDueDay(String.valueOf(dto.getPaymentDueDay()))
                   .bankAccount(dto.getBankAccount())
                   .textMaintenanceFee(textMaintenanceFee)
-                  .maintenanceFee(document.getMaintenanceFee())
-                  .expectedMoveInYear(dto.getExpectedMoveInDate().getYear())
-                  .expectedMoveInMonth(dto.getExpectedMoveInDate().getMonthValue())
-                  .expectedMoveInDay(dto.getExpectedMoveInDate().getDayOfMonth())
-                  .expectedMoveOutYear(expectedMoveOut.getYear())
-                  .expectedMoveOutMonth(expectedMoveOut.getMonthValue())
-                  .expectedMoveOutDay(expectedMoveOut.getDayOfMonth())
-                  .contractDateYear(dto.getContractDate().getYear())
-                  .contractDateMonth(dto.getContractDate().getMonthValue())
-                  .contractDateDay(dto.getContractDate().getDayOfMonth())
+                  .maintenanceFee(String.valueOf(document.getMaintenanceFee()))
+                  .expectedMoveInYear(String.valueOf(dto.getExpectedMoveInDate().getYear()))
+                  .expectedMoveInMonth(String.valueOf(dto.getExpectedMoveInDate().getMonthValue()))
+                  .expectedMoveInDay(String.valueOf(dto.getExpectedMoveInDate().getDayOfMonth()))
+                  .expectedMoveOutYear(String.valueOf(expectedMoveOut.getYear()))
+                  .expectedMoveOutMonth(String.valueOf(expectedMoveOut.getMonthValue()))
+                  .expectedMoveOutDay(String.valueOf(expectedMoveOut.getDayOfMonth()))
+                  .contractDateYear(String.valueOf(dto.getContractDate().getYear()))
+                  .contractDateMonth(String.valueOf(dto.getContractDate().getMonthValue()))
+                  .contractDateDay(String.valueOf(dto.getContractDate().getDayOfMonth()))
                   .ownerAddr(ownerVO.getAddr1() + " " + ownerVO.getAddr2())
                   .ownerSsn(ownerSsn)
                   .ownerPhoneNumber(ownerVO.getPhoneNumber())
                   .buyerAddr(buyerVO.getAddr1() + " " + buyerVO.getAddr2())
                   .buyerSsn(buyerSsn)
                   .buyerPhoneNumber(buyerVO.getPhoneNumber())
+                  .special(
+                          document.getSpecialContracts() != null
+                                  ? document.getSpecialContracts().stream()
+                                          .map(sc -> sc.getContent())
+                                          .collect(Collectors.toList())
+                                  : null)
                   .build();
       }
 }

@@ -86,6 +86,8 @@
     <select id="selectFinalContractPDF" resultType="org.scoula.domain.contract.dto.DBFinalContractDTO">
         SELECT
             h.lease_type AS leaseType,
+            h.addr1 AS homeAddr1,
+            h.addr2 AS homeAddr2,
             hd.land_category AS landCategory,
             hd.area AS area,
 --             rc.purpose AS purpose,
@@ -186,14 +188,44 @@
 
     <update id="updateFinalContract">
         UPDATE final_contract
-        SET contract_pdf_key = #{contractPdfKey}, contract_pdf_hash = #{contractPdfHash}, contract_date = NOW(), contract_expire_date = ,
-            WHERE contractChatId = #{contractChatId}
+        SET contract_pdf_key = #{contractPdfKey}, 
+            contract_pdf_hash = #{contractPdfHash}, 
+            contract_date = NOW(), 
+            contract_expire_date = DATE_ADD(NOW(), INTERVAL 2 YEAR)
+        WHERE contract_id = #{contractChatId}
     </update>
+    
+    <insert id="insertOrUpdateFinalContract">
+        INSERT INTO final_contract (contract_id, home_id, owner_id, buyer_id, contract_pdf_key, contract_pdf_hash, contract_date, contract_expire_date)
+        SELECT 
+            cc.contract_chat_id,
+            cc.home_id,
+            cc.owner_id,
+            cc.buyer_id,
+            #{contractPdfKey},
+            #{contractPdfHash},
+            NOW(),
+            DATE_ADD(NOW(), INTERVAL 2 YEAR)
+        FROM contract_chat cc
+        WHERE cc.contract_chat_id = #{contractChatId}
+        ON DUPLICATE KEY UPDATE
+            contract_pdf_key = VALUES(contract_pdf_key),
+            contract_pdf_hash = VALUES(contract_pdf_hash),
+            contract_date = VALUES(contract_date),
+            contract_expire_date = VALUES(contract_expire_date)
+    </insert>
 
     <select id="selectBirth" resultType="String">
         select birth_date
         from user
         where user_id = #{userId}
+    </select>
+    
+    <select id="selectSsnFront" resultType="String">
+        select ssn_front
+        from identity_verification
+        where user_id = #{userId} 
+        and contract_id = #{contractChatId}
     </select>
 
     <select id="selectMail" resultType="String">

@@ -1,5 +1,7 @@
 package org.scoula.domain.contract.service;
 
+import java.util.List;
+
 import javax.servlet.http.HttpServletResponse;
 
 import org.scoula.domain.contract.dto.*;
@@ -128,13 +130,37 @@ public interface ContractService {
       Void sendStep4(Long contractChatId, Long userId);
 
       // ============================================
-      //      /**
-      //       * 최종 계약서, 전자 서명 테이블 초기 세팅
-      //       *
-      //       * @param contractChatId 채팅방 아이디
-      //       * @param userId 유저 아이디
-      //       */
-      //      Void finalContractInit(Long contractChatId, Long userId);
+      /**
+       * 계약서 내보내기 시작 - AI 서버에서 초기 PDF 생성
+       *
+       * @param contractChatId 채팅방 아이디
+       * @param userId 유저 아이디
+       * @return PDF 바이트 배열
+       */
+      byte[] startContractExport(Long contractChatId, Long userId);
+
+      /**
+       * 서명이 포함된 계약서 PDF 생성
+       *
+       * @param contractChatId 계약 채팅 ID
+       * @param userId 사용자 ID
+       * @param ownerSignatures 임대인 서명 목록
+       * @param buyerSignatures 임차인 서명 목록
+       * @param ownerHasTaxArrears 임대인 세금체납 여부
+       * @param ownerHasPriorFixedDate 임대인 선순위확정일자 여부
+       * @param ownerMediationAgree 임대인 조정 동의 여부
+       * @param buyerMediationAgree 임차인 조정 동의 여부
+       * @return 서명이 포함된 PDF 바이트 배열
+       */
+      byte[] generateContractWithSignatures(
+              Long contractChatId,
+              Long userId,
+              java.util.List<String> ownerSignatures,
+              java.util.List<String> buyerSignatures,
+              boolean ownerHasTaxArrears,
+              boolean ownerHasPriorFixedDate,
+              boolean ownerMediationAgree,
+              boolean buyerMediationAgree);
 
       /**
        * 최종 계약서 작성하기 PDF -> AI
@@ -151,7 +177,10 @@ public interface ContractService {
        * @param userId 유저 아이디
        */
       Boolean saveSignature(
-              Long contractChatId, Long userId, SaveSignatureDTO signatureDTO, MultipartFile imgFiles)
+              Long contractChatId,
+              Long userId,
+              SaveSignatureDTO signatureDTO,
+              List<MultipartFile> imgFiles)
               throws Exception;
 
       /**
@@ -203,4 +232,31 @@ public interface ContractService {
        * @param userId 유저 아이디 @Parma step 계약서 단계
        */
       Void sendContractPDF(Long contractChatId, Long userId, FindContractDTO dto) throws Exception;
+
+      /**
+       * 사용자의 생년월일 가져오기
+       *
+       * @param contractChatId 계약 채팅 ID
+       * @param userId 사용자 ID
+       * @param userRole 사용자 역할 (owner/buyer)
+       * @return 생년월일 (YYMMDD 형식)
+       */
+      String getUserBirthDate(Long contractChatId, Long userId, String userRole);
+
+      /**
+       * 최종 계약서를 데이터베이스에 저장
+       *
+       * @param contractChatId 계약 채팅 ID
+       * @param s3Url S3 URL (전체 URL)
+       * @param pdfHash PDF 해시값
+       */
+      void saveFinalContractToDatabase(Long contractChatId, String s3Url, String pdfHash);
+
+      /**
+       * 기존 계약서 PDF 가져오기 (fallback용)
+       *
+       * @param contractChatId 계약 채팅 ID
+       * @return PDF 바이트 배열
+       */
+      byte[] getExistingContractPdf(Long contractChatId);
 }

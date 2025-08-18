@@ -26,6 +26,14 @@ RUN cd webapps && \
     chown -R tomcat:tomcat ROOT && \
     chmod -R 755 ROOT
 
+# Copy Firebase service account file to the correct location
+# Firebase Admin SDK looks for this file in the classpath
+COPY config-submodule/firebase-service-account.json /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/firebase-service-account.json
+
+# Set proper permissions for Firebase service account file
+RUN chown tomcat:tomcat /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/firebase-service-account.json && \
+    chmod 644 /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/firebase-service-account.json
+
 # Create logs directory and set proper permissions
 RUN mkdir -p /usr/local/tomcat/logs && \
     chmod 777 /usr/local/tomcat/logs && \

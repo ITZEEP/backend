@@ -1,13 +1,17 @@
 package org.scoula.domain.contract.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.context.annotation.Lazy;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.service.ContractChatServiceInterface;
 import org.scoula.domain.chat.vo.ContractChat;
+import org.scoula.domain.fraud.mapper.FraudRiskMapper;
+import org.scoula.domain.fraud.vo.BuildingDocumentVO;
+import org.scoula.domain.fraud.vo.RiskCheckVO;
 import org.scoula.domain.contract.document.ContractMongoDocument;
 import org.scoula.domain.contract.dto.*;
 import org.scoula.domain.contract.enums.SignedType;
@@ -21,7 +25,6 @@ import org.scoula.domain.precontract.enums.RentType;
 import org.scoula.domain.precontract.exception.PreContractErrorCode;
 import org.scoula.domain.precontract.mapper.TenantPreContractMapper;
 import org.scoula.domain.precontract.service.IdentityVerificationService;
-import org.scoula.domain.precontract.service.IdentityVerificationServiceImpl;
 import org.scoula.domain.precontract.vo.IdentityVerificationInfoVO;
 import org.scoula.global.common.dto.FileWithHashDto;
 import org.scoula.global.common.exception.BusinessException;
@@ -37,21 +40,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Duration;
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -59,7 +57,6 @@ import java.util.List;
 public class ContractServiceImpl implements ContractService {
 
     private final @Lazy ContractChatServiceInterface contractChatService;
-    private final ContractChatServiceInterface contractChatService;
 
       private final ContractMongoRepository repository;
       private final IdentityVerificationService identityVerificationService;
@@ -68,6 +65,7 @@ public class ContractServiceImpl implements ContractService {
     private final TenantPreContractMapper tenantMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate;
+    private final FraudRiskMapper fraudRiskMapper;
     private final EncryptionService encryptionService;
 
     private final RedisTemplate<String, String> stringRedisTemplate;
@@ -599,24 +597,405 @@ public class ContractServiceImpl implements ContractService {
     // ---------------------------------------
     // ========================================================================
 
-    // final_contract 초기 세팅
-//    @Override
-//    @Transactional
-//    public Void finalContractInit(Long contractChatId, Long userId) {
-//        // userId 인증
-//        validateUserId(contractChatId, userId);
-//
-//        ContractMongoDocument document = repository.getContract(contractChatId);
-//
-//        int depositPrice = document.getDepositPrice();
-//        int monthlyRent = document.getMonthlyRent();
-//        int maintenanceFee = document.getMaintenanceFee();
-//
-//        int finalContract = contractMapper.insertFinalContractInit(contractChatId, depositPrice, monthlyRent, maintenanceFee);
-//        if (finalContract != 1) throw new BusinessException(ContractException.CONTRACT_DB_INSERT);
-//
-//        return null;
-//    }
+    // 금액을 한글로 변환하는 헬퍼 메서드
+    private String convertToKoreanWon(int amount) {
+        // NumberFormatUtil이 있다면 그것을 사용하고, 없다면 간단한 변환
+        try {
+            return numberFormatUtil.toKoreanNumber(amount);
+        } catch (Exception e) {
+            // 기본 변환 로직
+            return String.format("%,d원", amount);
+        }
+    }
+
+    // 계약서 내보내기 시작 - AI 서버에서 초기 PDF 생성
+    @Override
+    @Transactional
+    public byte[] startContractExport(Long contractChatId, Long userId) {
+        log.info("Starting contract export for contractChatId: {}, userId: {}", contractChatId, userId);
+        
+        try {
+            // userId 인증
+            validateUserId(contractChatId, userId);
+
+            // MongoDB에서 계약 정보 조회
+            log.info("Fetching contract from MongoDB...");
+            ContractMongoDocument document = repository.getContract(contractChatId);
+            if (document == null) {
+                log.error("Contract not found in MongoDB for contractChatId: {}", contractChatId);
+                throw new BusinessException(ContractException.CONTRACT_NOT_FOUND);
+            }
+            log.info("MongoDB document found");
+
+            // DB에서 필요한 정보 조회
+            log.info("Fetching contract data from DB...");
+            DBFinalContractDTO dbDTO = contractMapper.selectFinalContractPDF(contractChatId);
+            log.info("DB data fetched");
+
+            // 복호화
+            log.info("Getting owner and buyer IDs...");
+            Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+            Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+            log.info("OwnerID: {}, BuyerID: {}", ownerContractId, buyerContractId);
+
+            log.info("Getting identity verification info...");
+            IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
+            IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
+            log.info("Identity verification info retrieved");
+
+            // ContractChat 정보 조회하여 homeId 가져오기
+            log.info("Getting contract chat info...");
+            ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+            BuildingDocumentVO buildingDocument = null;
+
+            if (contractChat != null && contractChat.getHomeId() != null) {
+                log.info("HomeId found: {}", contractChat.getHomeId());
+                // homeId로 가장 최근의 위험도 체크 조회
+                RiskCheckVO latestRiskCheck = fraudRiskMapper.selectLatestRiskCheckByHomeId(contractChat.getHomeId());
+
+                if (latestRiskCheck != null) {
+                    log.info("Risk check found, getting building document...");
+                    // 위험도 체크 ID로 건축물대장 정보 조회
+                    buildingDocument = fraudRiskMapper.selectBuildingDocumentByRiskCheckId(latestRiskCheck.getRiskckId());
+                }
+            }
+
+            // SaveFinalContractDTO 생성
+            log.info("Building SaveFinalContractDTO...");
+            // homeId 정보 가져오기
+            ContractChat contractChatForHome = contractChatMapper.findByContractChatId(contractChatId);
+            Long homeId = contractChatForHome != null ? contractChatForHome.getHomeId() : null;
+            SaveFinalContractDTO dto = buildSaveFinalContractDTO(document, dbDTO, ownerVO, buyerVO, buildingDocument, homeId);
+            log.info("DTO built successfully");
+
+            // AI 서버에 PDF 생성 요청
+            log.info("Requesting PDF generation from AI server at: {}", aiServerUrl);
+            // DTO가 null이 아닌지 확인
+            if (dto == null) {
+                log.error("SaveFinalContractDTO가 null입니다.");
+                throw new BusinessException(ContractException.PDF_GENERATION_FAILED);
+            }
+
+            // 필수 필드 확인을 위한 디버깅
+            log.info("DTO 필드 확인 - leaseType: {}, ownerNickname: {}, buyerNickname: {}, addr1: {}",
+                    dto.getLeaseType(), dto.getOwnerNickname(), dto.getBuyerNickname(), dto.getAddr1());
+
+            // 서명 이미지를 빈 문자열로 초기화 (서명 없는 미리보기용)
+            dto.setOwnerSign1Base64("");
+            dto.setOwnerSign2Base64("");
+            dto.setOwnerSign3Base64("");
+            dto.setBuyerSignBase64("");
+
+            // JSON으로 전송
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Accept", "application/pdf");
+
+            // DTO를 JSON 문자열로 변환하여 로그 출력
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonPayload = objectMapper.writeValueAsString(dto);
+            log.info("AI 서버로 전송할 JSON 데이터: {}", jsonPayload);
+
+            HttpEntity<SaveFinalContractDTO> request = new HttpEntity<>(dto, headers);
+
+            // PDF 바이트 배열로 직접 응답 받기
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                    aiServerUrl + "/api/contract/generate-json",
+                    HttpMethod.POST,
+                    request,
+                    byte[].class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                byte[] pdfData = response.getBody();
+                
+                // PDF 데이터 크기 확인
+                if (pdfData.length == 0) {
+                    log.error("AI 서버에서 빈 응답을 받았습니다");
+                    return generateFallbackPdf(contractChatId, dto);
+                }
+                
+                // PDF 헤더 확인 (%PDF)
+                if (pdfData.length > 4) {
+                    String header = new String(pdfData, 0, 4);
+                    if (!header.startsWith("%PDF")) {
+                        // PDF가 아닌 경우, 텍스트 응답인지 확인
+                        String textResponse = new String(pdfData, 0, Math.min(1000, pdfData.length));
+                        log.error("AI 서버에서 PDF가 아닌 응답을 받았습니다. 처음 1000 바이트: {}", textResponse);
+                        
+                        // URL 패턴인지 확인 (uploads/ 또는 http로 시작)
+                        if (textResponse.contains("uploads/") || textResponse.startsWith("http")) {
+                            log.info("응답이 URL 형식입니다. URL에서 PDF 다운로드 시도: {}", textResponse.trim());
+                            
+                            try {
+                                String fullUrl = textResponse.trim();
+                                if (!fullUrl.startsWith("http")) {
+                                    // 상대 경로인 경우 AI 서버 URL과 조합
+                                    fullUrl = aiServerUrl + "/" + fullUrl;
+                                }
+                                
+                                ResponseEntity<byte[]> pdfResponse = restTemplate.getForEntity(fullUrl, byte[].class);
+                                
+                                if (pdfResponse.getStatusCode() == HttpStatus.OK && pdfResponse.getBody() != null) {
+                                    byte[] downloadedPdf = pdfResponse.getBody();
+                                    
+                                    // 다운로드한 파일이 PDF인지 확인
+                                    if (downloadedPdf.length > 4) {
+                                        String pdfHeader = new String(downloadedPdf, 0, 4);
+                                        if (pdfHeader.startsWith("%PDF")) {
+                                            log.info("PDF 다운로드 성공, 크기: {} bytes", downloadedPdf.length);
+                                            return downloadedPdf;
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                log.error("URL에서 PDF 다운로드 실패: ", e);
+                            }
+                        }
+                        
+                        // Fallback으로 기본 PDF 생성
+                        return generateFallbackPdf(contractChatId, dto);
+                    }
+                }
+                
+                log.info("PDF 생성 성공, 크기: {} bytes", pdfData.length);
+                return pdfData;
+            } else {
+                log.error("AI 서버 응답 실패: Status={}", response.getStatusCode());
+                throw new BusinessException(ContractException.PDF_GENERATION_FAILED);
+            }
+        } catch (BusinessException be) {
+            log.error("Business exception in PDF generation: ", be);
+            throw be;
+        } catch (Exception e) {
+            log.error("Unexpected error in PDF generation: ", e);
+            log.error("Error type: {}", e.getClass().getName());
+            log.error("Error message: {}", e.getMessage());
+            if (e.getCause() != null) {
+                log.error("Cause: {}", e.getCause().getMessage());
+            }
+            
+            // Fallback PDF 생성 시도
+            try {
+                log.info("Attempting to generate fallback PDF due to error");
+                return generateFallbackPdf(contractChatId, null);
+            } catch (Exception fallbackError) {
+                log.error("Fallback PDF generation also failed: ", fallbackError);
+                throw new BusinessException(ContractException.PDF_GENERATION_FAILED);
+            }
+        }
+    }
+
+    // Fallback PDF 생성 메서드
+    private byte[] generateFallbackPdf(Long contractChatId, SaveFinalContractDTO dto) {
+        log.info("Fallback PDF 생성 시작 - contractChatId: {}", contractChatId);
+        
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
+            com.itextpdf.kernel.pdf.PdfDocument pdfDoc = new com.itextpdf.kernel.pdf.PdfDocument(writer);
+            com.itextpdf.layout.Document document = new com.itextpdf.layout.Document(pdfDoc);
+            
+            // 한글 폰트 설정 (기본 폰트 사용)
+            com.itextpdf.kernel.font.PdfFont font = com.itextpdf.kernel.font.PdfFontFactory.createFont(
+                    "Helvetica", "Identity-H", com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+            
+            // 제목
+            document.add(new com.itextpdf.layout.element.Paragraph("부동산 임대차 계약서")
+                    .setFont(font)
+                    .setFontSize(20)
+                    .setBold()
+                    .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER));
+            
+            document.add(new com.itextpdf.layout.element.Paragraph(""));
+            
+            // 계약 정보
+            document.add(new com.itextpdf.layout.element.Paragraph("계약 번호: " + contractChatId)
+                    .setFont(font));
+            
+            if (dto != null) {
+                document.add(new com.itextpdf.layout.element.Paragraph("임대 유형: " + 
+                        (dto.getLeaseType() ? "전세" : "월세"))
+                        .setFont(font));
+                
+                document.add(new com.itextpdf.layout.element.Paragraph(""));
+                
+                // 당사자 정보
+                document.add(new com.itextpdf.layout.element.Paragraph("[ 임대인 ]")
+                        .setFont(font)
+                        .setBold());
+                document.add(new com.itextpdf.layout.element.Paragraph("성명: " + 
+                        (dto.getOwnerNickname() != null ? dto.getOwnerNickname() : "임대인"))
+                        .setFont(font));
+                
+                document.add(new com.itextpdf.layout.element.Paragraph(""));
+                
+                document.add(new com.itextpdf.layout.element.Paragraph("[ 임차인 ]")
+                        .setFont(font)
+                        .setBold());
+                document.add(new com.itextpdf.layout.element.Paragraph("성명: " + 
+                        (dto.getBuyerNickname() != null ? dto.getBuyerNickname() : "임차인"))
+                        .setFont(font));
+                
+                document.add(new com.itextpdf.layout.element.Paragraph(""));
+                
+                // 부동산 정보
+                document.add(new com.itextpdf.layout.element.Paragraph("[ 부동산 정보 ]")
+                        .setFont(font)
+                        .setBold());
+                document.add(new com.itextpdf.layout.element.Paragraph("주소: " + 
+                        dto.getAddr1() + " " + (dto.getAddr2() != null ? dto.getAddr2() : ""))
+                        .setFont(font));
+            } else {
+                // dto가 null인 경우 기본 정보만 표시
+                document.add(new com.itextpdf.layout.element.Paragraph(""));
+                document.add(new com.itextpdf.layout.element.Paragraph("※ 계약 정보를 불러올 수 없습니다.")
+                        .setFont(font)
+                        .setItalic());
+            }
+            
+            document.add(new com.itextpdf.layout.element.Paragraph(""));
+            
+            // 안내 메시지
+            document.add(new com.itextpdf.layout.element.Paragraph(
+                    "※ 이 문서는 임시 생성된 계약서입니다. AI 서버 연결 문제로 정식 계약서를 생성할 수 없습니다.")
+                    .setFont(font)
+                    .setFontSize(10)
+                    .setItalic());
+            
+            document.add(new com.itextpdf.layout.element.Paragraph("생성 일시: " + new java.util.Date())
+                    .setFont(font)
+                    .setFontSize(10));
+            
+            document.close();
+            
+            byte[] pdfBytes = baos.toByteArray();
+            log.info("Fallback PDF 생성 완료, 크기: {} bytes", pdfBytes.length);
+            return pdfBytes;
+            
+        } catch (Exception e) {
+            log.error("Fallback PDF 생성 실패: ", e);
+            // 최후의 수단으로 빈 PDF 반환
+            return new byte[0];
+        }
+    }
+    
+    // SaveFinalContractDTO 빌드 헬퍼 메서드
+    private SaveFinalContractDTO buildSaveFinalContractDTO(
+            ContractMongoDocument document,
+            DBFinalContractDTO dbDTO,
+            IdentityVerificationInfoVO ownerVO,
+            IdentityVerificationInfoVO buyerVO,
+            BuildingDocumentVO buildingDocument,
+            Long homeId) {
+
+        SaveFinalContractDTO dto = new SaveFinalContractDTO();
+
+        // 임대 유형 (전세: true, 월세: false)
+        dto.setLeaseType(RentType.JEONSE.name().equals(dbDTO.getLeaseType()));
+
+        // 임대인/임차인 정보
+        dto.setOwnerNickname(ownerVO.getName());
+        dto.setBuyerNickname(buyerVO.getName());
+
+        // 주소 정보 - 여러 소스에서 가져오기 (우선순위: DB -> MongoDB -> BuildingDocument)
+        String addr1 = dbDTO.getHomeAddr1(); // DB에서 먼저 가져오기
+        String addr2 = dbDTO.getHomeAddr2();
+        
+        log.info("Address from DB - addr1: '{}', addr2: '{}'", addr1, addr2);
+        
+        // DB의 주소가 비어있으면 MongoDB document에서 가져오기
+        if (addr1 == null || addr1.trim().isEmpty()) {
+            addr1 = document.getHomeAddr1();
+            addr2 = document.getHomeAddr2();
+            log.info("Address from MongoDB - addr1: '{}', addr2: '{}'", addr1, addr2);
+        }
+        
+        // MongoDB document의 주소도 비어있으면 BuildingDocument에서 가져오기
+        if ((addr1 == null || addr1.trim().isEmpty()) && buildingDocument != null) {
+            String roadAddress = buildingDocument.getRoadAddress();
+            log.info("BuildingDocument roadAddress: '{}'", roadAddress);
+            if (roadAddress != null && !roadAddress.trim().isEmpty()) {
+                addr1 = roadAddress;
+                log.info("Using address from BuildingDocument: {}", addr1);
+            }
+        }
+        
+        // 여전히 비어있으면 기본값 설정
+        if (addr1 == null || addr1.trim().isEmpty()) {
+            addr1 = "주소 정보 없음";
+            log.warn("No address information found for contract {}, using default", document.getContractChatId());
+        }
+        
+        dto.setAddr1(addr1);
+        dto.setAddr2(addr2 != null ? addr2 : "");
+        
+        log.info("Final address set - addr1: '{}', addr2: '{}'", dto.getAddr1(), dto.getAddr2());
+
+        // 건물 정보
+        dto.setLandCategory(dbDTO.getLandCategory());
+        dto.setArea(String.valueOf(dbDTO.getArea()));
+        dto.setBuildingStructure(dbDTO.getBuildingStructure() != null ? dbDTO.getBuildingStructure() : "철근콘크리트 구조");
+
+        // 건축물대장 정보가 있으면 사용, 없으면 기본값
+        if (buildingDocument != null) {
+            dto.setPurpose(buildingDocument.getPurpose() != null ? buildingDocument.getPurpose() : "주택");
+            dto.setTotalFloorArea(buildingDocument.getTotalFloorArea() != null ?
+                    buildingDocument.getTotalFloorArea().toString() : "100");
+        } else {
+            dto.setPurpose("주택"); // 기본값
+            dto.setTotalFloorArea("100"); // 기본값
+        }
+
+        dto.setSupplyArea(String.valueOf(document.getExclusiveArea()));
+
+        // 체크박스
+        dto.setHasTaxArrears(false); // 초기값
+        dto.setHasPriorFixedDate(false); // 초기값
+
+        // 금액 정보
+        dto.setTextDepositPrice(convertToKoreanWon(document.getDepositPrice()));
+        dto.setDepositPrice(String.valueOf(document.getDepositPrice()));
+        dto.setMonthlyRent(String.valueOf(document.getMonthlyRent()));
+        dto.setPaymentDueDay(String.valueOf(dbDTO.getPaymentDueDay()));
+        dto.setBankAccount(dbDTO.getBankAccount());
+        dto.setTextMaintenanceFee(convertToKoreanWon(document.getMaintenanceFee()));
+        dto.setMaintenanceFee(String.valueOf(document.getMaintenanceFee()));
+
+        // 날짜 정보
+        LocalDate moveInDate = dbDTO.getExpectedMoveInDate();
+        // 계약 기간을 사용하여 퇴거 날짜 계산
+        LocalDate moveOutDate = moveInDate.plusYears(dbDTO.getContractDuration().getYears());
+        LocalDate contractDate = LocalDate.now();
+
+        dto.setExpectedMoveInYear(String.valueOf(moveInDate.getYear()));
+        dto.setExpectedMoveInMonth(String.valueOf(moveInDate.getMonthValue()));
+        dto.setExpectedMoveInDay(String.valueOf(moveInDate.getDayOfMonth()));
+        dto.setExpectedMoveOutYear(String.valueOf(moveOutDate.getYear()));
+        dto.setExpectedMoveOutMonth(String.valueOf(moveOutDate.getMonthValue()));
+        dto.setExpectedMoveOutDay(String.valueOf(moveOutDate.getDayOfMonth()));
+        dto.setContractDateYear(String.valueOf(contractDate.getYear()));
+        dto.setContractDateMonth(String.valueOf(contractDate.getMonthValue()));
+        dto.setContractDateDay(String.valueOf(contractDate.getDayOfMonth()));
+
+        // 개인정보
+        dto.setOwnerAddr(ownerVO.getAddr1() + " " + ownerVO.getAddr2());
+        dto.setOwnerSsn(dbDTO.getOwnerSsnFront() + "-" + aesCryptoUtil.decrypt(dbDTO.getOwnerSsnBack()));
+        dto.setOwnerPhoneNumber(ownerVO.getPhoneNumber());
+        dto.setBuyerAddr(buyerVO.getAddr1() + " " + buyerVO.getAddr2());
+        dto.setBuyerSsn(dbDTO.getBuyerSsnFront() + "-" + aesCryptoUtil.decrypt(dbDTO.getBuyerSsnBack()));
+        dto.setBuyerPhoneNumber(buyerVO.getPhoneNumber());
+
+        // 특약사항 - SpecialContract 객체 리스트를 String 리스트로 변환
+        if (document.getSpecialContracts() != null) {
+            List<String> specialStrings = document.getSpecialContracts().stream()
+                    .map(sc -> sc.getContent())
+                    .collect(Collectors.toList());
+            dto.setSpecial(specialStrings);
+        }
+
+        return dto;
+    }
 
     // 최종 계약서 작성하기 PDF -> AI
     @Override
@@ -728,23 +1107,35 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     @Transactional
-    public Boolean saveSignature(Long contractChatId, Long userId, SaveSignatureDTO signatureDTO, MultipartFile imgFiles) throws Exception {
+    public Boolean saveSignature(Long contractChatId, Long userId, SaveSignatureDTO signatureDTO, List<MultipartFile> imgFiles) throws Exception {
         // userId 인증
         validateUserId(contractChatId, userId);
 
-        if (signatureDTO == null || signatureDTO.getSignedType() == null) {
-            throw new BusinessException(ContractException.CONTRACT_REDIS, "signedType이 비었습니다.");
+        if (signatureDTO == null) {
+            throw new BusinessException(ContractException.CONTRACT_REDIS, "signatureDTO가 비었습니다.");
         }
         if (imgFiles == null || imgFiles.isEmpty()) {
             throw new BusinessException(ContractException.CONTRACT_REDIS, "서명 이미지가 비어 있습니다.");
         }
 
-        log.info("[saveSignature] start ccId={}, userId={}, signedType={}, fileName={}, size={}",
-                contractChatId, userId, signatureDTO.getSignedType(),
-                imgFiles.getOriginalFilename(), imgFiles.getSize());
+        // signedType이 null인 경우 기본값 설정
+        if (signatureDTO.getSignedType() == null) {
+            // userId로 역할 확인하여 자동 설정
+            // 임시로 OWNER_CONTRACT로 설정 (실제로는 사용자 역할 확인 필요)
+            signatureDTO.setSignedType(SignedType.OWNER_CONTRACT);
+            log.warn("signedType이 null이어서 기본값으로 설정: {}", signatureDTO.getSignedType());
+        }
+
+        log.info("[saveSignature] start ccId={}, userId={}, signedType={}, 파일 개수={}",
+                contractChatId, userId, signatureDTO.getSignedType(), imgFiles.size());
+
+        // 첫 번째 서명 이미지 처리 (메인 서명)
+        MultipartFile mainSignature = imgFiles.get(0);
+        log.info("메인 서명 처리: fileName={}, size={}",
+                mainSignature.getOriginalFilename(), mainSignature.getSize());
 
         // 사진 암호화 & 해시값 생성
-        FileWithHashDto imgDTO = encryptionService.encryptImage(imgFiles);
+        FileWithHashDto imgDTO = encryptionService.encryptImage(mainSignature);
 
 //          MultipartFile imgFile = MultipartFileUtils.fromFile(imgDTO.getFile());
         MultipartFile imgFile;
@@ -985,7 +1376,6 @@ public class ContractServiceImpl implements ContractService {
                                 // Sanitize response body before logging to prevent log injection
                                 String responseBodyStr;
                                 try {
-                                    objectMapper = new ObjectMapper();
                                     responseBodyStr = objectMapper.writeValueAsString(response.getBody());
                                 } catch (Exception ex) {
                                     responseBodyStr = String.valueOf(response.getBody());
@@ -1004,7 +1394,32 @@ public class ContractServiceImpl implements ContractService {
 
                             try {
                                 // 1단계 업로드 실행 (반환 값을 사용하지 않으면 변수에 담지 않아도 됩니다)
-                                encryptionService.uploadPdfStep1(contracts, String.valueOf(contractChatId), dto.getContractPassword());
+                                // Convert MultipartFile to String (base64 or file path)
+                                String contractData = Base64.getEncoder().encodeToString(contracts.getBytes());
+                                encryptionService.uploadPdfStep1(contractData, dto.getContractPassword());
+                                // 임대인과 임차인의 생년월일 가져오기
+                                Long ownerId = contractMapper.getOwnerId(contractChatId);
+                                Long buyerId = contractMapper.getBuyerId(contractChatId);
+
+                                String ownerBirthDate = contractMapper.selectBirth(ownerId).replace("-", "");
+                                String buyerBirthDate = contractMapper.selectBirth(buyerId).replace("-", "");
+
+                                // 생년월일을 YYMMDD 형식으로 변환
+                                String ownerKey = ownerBirthDate.substring(2); // YYYY-MM-DD -> YYMMDD
+                                String buyerKey = buyerBirthDate.substring(2); // YYYY-MM-DD -> YYMMDD
+
+                                // 두 생년월일을 조합한 암호화 키 생성 (예: owner_buyer)
+                                String combinedKey = ownerKey + "_" + buyerKey;
+
+                                // PDF 암호화 및 S3 업로드
+                                FileWithHashDto encryptedPdf = encryptionService.addPasswordToPdf(contracts, combinedKey);
+                                String s3Key = s3Service.uploadFile(MultipartFileUtils.fromFile(encryptedPdf.getFile()));
+
+                                // final_contract 테이블에 저장
+                                int update = contractMapper.updateFinalContract(contractChatId, s3Key, encryptedPdf.getOriginalHash());
+                                if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
+
+                                log.info("최종 계약서 저장 완료 - contractChatId: {}, S3 Key: {}", contractChatId, s3Key);
                             } catch (Exception ex) {
                                 // 업로드 과정의 예외를 비즈니스 예외로 변환
                                 throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
@@ -1085,7 +1500,6 @@ public class ContractServiceImpl implements ContractService {
                                 // Sanitize response body before logging to prevent log injection
                                 String responseBodyStr;
                                 try {
-                                    objectMapper = new ObjectMapper();
                                     responseBodyStr = objectMapper.writeValueAsString(response.getBody());
                                 } catch (Exception ex) {
                                     responseBodyStr = String.valueOf(response.getBody());
@@ -1104,7 +1518,32 @@ public class ContractServiceImpl implements ContractService {
 
                             try {
                                 // 1단계 업로드 실행 (반환 값을 사용하지 않으면 변수에 담지 않아도 됩니다)
-                                encryptionService.uploadPdfStep1(contracts, String.valueOf(contractChatId), dto.getContractPassword());
+                                // Convert MultipartFile to String (base64 or file path)
+                                String contractData = Base64.getEncoder().encodeToString(contracts.getBytes());
+                                encryptionService.uploadPdfStep1(contractData, dto.getContractPassword());
+                                // 임대인과 임차인의 생년월일 가져오기
+                                Long ownerId = contractMapper.getOwnerId(contractChatId);
+                                Long buyerId = contractMapper.getBuyerId(contractChatId);
+
+                                String ownerBirthDate = contractMapper.selectBirth(ownerId).replace("-", "");
+                                String buyerBirthDate = contractMapper.selectBirth(buyerId).replace("-", "");
+
+                                // 생년월일을 YYMMDD 형식으로 변환
+                                String ownerKey = ownerBirthDate.substring(2); // YYYY-MM-DD -> YYMMDD
+                                String buyerKey = buyerBirthDate.substring(2); // YYYY-MM-DD -> YYMMDD
+
+                                // 두 생년월일을 조합한 암호화 키 생성 (예: owner_buyer)
+                                String combinedKey = ownerKey + "_" + buyerKey;
+
+                                // PDF 암호화 및 S3 업로드
+                                FileWithHashDto encryptedPdf = encryptionService.addPasswordToPdf(contracts, combinedKey);
+                                String s3Key = s3Service.uploadFile(MultipartFileUtils.fromFile(encryptedPdf.getFile()));
+
+                                // final_contract 테이블에 저장
+                                int update = contractMapper.updateFinalContract(contractChatId, s3Key, encryptedPdf.getOriginalHash());
+                                if (update != 1) throw new BusinessException(ContractException.CONTRACT_DB_UPDATE);
+
+                                log.info("최종 계약서 저장 완료 - contractChatId: {}, S3 Key: {}", contractChatId, s3Key);
                             } catch (Exception ex) {
                                 // 업로드 과정의 예외를 비즈니스 예외로 변환
                                 throw new BusinessException(ContractException.CONTRACT_INSERT, ex);
@@ -1299,7 +1738,6 @@ public class ContractServiceImpl implements ContractService {
                     // Sanitize response body before logging to prevent log injection
                     String responseBodyStr;
                     try {
-                        objectMapper = new ObjectMapper();
                         responseBodyStr = objectMapper.writeValueAsString(response.getBody());
                     } catch (Exception ex) {
                         responseBodyStr = String.valueOf(response.getBody());
@@ -1314,8 +1752,30 @@ public class ContractServiceImpl implements ContractService {
 
                 // 이거 step2로 바꿔야 함
                 try {
+                    // 임대인과 임차인의 생년월일 가져오기 (주민번호 앞자리 사용)
+                    Long ownerId = contractMapper.getOwnerId(contractChatId);
+                    Long buyerId = contractMapper.getBuyerId(contractChatId);
+
+                    // 주민번호 앞자리(YYMMDD)를 직접 사용
+                    String ownerKey = contractMapper.selectSsnFront(ownerId, contractChatId);
+                    String buyerKey = contractMapper.selectSsnFront(buyerId, contractChatId);
+
+                    if (ownerKey == null || buyerKey == null) {
+                        log.error("SSN front not found - owner: {}, buyer: {}", ownerKey, buyerKey);
+                        throw new BusinessException(ContractException.CONTRACT_INSERT);
+                    }
+
+                    // 두 생년월일을 조합한 암호화 키 생성
+                    String combinedKey = ownerKey + "_" + buyerKey;
+
+                    // 기존 PDF 파일이 있는지 확인하고 암호화
+                    // 여기서는 Redis에서 가져온 계약서를 사용
+                    // PDF 암호화 및 S3 업로드는 위에서 이미 처리됨
+                    log.info("계약서 암호화 키 생성 완료 - contractChatId: {}", contractChatId);
                     // 1단계 업로드 실행 (반환 값을 사용하지 않으면 변수에 담지 않아도 됩니다)
-                    encryptionService.uploadPdfStep1(contracts, String.valueOf(contractChatId), dto.getContractPassword());
+                    // Convert MultipartFile to String (base64 or file path)
+                    String contractData = Base64.getEncoder().encodeToString(contracts.getBytes());
+                    encryptionService.uploadPdfStep1(contractData, dto.getContractPassword());
 
                     // S3에 저장하기
 //                    MultipartFile multipartContract = MultipartFileUtils.fromFile(uploadStep2.getFile());
@@ -1348,15 +1808,37 @@ public class ContractServiceImpl implements ContractService {
         // 최종 계약서 PDF를 S3에서 가져온다
         FinalContract key = contractMapper.selectFinalContract(contractChatId);
 
+        // 최종 계약서가 존재하는지 확인
+        if (key == null || key.getContractPdfKey() == null) {
+            log.error("최종 계약서가 존재하지 않습니다. contractChatId: {}", contractChatId);
+            throw new IllegalStateException("최종 계약서가 존재하지 않습니다. 먼저 계약서를 완료해주세요.");
+        }
+
         InputStream s3Contract = s3Service.downloadFile(key.getContractPdfKey());
 
         MultipartFile files = MultipartFileUtils.inputStreamToMultipartFile(s3Contract);
 
-        // PDF 복호화 하기
-        File finalContract = encryptionService.decryptPdf(files, dto.getContractPassword(), key.getContractPdfHash());
+        // 임대인과 임차인의 생년월일을 조합한 키로 복호화 (주민번호 앞자리 사용)
+        Long ownerId = contractMapper.getOwnerId(contractChatId);
+        Long buyerId = contractMapper.getBuyerId(contractChatId);
+
+        // 주민번호 앞자리(YYMMDD)를 직접 사용
+        String ownerKey = contractMapper.selectSsnFront(ownerId, contractChatId);
+        String buyerKey = contractMapper.selectSsnFront(buyerId, contractChatId);
+
+        if (ownerKey == null || buyerKey == null) {
+            log.error("SSN front not found for decryption - owner: {}, buyer: {}", ownerKey, buyerKey);
+            throw new IllegalStateException("복호화를 위한 키 생성 실패: 주민번호 정보를 찾을 수 없습니다");
+        }
+
+        // 두 생년월일을 조합한 복호화 키
+        String combinedKey = ownerKey + "_" + buyerKey;
+
+        // PDF 복호화 하기 (조합된 키로 복호화)
+        File finalContract = encryptionService.decryptPdf(files, combinedKey, key.getContractPdfHash());
 
         // 실제 파일명 -> 내가 원하는 파일명 넣어서 보내기
-        String originalName = "contract.pdf";
+        String originalName = "contract_" + contractChatId + ".pdf";
 
         //        // 유틸로 응답 보내기
         UploadFiles.download(response, finalContract, originalName);
@@ -1373,24 +1855,63 @@ public class ContractServiceImpl implements ContractService {
         // 최종 계약서 PDF를 S3에서 가져온다
         FinalContract key = contractMapper.selectFinalContract(contractChatId);
 
+        // 최종 계약서가 존재하는지 확인
+        if (key == null || key.getContractPdfKey() == null) {
+            log.error("최종 계약서가 존재하지 않습니다. contractChatId: {}", contractChatId);
+            throw new IllegalStateException("최종 계약서가 존재하지 않습니다. 먼저 계약서를 완료해주세요.");
+        }
+
         InputStream s3Contract = s3Service.downloadFile(key.getContractPdfKey());
 
         MultipartFile files = MultipartFileUtils.inputStreamToMultipartFile(s3Contract);
 
-        // PDF 복호화 하기
-        File finalContract = encryptionService.decryptPdf(files, dto.getContractPassword(), key.getContractPdfHash());
+        // 임대인과 임차인의 생년월일을 조합한 키로 복호화 (주민번호 앞자리 사용)
+        Long ownerId = contractMapper.getOwnerId(contractChatId);
+        Long buyerId = contractMapper.getBuyerId(contractChatId);
+
+        // 주민번호 앞자리(YYMMDD)를 직접 사용
+        String ownerKey = contractMapper.selectSsnFront(ownerId, contractChatId);
+        String buyerKey = contractMapper.selectSsnFront(buyerId, contractChatId);
+
+        if (ownerKey == null || buyerKey == null) {
+            log.error("SSN front not found for decryption - owner: {}, buyer: {}", ownerKey, buyerKey);
+            throw new IllegalStateException("복호화를 위한 키 생성 실패: 주민번호 정보를 찾을 수 없습니다");
+        }
+
+        // 두 생년월일을 조합한 복호화 키
+        String combinedKey = ownerKey + "_" + buyerKey;
+
+        // PDF 복호화 하기 (조합된 키로 복호화)
+        File finalContract = encryptionService.decryptPdf(files, combinedKey, key.getContractPdfHash());
 
         MultipartFile finalFile = MultipartFileUtils.fromFile(finalContract);
 
-        // PDF에 비밀번호 걸어서 보내기 (생년월일?)
-        String password = contractMapper.selectBirth(userId).replace("-", "");
+        // PDF에 사용자 개인의 생년월일로 비밀번호 걸어서 보내기 (주민번호 앞자리 사용)
+        String userPassword = contractMapper.selectSsnFront(userId, contractChatId);
+        if (userPassword == null) {
+            // fallback to birth_date if SSN not found
+            String userBirthDate = contractMapper.selectBirth(userId);
+            if (userBirthDate != null) {
+                userPassword = userBirthDate.replace("-", "").substring(2); // YYYY-MM-DD -> YYMMDD
+            } else {
+                log.error("No birth date or SSN found for user {}", userId);
+                throw new IllegalStateException("사용자 생년월일 정보를 찾을 수 없습니다");
+            }
+        }
+        FileWithHashDto pdfContract = encryptionService.addPasswordToPdf(finalFile, userPassword);
 
-        FileWithHashDto pdfContract = encryptionService.addPasswordToPdf(finalFile, password);
+        // 이메일 주소 (요청된 이메일 또는 사용자 기본 이메일)
+        String email = dto.getEmail() != null && !dto.getEmail().isEmpty()
+            ? dto.getEmail()
+            : contractMapper.selectMail(userId);
 
-        // 이메일 가져오기
-        String email = contractMapper.selectMail(userId);
-        String subject = "계약서 PDF를 보내드립니다.";
-        String text = "요청하신 계약서입니다.";
+        String subject = "[ITZeep] 계약서 PDF를 보내드립니다.";
+        String text = String.format(
+            "요청하신 계약서를 보내드립니다.\n\n" +
+            "PDF 열람 비밀번호: 귀하의 생년월일 6자리(YYMMDD)\n" +
+            "예시: 1990년 1월 1일생 → 900101\n\n" +
+            "문의사항이 있으시면 언제든 연락 주시기 바랍니다."
+        );
 
         emailService.sendEmailWithAttachment(email, subject, text, pdfContract.getFile().getAbsolutePath());
 
@@ -1406,6 +1927,58 @@ public class ContractServiceImpl implements ContractService {
 //                  }
 
         return null;
+    }
+
+    @Override
+    public String getUserBirthDate(Long contractChatId, Long userId, String userRole) {
+        log.info("Getting birth date for contractChatId: {}, userId: {}, role: {}", contractChatId, userId, userRole);
+
+        // 먼저 주민번호 앞자리(생년월일)를 가져옴
+        String ssnFront = contractMapper.selectSsnFront(userId, contractChatId);
+
+        if (ssnFront != null && !ssnFront.isEmpty()) {
+            // 주민번호 앞자리가 있으면 그대로 사용 (이미 YYMMDD 형식)
+            log.info("Using SSN front for birth date: {}", ssnFront);
+            return ssnFront;
+        }
+
+        // 주민번호가 없으면 user 테이블의 birth_date 사용
+        log.info("SSN front not found, falling back to birth_date from user table");
+        String birthDate = contractMapper.selectBirth(userId);
+
+        if (birthDate == null || birthDate.isEmpty()) {
+            log.error("Both SSN and birth date are null or empty for userId: {}", userId);
+            // 기본값 반환 (임시)
+            return "000000";
+        }
+
+        birthDate = birthDate.replace("-", "");
+
+        // YYYYMMDD 형식인지 확인
+        if (birthDate.length() < 8) {
+            log.error("Invalid birth date format: {} for userId: {}", birthDate, userId);
+            return "000000";
+        }
+
+        return birthDate.substring(2); // YYYY-MM-DD -> YYMMDD
+    }
+
+    @Override
+    @Transactional
+    public void saveFinalContractToDatabase(Long contractChatId, String s3Url, String pdfHash) {
+        try {
+            // final_contract 테이블에 저장 또는 업데이트 (INSERT ... ON DUPLICATE KEY UPDATE)
+            int result = contractMapper.insertOrUpdateFinalContract(contractChatId, s3Url, pdfHash);
+            if (result < 1) {
+                log.error("Failed to save final contract to database - contractChatId: {}", contractChatId);
+                throw new IllegalStateException("최종 계약서 저장에 실패했습니다");
+            }
+            log.info("Final contract saved to database - contractChatId: {}, s3Url: {}, hash: {}",
+                    contractChatId, s3Url, pdfHash);
+        } catch (Exception e) {
+            log.error("Error saving final contract to database", e);
+            throw new RuntimeException("최종 계약서 데이터베이스 저장 실패", e);
+        }
     }
 
     // ===================================================
@@ -1515,5 +2088,206 @@ public class ContractServiceImpl implements ContractService {
         }
 
         return sb.toString();
+    }
+    @Override
+    public byte[] generateContractWithSignatures(
+            Long contractChatId,
+            Long userId,
+            java.util.List<String> ownerSignatures,
+            java.util.List<String> buyerSignatures,
+            boolean ownerHasTaxArrears,
+            boolean ownerHasPriorFixedDate,
+            boolean ownerMediationAgree,
+            boolean buyerMediationAgree) {
+
+        log.info("Generating contract with signatures for contractChatId: {}", contractChatId);
+
+        // userId 인증
+        validateUserId(contractChatId, userId);
+
+        // MongoDB에서 계약 정보 조회
+        ContractMongoDocument document = repository.getContract(contractChatId);
+        if (document == null) {
+            throw new BusinessException(ContractException.CONTRACT_NOT_FOUND);
+        }
+
+        // DB에서 필요한 정보 조회
+        DBFinalContractDTO dbDTO = contractMapper.selectFinalContractPDF(contractChatId);
+
+        // 복호화
+        Long ownerContractId = contractMapper.getOwnerId(contractChatId);
+        Long buyerContractId = contractMapper.getBuyerId(contractChatId);
+
+        IdentityVerificationInfoVO ownerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, ownerContractId);
+        IdentityVerificationInfoVO buyerVO = identityVerificationService.getDecryptedVerificationInfo(contractChatId, buyerContractId);
+
+        // ContractChat 정보 조회하여 homeId 가져오기
+        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+        BuildingDocumentVO buildingDocument = null;
+
+        if (contractChat != null && contractChat.getHomeId() != null) {
+            // homeId로 가장 최근의 위험도 체크 조회
+            RiskCheckVO latestRiskCheck = fraudRiskMapper.selectLatestRiskCheckByHomeId(contractChat.getHomeId());
+
+            if (latestRiskCheck != null) {
+                // 위험도 체크 ID로 건축물대장 정보 조회
+                buildingDocument = fraudRiskMapper.selectBuildingDocumentByRiskCheckId(latestRiskCheck.getRiskckId());
+            }
+        }
+
+        // SaveFinalContractDTO 생성 (homeId 전달하여 주소 정보 보완)
+        Long homeId = contractChat != null ? contractChat.getHomeId() : null;
+        SaveFinalContractDTO dto = buildSaveFinalContractDTO(document, dbDTO, ownerVO, buyerVO, buildingDocument, homeId);
+
+        // AI 서버에 PDF 생성 요청 (서명 포함)
+        try {
+            // DTO가 null이 아닌지 확인
+            if (dto == null) {
+                log.error("SaveFinalContractDTO가 null입니다.");
+                throw new BusinessException(ContractException.PDF_GENERATION_FAILED);
+            }
+
+            // 체크박스 상태 설정
+            dto.setHasTaxArrears(ownerHasTaxArrears);
+            dto.setHasPriorFixedDate(ownerHasPriorFixedDate);
+
+            // 실제 서명 이미지 설정 (이미 Base64로 변환되어 있음 - updateSignature에서 처리)
+            log.info("Setting signatures from status data");
+            
+            if (ownerSignatures != null && !ownerSignatures.isEmpty()) {
+                if (ownerSignatures.size() > 0 && ownerSignatures.get(0) != null) {
+                    String ownerSign1 = ownerSignatures.get(0);
+                    // 이미 순수 Base64 문자열이므로 그대로 설정
+                    dto.setOwnerSign1Base64(ownerSign1);
+                    log.info("Owner signature 1 set - length: {}", ownerSign1.length());
+                }
+                if (ownerSignatures.size() > 1 && ownerSignatures.get(1) != null) {
+                    String ownerSign2 = ownerSignatures.get(1);
+                    dto.setOwnerSign2Base64(ownerSign2);
+                    log.info("Owner signature 2 set - length: {}", ownerSign2.length());
+                }
+                if (ownerSignatures.size() > 2 && ownerSignatures.get(2) != null) {
+                    String ownerSign3 = ownerSignatures.get(2);
+                    dto.setOwnerSign3Base64(ownerSign3);
+                    log.info("Owner signature 3 set - length: {}", ownerSign3.length());
+                }
+            } else {
+                dto.setOwnerSign1Base64("");
+                dto.setOwnerSign2Base64("");
+                dto.setOwnerSign3Base64("");
+            }
+
+            if (buyerSignatures != null && !buyerSignatures.isEmpty() && buyerSignatures.get(0) != null) {
+                String buyerSign1 = buyerSignatures.get(0);
+                log.info("Processing buyer signature - length: {}", buyerSign1.length());
+                
+                // 이미 순수 Base64 문자열이므로 그대로 설정
+                dto.setBuyerSignBase64(buyerSign1);
+                log.info("Buyer signature set - length: {}", buyerSign1.length());
+                if (buyerSign1.length() > 50) {
+                    log.info("Buyer signature preview: {}", buyerSign1.substring(0, 50) + "...");
+                }
+            } else {
+                log.warn("No buyer signature provided - setting empty string");
+                dto.setBuyerSignBase64("");
+            }
+
+            log.info("Signatures set - Owner: {}, Buyer: {}",
+                    ownerSignatures != null ? ownerSignatures.size() : 0,
+                    buyerSignatures != null ? buyerSignatures.size() : 0);
+
+            // 서명 데이터가 실제로 있는지 확인
+            log.info("Final DTO check before sending to AI server:");
+            log.info("  - Owner Sign1 empty: {}, length: {}",
+                    dto.getOwnerSign1Base64().isEmpty(),
+                    dto.getOwnerSign1Base64().length());
+            log.info("  - Buyer Sign1 empty: {}, length: {}",
+                    dto.getBuyerSignBase64().isEmpty(),
+                    dto.getBuyerSignBase64().length());
+
+            // 임차인 서명이 정말 설정되었는지 최종 확인
+            if (dto.getBuyerSignBase64() != null && !dto.getBuyerSignBase64().isEmpty()) {
+                log.info("✓ Buyer signature is SET and will be sent to AI server");
+                log.info("  Buyer signature data starts with: {}",
+                        dto.getBuyerSignBase64().substring(0, Math.min(30, dto.getBuyerSignBase64().length())));
+            } else {
+                log.error("✗ Buyer signature is NULL or EMPTY - AI server will NOT receive buyer signature!");
+            }
+
+            // JSON으로 전송
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Accept", "application/pdf");
+
+            HttpEntity<SaveFinalContractDTO> request = new HttpEntity<>(dto, headers);
+
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                    aiServerUrl + "/api/contract/generate-json",
+                    HttpMethod.POST,
+                    request,
+                    byte[].class);
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                byte[] pdfBytes = response.getBody();
+                log.info("AI 서버에서 서명 포함 PDF 생성 성공. 크기: {} bytes",
+                        pdfBytes != null ? pdfBytes.length : 0);
+                return pdfBytes;
+            } else {
+                log.error("AI 서버 PDF 생성 실패. HTTP 상태: {}", response.getStatusCode());
+                throw new BusinessException(ContractException.PDF_GENERATION_FAILED);
+            }
+
+        } catch (Exception e) {
+            log.error("AI 서버 PDF 생성 중 오류 발생", e);
+            throw new BusinessException(ContractException.PDF_GENERATION_FAILED, e);
+        }
+    }
+
+    @Override
+    public byte[] getExistingContractPdf(Long contractChatId) {
+        try {
+            log.info("Attempting to retrieve existing contract PDF for contractChatId: {}", contractChatId);
+
+            // MongoDB에서 계약서 조회
+            ContractMongoDocument document = repository.getContract(contractChatId);
+            if (document == null) {
+                log.warn("No contract found in MongoDB for contractChatId: {}", contractChatId);
+                return null;
+            }
+
+            // 간단한 PDF 생성 (기본 계약서 템플릿)
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
+            com.itextpdf.kernel.pdf.PdfDocument pdfDoc = new com.itextpdf.kernel.pdf.PdfDocument(writer);
+            com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdfDoc);
+
+            // 계약서 기본 내용 추가
+            doc.add(new com.itextpdf.layout.element.Paragraph("부동산 임대차 계약서")
+                    .setFontSize(18)
+                    .setBold());
+            doc.add(new com.itextpdf.layout.element.Paragraph("계약 ID: " + contractChatId));
+
+            // MongoDB 문서에서 데이터 추출하여 추가
+            if (document.getOwnerName() != null) {
+                doc.add(new com.itextpdf.layout.element.Paragraph("임대인: " + document.getOwnerName()));
+            }
+            if (document.getBuyerName() != null) {
+                doc.add(new com.itextpdf.layout.element.Paragraph("임차인: " + document.getBuyerName()));
+            }
+            if (document.getHomeAddr1() != null) {
+                doc.add(new com.itextpdf.layout.element.Paragraph("주소: " + document.getHomeAddr1() + " " +
+                    (document.getHomeAddr2() != null ? document.getHomeAddr2() : "")));
+            }
+
+            doc.close();
+
+            byte[] pdfBytes = baos.toByteArray();
+            log.info("Generated existing contract PDF with size: {} bytes", pdfBytes.length);
+            return pdfBytes;
+
+        } catch (Exception e) {
+            log.error("Failed to retrieve or generate existing contract PDF", e);
+            return null;
+        }
     }
 }

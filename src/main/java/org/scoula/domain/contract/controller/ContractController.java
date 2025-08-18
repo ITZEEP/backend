@@ -1,8 +1,9 @@
 package org.scoula.domain.contract.controller;
 
-import javax.servlet.http.HttpServletResponse;
-
+import java.util.List;
 import java.util.Map;
+
+import javax.servlet.http.HttpServletResponse;
 
 import org.scoula.domain.chat.dto.FinalContractDeletionResponseDto;
 import org.scoula.domain.contract.dto.*;
@@ -136,12 +137,17 @@ public interface ContractController {
       // =================
 
       // 내보내기
-      //      @ApiOperation(
-      //              value = "[내보내기] 1 최종 계약서, 전자서명 테이블 초기 세팅",
-      //              notes = "전자서명에 관련된 값들을 저장하기 위해 테이블 초기 세팅을 합니다.")
-      //      ResponseEntity<ApiResponse<Void>> finalContractInit(
-      //              @PathVariable Long contractChatId,
-      //              @AuthenticationPrincipal CustomUserDetails userDetails);
+      @ApiOperation(
+              value = "[내보내기] 0 계약서 내보내기 시작",
+              notes = "계약서 내보내기 프로세스를 시작합니다. AI 서버에서 초기 PDF를 생성합니다.")
+      ResponseEntity<byte[]> startContractExport(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails);
+
+      @ApiOperation(value = "[내보내기] 사용자 역할 확인", notes = "계약서에서 사용자가 owner인지 buyer인지 확인")
+      ResponseEntity<ApiResponse<String>> getUserRole(
+              @PathVariable Long contractChatId,
+              @AuthenticationPrincipal CustomUserDetails userDetails);
 
       @ApiOperation(value = "[내보내기] 1 최종 계약서 PDF로 만들기 -> AI", notes = "최종 계약서에 들어갈 항목들로 최종 계약서 만들기 ")
       ResponseEntity<ApiResponse<MultipartFile>> finalContractPDF(
@@ -152,8 +158,8 @@ public interface ContractController {
       ResponseEntity<ApiResponse<Boolean>> saveSignature(
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
-              @RequestPart("dto") String dtoText, // JSON 파트
-              @RequestPart("imgFiles") MultipartFile imgFiles)
+              @RequestPart("dto") MultipartFile dtoFile, // JSON 파트
+              @RequestPart("imgFiles") List<MultipartFile> imgFiles)
               throws Exception;
 
       @ApiOperation(value = "[내보내기] 3 최종 계약서 PDF S3에 저장", notes = "사용자에게 암호를 받아 암호화 후 S3에 저장하기")

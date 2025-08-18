@@ -17,14 +17,17 @@ import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -306,6 +309,45 @@ public class S3ServiceImpl extends AbstractExternalService implements S3ServiceI
 
       /** {@inheritDoc} */
       @Override
+      public String uploadBytes(byte[] data, String fileName, String contentType) {
+          if (data == null || data.length == 0) {
+              throw new BusinessException(S3ErrorCode.EMPTY_FILE, "빈 데이터는 업로드할 수 없습니다");
+          }
+
+          if (fileName == null || fileName.trim().isEmpty()) {
+              throw new BusinessException(S3ErrorCode.INVALID_FILE_NAME, "파일명이 올바르지 않습니다");
+          }
+
+          String key = "contracts/" + fileName;
+
+          return executeSafely(
+                  () -> {
+                      try {
+                          PutObjectRequest putObjectRequest =
+                                  PutObjectRequest.builder()
+                                          .bucket(bucketName)
+                                          .key(key)
+                                          .contentType(
+                                                  contentType != null
+                                                          ? contentType
+                                                          : "application/pdf")
+                                          .contentLength((long) data.length)
+                                          .build();
+
+                          s3Client.putObject(putObjectRequest, RequestBody.fromBytes(data));
+
+                          // S3 URL 반환
+                          return getFileUrl(key);
+                      } catch (Exception e) {
+                          throw new BusinessException(
+                                  S3ErrorCode.FILE_UPLOAD_FAILED, "S3 파일 업로드에 실패했습니다", e);
+                      }
+                  },
+                  "S3 바이트 배열 업로드");
+      }
+
+      /** {@inheritDoc} */
+      @Override
       public String uploadProfileImageFromUrl(String imageUrl, Long userId) {
           if (imageUrl == null || imageUrl.trim().isEmpty()) {
               log.warn("프로필 이미지 URL이 null이거나 비어있음");
@@ -396,5 +438,27 @@ public class S3ServiceImpl extends AbstractExternalService implements S3ServiceI
                       }
                   },
                   "프로필 이미지 S3 업로드");
+      }
+
+      @Override
+      public byte[] downloadBytes(String key) {
+          return executeSafely(
+                  () -> {
+                      try {
+                          GetObjectRequest getObjectRequest =
+                                  GetObjectRequest.builder().bucket(bucketName).key(key).build();
+
+                          ResponseBytes<GetObjectResponse> objectBytes =
+                                  s3Client.getObjectAsBytes(getObjectRequest);
+
+                          log.info("S3에서 파일 다운로드 완료: {}", key);
+                          return objectBytes.asByteArray();
+
+                      } catch (S3Exception e) {
+                          log.error("S3 파일 다운로드 실패: {}", key, e);
+                          throw new BusinessException(S3ErrorCode.FILE_NOT_FOUND);
+                      }
+                  },
+                  "S3 파일 다운로드");
       }
 }

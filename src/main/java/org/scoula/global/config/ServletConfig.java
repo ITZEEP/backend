@@ -1,19 +1,17 @@
 package org.scoula.global.config;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.format.FormatterRegistry;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -21,12 +19,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
 
 @Configuration
 @EnableWebMvc
-@EnableAsync
-@Log4j2
 @ComponentScan(
           basePackages = {
               "org.scoula.domain",
@@ -76,24 +71,38 @@ public class ServletConfig implements WebMvcConfigurer {
 
       @Override
       public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-          MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-          converter.setObjectMapper(objectMapper);
-          converters.add(converter);
+          // ByteArrayHttpMessageConverter for PDF and other binary data
+          ByteArrayHttpMessageConverter byteArrayConverter = new ByteArrayHttpMessageConverter();
+          byteArrayConverter.setSupportedMediaTypes(
+                  List.of(
+                          MediaType.APPLICATION_PDF,
+                          MediaType.APPLICATION_OCTET_STREAM,
+                          MediaType.IMAGE_PNG,
+                          MediaType.IMAGE_JPEG,
+                          MediaType.ALL));
+          converters.add(byteArrayConverter);
+
+          // JSON converter
+          MappingJackson2HttpMessageConverter jsonConverter =
+                  new MappingJackson2HttpMessageConverter();
+          jsonConverter.setObjectMapper(objectMapper);
+          converters.add(jsonConverter);
       }
 
       @Override
-      public void addFormatters(FormatterRegistry registry) {
-          // LocalDate converter for form data
-          registry.addConverter(
-                  new Converter<String, LocalDate>() {
-                      @Override
-                      public LocalDate convert(String source) {
-                          if (source == null || source.trim().isEmpty()) {
-                              return null;
-                          }
-                          return LocalDate.parse(source, DateTimeFormatter.ISO_LOCAL_DATE);
-                      }
-                  });
+      public void addCorsMappings(CorsRegistry registry) {
+          registry.addMapping("/**")
+                  .allowedOrigins(
+                          "http://localhost:5173",
+                          "http://localhost:8080",
+                          "https://itzeep.ariogi.kr",
+                          "https://www.itzeep.ariogi.kr",
+                          "http://itzeep.ariogi.kr",
+                          "http://www.itzeep.ariogi.kr")
+                  .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                  .allowedHeaders("*")
+                  .allowCredentials(true)
+                  .maxAge(3600);
       }
 
       //      @Override

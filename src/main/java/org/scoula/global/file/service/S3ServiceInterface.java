@@ -95,4 +95,23 @@ public interface S3ServiceInterface {
        * @return S3에 저장된 이미지 URL
        */
       String uploadProfileImageFromUrl(String imageUrl, Long userId);
+
+      /**
+       * 바이트 배열로 파일을 S3에 업로드합니다.
+       *
+       * @param data 업로드할 데이터
+       * @param fileName 파일명
+       * @param contentType 컨텐츠 타입
+       * @return 업로드된 파일의 S3 URL
+       */
+      String uploadBytes(byte[] data, String fileName, String contentType);
+
+      /**
+       * S3에서 파일을 바이트 배열로 다운로드합니다.
+       *
+       * @param key S3 파일 키
+       * @return 파일의 바이트 배열
+       * @throws BusinessException 파일 다운로드 실패 시
+       */
+      byte[] downloadBytes(String key);
 }

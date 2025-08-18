@@ -43,4 +43,8 @@ public class DBFinalContractDTO {
       private String ownerSsnBack;
       private String buyerSsnFront;
       private String buyerSsnBack;
+
+      // 주소 정보
+      private String homeAddr1;
+      private String homeAddr2;
 }
