@@ -2,11 +2,10 @@ package org.scoula.domain.contract.dto;
 
 import lombok.*;
 
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class LegalityRequestDTO {
       private String legalBasis;
       private Long requestId;

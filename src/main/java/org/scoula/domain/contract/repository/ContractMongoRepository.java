@@ -29,6 +29,7 @@ public class ContractMongoRepository {
           return mongoTemplate.insert(document);
       }
 
+      // 해당하는 contractChatId를 다 가져오기
       public ContractMongoDocument getContract(Long contractChatId) {
           Query contractQuery = new Query(Criteria.where("contractChatId").is(contractChatId));
           ContractMongoDocument document =

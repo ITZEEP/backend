@@ -14,7 +14,14 @@ public enum ContractException implements IErrorCode {
       CONTRACT_AI_SERVER_ERROR(
               "CONTRACT_4003", HttpStatus.SERVICE_UNAVAILABLE, "AI 서버 통신 중 오류가 발생했습니다."),
       CONTRACT_UPDATE("CONTRACT_4004", HttpStatus.BAD_REQUEST, "MongoDB에 수정이 되지 않았습니다"),
-      CONTRACT_REDIS("CONTRACT_4005", HttpStatus.BAD_REQUEST, "REDIS에 해당 정보가 없습니다.");
+      CONTRACT_REDIS("CONTRACT_4005", HttpStatus.BAD_REQUEST, "REDIS에 해당 정보가 없습니다."),
+      CONTRACT_DB_INSERT("CONTRACT_4006", HttpStatus.BAD_REQUEST, "DB에 저장되지 않았습니다."),
+      CONTRACT_DB_UPDATE("CONTRACT_4007", HttpStatus.BAD_REQUEST, "DB에 수정되지 않았습니다."),
+      CONTRACT_AGREEMENT(
+              "CONTRACT_4008", HttpStatus.BAD_REQUEST, "최종 계약서에 동의가 되지 않아 계약서를 완료할 수 없습니다."),
+      CONTRACT_NOT_FOUND("CONTRACT_4009", HttpStatus.NOT_FOUND, "계약서를 찾을 수 없습니다."),
+      PDF_GENERATION_FAILED("CONTRACT_4010", HttpStatus.INTERNAL_SERVER_ERROR, "PDF 생성에 실패했습니다.");
+
       private final String code;
       private final HttpStatus httpStatus;
       private final String message;
