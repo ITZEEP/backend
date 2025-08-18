@@ -1023,67 +1023,82 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           return updatedContracts;
       }
 
-      @Override
-      @Transactional
-      public Object submitUserSelection(
-              Long contractChatId, Long userId, Map<Integer, Boolean> selections) {
-          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-          if (contractChat == null) {
-              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다.");
-          }
+  @Override
+  @Transactional
+  public Object submitUserSelection(
+      Long contractChatId, Long userId, Map<Integer, Boolean> selections) {
+    ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+    if (contractChat == null) {
+      throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다.");
+    }
 
-          boolean isOwner = userId.equals(contractChat.getOwnerId());
-          boolean isTenant = userId.equals(contractChat.getBuyerId());
+    boolean isOwner = userId.equals(contractChat.getOwnerId());
+    boolean isTenant = userId.equals(contractChat.getBuyerId());
 
-          if (!isOwner && !isTenant) {
-              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-          }
+    if (!isOwner && !isTenant) {
+      throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+    }
 
-          ContractChat.ContractStatus currentStatus = contractChat.getStatus();
+    ContractChat.ContractStatus currentStatus = contractChat.getStatus();
 
-          List<Integer> availableOrders = getAvailableOrders(contractChatId, currentStatus);
-          if (!isValidSelection(selections, availableOrders)) {
-              throw new IllegalArgumentException("현재 상태에서 선택할 수 없는 특약입니다. 선택 가능: " + availableOrders);
-          }
-          Optional<SpecialContractSelectionDocument> existingOpt =
-                  specialContractMongoRepository.findSelectionByContractChatId(contractChatId);
+    List<Integer> availableOrders = getAvailableOrders(contractChatId, currentStatus);
+    if (!isValidSelection(selections, availableOrders)) {
+      throw new IllegalArgumentException("현재 상태에서 선택할 수 없는 특약입니다. 선택 가능: " + availableOrders);
+    }
+    Optional<SpecialContractSelectionDocument> existingOpt =
+        specialContractMongoRepository.findSelectionByContractChatId(contractChatId);
 
-          SpecialContractSelectionDocument document;
-          if (existingOpt.isPresent()) {
-              document = existingOpt.get();
-          } else {
-              document =
-                      SpecialContractSelectionDocument.builder()
-                              .contractChatId(contractChatId)
-                              .ownerSelections(new HashMap<>())
-                              .tenantSelections(new HashMap<>())
-                              .ownerCompleted(false)
-                              .tenantCompleted(false)
-                              .processed(false)
-                              .build();
-          }
+    SpecialContractSelectionDocument document;
+    if (existingOpt.isPresent()) {
+      document = existingOpt.get();
+    } else {
+      document =
+          SpecialContractSelectionDocument.builder()
+              .contractChatId(contractChatId)
+              .ownerSelections(new HashMap<>())
+              .tenantSelections(new HashMap<>())
+              .ownerCompleted(false)
+              .tenantCompleted(false)
+              .processed(false)
+              .build();
+    }
 
-          if (isOwner) {
-              document.setOwnerSelections(selections);
-              document.setOwnerCompleted(true);
-          } else {
-              document.setTenantSelections(selections);
-              document.setTenantCompleted(true);
-          }
+    if (isOwner) {
+      document.setOwnerSelections(selections);
+      document.setOwnerCompleted(true);
+    } else {
+      document.setTenantSelections(selections);
+      document.setTenantCompleted(true);
+    }
 
-          specialContractMongoRepository.saveSelectionStatus(document);
+    specialContractMongoRepository.saveSelectionStatus(document);
 
-          if (!document.isOwnerCompleted() || !document.isTenantCompleted()) {
-              String waitingFor = isOwner ? "임차인" : "임대인";
-              return Map.of("message", "선택을 기다리는 중입니다: " + waitingFor, "completed", false);
-          }
+    if (!document.isOwnerCompleted() || !document.isTenantCompleted()) {
+      String waitingFor = isOwner ? "임차인" : "임대인";
+      return Map.of("message", "선택을 기다리는 중입니다: " + waitingFor, "completed", false);
+    }
 
-          if (document.isProcessed()) {
-              return Map.of("message", "이미 처리된 선택입니다.", "completed", true);
-          }
-          AiMessage(contractChatId, "특약 대화가 시작됩니다!");
-          return processRoundResults(contractChatId, document, currentStatus, isOwner);
+    if (document.isProcessed()) {
+      return Map.of("message", "이미 처리된 선택입니다.", "completed", true);
+    }
+
+    Object result = processRoundResults(contractChatId, document, currentStatus, isOwner);
+
+    if (result instanceof Map) {
+      Map<String, Object> resultMap = (Map<String, Object>) result;
+      boolean hasNextRound = resultMap.containsKey("nextRound");
+      boolean isCompleted = resultMap.getOrDefault("completed", false).equals(true);
+
+      if (hasNextRound || !isCompleted) {
+        AiMessage(
+            contractChatId,
+            "특약 대화가 시작됩니다! \n 자유롭게 채팅 후 임대인님께서 AI 수정을 요청해주세요.\n임차인님이 수락 후 해당 특약 수정 요청이 가능합니다.");
+
       }
+    }
+
+    return result;
+  }
 
       private List<Integer> getAvailableOrders(
               Long contractChatId, ContractChat.ContractStatus status) {
@@ -2872,47 +2887,48 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           stringRedisTemplate.opsForValue().set(key, value);
       }
 
-    @Override
-    public Map<String, Object> acceptFinalContract(Long contractChatId, Long buyerId, Boolean isAccepted) {
-        if (!isUserInContractChat(contractChatId, buyerId)) {
-            throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-        }
+      @Override
+      public Map<String, Object> acceptFinalContract(
+              Long contractChatId, Long buyerId, Boolean isAccepted) {
+          if (!isUserInContractChat(contractChatId, buyerId)) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
 
-        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-        if (contractChat == null) {
-            throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
-        }
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
 
-        Long ownerId = contractChat.getOwnerId();
+          Long ownerId = contractChat.getOwnerId();
 
-        if (!buyerId.equals(contractChat.getBuyerId())) {
-            throw new BusinessException(
-                    ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 확정 수락을 할 수 있습니다.");
-        }
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 확정 수락을 할 수 있습니다.");
+          }
 
-        String redisKey = "final-contract:request:" + contractChatId;
-        String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+          String redisKey = "final-contract:request:" + contractChatId;
+          String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
 
-        if (storedOwnerId == null) {
-            throw new BusinessException(
-                    ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "확정 요청이 존재하지 않습니다.");
-        }
+          if (storedOwnerId == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "확정 요청이 존재하지 않습니다.");
+          }
 
-        if (!storedOwnerId.equals(ownerId.toString())) {
-            throw new BusinessException(
-                    ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
-        }
+          if (!storedOwnerId.equals(ownerId.toString())) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
+          }
 
-        stringRedisTemplate.delete(redisKey);
+          stringRedisTemplate.delete(redisKey);
 
-        if (isAccepted) {
-            contractMongoRepository.clearSpecialContracts(contractChatId);
-            contractMongoRepository.saveSpecialContract(contractChatId);
-            AiMessage(contractChatId, "임차인이 최종 계약서를 수락했습니다! 계약서 서명하러 갈께요!");
-        } else {
-            AiMessage(contractChatId, "임차인이 최종 계약서를 거절했습니다. 추가 협상이 필요합니다.");
-        }
+          if (isAccepted) {
+              contractMongoRepository.clearSpecialContracts(contractChatId);
+              contractMongoRepository.saveSpecialContract(contractChatId);
+              AiMessage(contractChatId, "임차인이 최종 계약서를 수락했습니다! 계약서 서명하러 갈께요!");
+          } else {
+              AiMessage(contractChatId, "임차인이 최종 계약서를 거절했습니다. 추가 협상이 필요합니다.");
+          }
 
-        return Map.of("accepted", isAccepted);
-    }
+          return Map.of("accepted", isAccepted);
+      }
 }
