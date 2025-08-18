@@ -306,5 +306,5 @@ public interface ContractChatServiceInterface {
       void requestFinalContract(Long contractChatId, Long ownerId);
 
       /** 임차인이 최종 특약 확정 수락 */
-      Map<String, Object> acceptFinalContract(Long contractChatId, Long buyerId);
+      Map<String, Object> acceptFinalContract(Long contractChatId, Long buyerId, Boolean isAccepted);
 }

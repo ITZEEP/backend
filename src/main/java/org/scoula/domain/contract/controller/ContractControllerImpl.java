@@ -229,25 +229,26 @@ public class ContractControllerImpl implements ContractController {
           }
       }
 
-      @Override
-      @PostMapping("/specialContract/final-accept")
-      public ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContract(
-              @PathVariable Long contractChatId,
-              @RequestBody FinalContractDeletionResponseDto responseDto,
-              Authentication authentication) {
+    @Override
+    @PostMapping("/specialContract/final-accept")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContract(
+            @PathVariable Long contractChatId,
+            @RequestBody FinalContractDeletionResponseDto responseDto,
+            Authentication authentication) {
 
-          try {
-              Long userId = getUserIdFromAuthentication(authentication);
-              Map<String, Object> result =
-                      contractChatService.acceptFinalContract(contractChatId, userId);
-              return ResponseEntity.ok(ApiResponse.success(result));
+        try {
+            Long userId = getUserIdFromAuthentication(authentication);
 
-          } catch (BusinessException e) {
-              return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-          } catch (Exception e) {
-              log.error("최종 특약서 확정 수락 처리 중 오류 발생", e);
-              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                      .body(ApiResponse.error("서버 오류가 발생했습니다."));
-          }
-      }
+            Map<String, Object> result =
+                    contractChatService.acceptFinalContract(contractChatId, userId, responseDto.isAccepted());
+            return ResponseEntity.ok(ApiResponse.success(result));
+
+        } catch (BusinessException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("최종 특약서 확정 수락 처리 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("서버 오류가 발생했습니다."));
+        }
+    }
 }
