@@ -103,7 +103,6 @@ public class SaveFinalContractDTO {
                   .totalFloorArea("100") // 기본값 설정
                   .addr2(document.getHomeAddr2())
                   .supplyArea(String.valueOf(document.getExclusiveArea()))
-                  // hasTaxArrears와 hasPriorFixedDate는 설정하지 않음 (null로 유지)
                   .textDepositPrice(textDepositPrice)
                   .depositPrice(String.valueOf(document.getDepositPrice()))
                   .monthlyRent(String.valueOf(document.getMonthlyRent()))

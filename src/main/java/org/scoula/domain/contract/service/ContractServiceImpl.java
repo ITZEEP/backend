@@ -613,7 +613,7 @@ public class ContractServiceImpl implements ContractService {
     @Transactional
     public byte[] startContractExport(Long contractChatId, Long userId) {
         log.info("Starting contract export for contractChatId: {}, userId: {}", contractChatId, userId);
-        
+
         try {
             // userId 인증
             validateUserId(contractChatId, userId);
@@ -708,13 +708,13 @@ public class ContractServiceImpl implements ContractService {
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 byte[] pdfData = response.getBody();
-                
+
                 // PDF 데이터 크기 확인
                 if (pdfData.length == 0) {
                     log.error("AI 서버에서 빈 응답을 받았습니다");
                     return generateFallbackPdf(contractChatId, dto);
                 }
-                
+
                 // PDF 헤더 확인 (%PDF)
                 if (pdfData.length > 4) {
                     String header = new String(pdfData, 0, 4);
@@ -722,23 +722,23 @@ public class ContractServiceImpl implements ContractService {
                         // PDF가 아닌 경우, 텍스트 응답인지 확인
                         String textResponse = new String(pdfData, 0, Math.min(1000, pdfData.length));
                         log.error("AI 서버에서 PDF가 아닌 응답을 받았습니다. 처음 1000 바이트: {}", textResponse);
-                        
+
                         // URL 패턴인지 확인 (uploads/ 또는 http로 시작)
                         if (textResponse.contains("uploads/") || textResponse.startsWith("http")) {
                             log.info("응답이 URL 형식입니다. URL에서 PDF 다운로드 시도: {}", textResponse.trim());
-                            
+
                             try {
                                 String fullUrl = textResponse.trim();
                                 if (!fullUrl.startsWith("http")) {
                                     // 상대 경로인 경우 AI 서버 URL과 조합
                                     fullUrl = aiServerUrl + "/" + fullUrl;
                                 }
-                                
+
                                 ResponseEntity<byte[]> pdfResponse = restTemplate.getForEntity(fullUrl, byte[].class);
-                                
+
                                 if (pdfResponse.getStatusCode() == HttpStatus.OK && pdfResponse.getBody() != null) {
                                     byte[] downloadedPdf = pdfResponse.getBody();
-                                    
+
                                     // 다운로드한 파일이 PDF인지 확인
                                     if (downloadedPdf.length > 4) {
                                         String pdfHeader = new String(downloadedPdf, 0, 4);
@@ -752,12 +752,12 @@ public class ContractServiceImpl implements ContractService {
                                 log.error("URL에서 PDF 다운로드 실패: ", e);
                             }
                         }
-                        
+
                         // Fallback으로 기본 PDF 생성
                         return generateFallbackPdf(contractChatId, dto);
                     }
                 }
-                
+
                 log.info("PDF 생성 성공, 크기: {} bytes", pdfData.length);
                 return pdfData;
             } else {
@@ -774,7 +774,7 @@ public class ContractServiceImpl implements ContractService {
             if (e.getCause() != null) {
                 log.error("Cause: {}", e.getCause().getMessage());
             }
-            
+
             // Fallback PDF 생성 시도
             try {
                 log.info("Attempting to generate fallback PDF due to error");
@@ -789,61 +789,61 @@ public class ContractServiceImpl implements ContractService {
     // Fallback PDF 생성 메서드
     private byte[] generateFallbackPdf(Long contractChatId, SaveFinalContractDTO dto) {
         log.info("Fallback PDF 생성 시작 - contractChatId: {}", contractChatId);
-        
+
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
             com.itextpdf.kernel.pdf.PdfDocument pdfDoc = new com.itextpdf.kernel.pdf.PdfDocument(writer);
             com.itextpdf.layout.Document document = new com.itextpdf.layout.Document(pdfDoc);
-            
+
             // 한글 폰트 설정 (기본 폰트 사용)
             com.itextpdf.kernel.font.PdfFont font = com.itextpdf.kernel.font.PdfFontFactory.createFont(
                     "Helvetica", "Identity-H", com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-            
+
             // 제목
             document.add(new com.itextpdf.layout.element.Paragraph("부동산 임대차 계약서")
                     .setFont(font)
                     .setFontSize(20)
                     .setBold()
                     .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER));
-            
+
             document.add(new com.itextpdf.layout.element.Paragraph(""));
-            
+
             // 계약 정보
             document.add(new com.itextpdf.layout.element.Paragraph("계약 번호: " + contractChatId)
                     .setFont(font));
-            
+
             if (dto != null) {
-                document.add(new com.itextpdf.layout.element.Paragraph("임대 유형: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("임대 유형: " +
                         (dto.getLeaseType() ? "전세" : "월세"))
                         .setFont(font));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph(""));
-                
+
                 // 당사자 정보
                 document.add(new com.itextpdf.layout.element.Paragraph("[ 임대인 ]")
                         .setFont(font)
                         .setBold());
-                document.add(new com.itextpdf.layout.element.Paragraph("성명: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("성명: " +
                         (dto.getOwnerNickname() != null ? dto.getOwnerNickname() : "임대인"))
                         .setFont(font));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph(""));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph("[ 임차인 ]")
                         .setFont(font)
                         .setBold());
-                document.add(new com.itextpdf.layout.element.Paragraph("성명: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("성명: " +
                         (dto.getBuyerNickname() != null ? dto.getBuyerNickname() : "임차인"))
                         .setFont(font));
-                
+
                 document.add(new com.itextpdf.layout.element.Paragraph(""));
-                
+
                 // 부동산 정보
                 document.add(new com.itextpdf.layout.element.Paragraph("[ 부동산 정보 ]")
                         .setFont(font)
                         .setBold());
-                document.add(new com.itextpdf.layout.element.Paragraph("주소: " + 
+                document.add(new com.itextpdf.layout.element.Paragraph("주소: " +
                         dto.getAddr1() + " " + (dto.getAddr2() != null ? dto.getAddr2() : ""))
                         .setFont(font));
             } else {
@@ -853,33 +853,33 @@ public class ContractServiceImpl implements ContractService {
                         .setFont(font)
                         .setItalic());
             }
-            
+
             document.add(new com.itextpdf.layout.element.Paragraph(""));
-            
+
             // 안내 메시지
             document.add(new com.itextpdf.layout.element.Paragraph(
                     "※ 이 문서는 임시 생성된 계약서입니다. AI 서버 연결 문제로 정식 계약서를 생성할 수 없습니다.")
                     .setFont(font)
                     .setFontSize(10)
                     .setItalic());
-            
+
             document.add(new com.itextpdf.layout.element.Paragraph("생성 일시: " + new java.util.Date())
                     .setFont(font)
                     .setFontSize(10));
-            
+
             document.close();
-            
+
             byte[] pdfBytes = baos.toByteArray();
             log.info("Fallback PDF 생성 완료, 크기: {} bytes", pdfBytes.length);
             return pdfBytes;
-            
+
         } catch (Exception e) {
             log.error("Fallback PDF 생성 실패: ", e);
             // 최후의 수단으로 빈 PDF 반환
             return new byte[0];
         }
     }
-    
+
     // SaveFinalContractDTO 빌드 헬퍼 메서드
     private SaveFinalContractDTO buildSaveFinalContractDTO(
             ContractMongoDocument document,
@@ -901,16 +901,16 @@ public class ContractServiceImpl implements ContractService {
         // 주소 정보 - 여러 소스에서 가져오기 (우선순위: DB -> MongoDB -> BuildingDocument)
         String addr1 = dbDTO.getHomeAddr1(); // DB에서 먼저 가져오기
         String addr2 = dbDTO.getHomeAddr2();
-        
+
         log.info("Address from DB - addr1: '{}', addr2: '{}'", addr1, addr2);
-        
+
         // DB의 주소가 비어있으면 MongoDB document에서 가져오기
         if (addr1 == null || addr1.trim().isEmpty()) {
             addr1 = document.getHomeAddr1();
             addr2 = document.getHomeAddr2();
             log.info("Address from MongoDB - addr1: '{}', addr2: '{}'", addr1, addr2);
         }
-        
+
         // MongoDB document의 주소도 비어있으면 BuildingDocument에서 가져오기
         if ((addr1 == null || addr1.trim().isEmpty()) && buildingDocument != null) {
             String roadAddress = buildingDocument.getRoadAddress();
@@ -920,16 +920,16 @@ public class ContractServiceImpl implements ContractService {
                 log.info("Using address from BuildingDocument: {}", addr1);
             }
         }
-        
+
         // 여전히 비어있으면 기본값 설정
         if (addr1 == null || addr1.trim().isEmpty()) {
             addr1 = "주소 정보 없음";
             log.warn("No address information found for contract {}, using default", document.getContractChatId());
         }
-        
+
         dto.setAddr1(addr1);
         dto.setAddr2(addr2 != null ? addr2 : "");
-        
+
         log.info("Final address set - addr1: '{}', addr2: '{}'", dto.getAddr1(), dto.getAddr2());
 
         // 건물 정보
@@ -2152,7 +2152,7 @@ public class ContractServiceImpl implements ContractService {
 
             // 실제 서명 이미지 설정 (이미 Base64로 변환되어 있음 - updateSignature에서 처리)
             log.info("Setting signatures from status data");
-            
+
             if (ownerSignatures != null && !ownerSignatures.isEmpty()) {
                 if (ownerSignatures.size() > 0 && ownerSignatures.get(0) != null && !ownerSignatures.get(0).isEmpty()) {
                     String ownerSign1 = ownerSignatures.get(0);
@@ -2216,12 +2216,12 @@ public class ContractServiceImpl implements ContractService {
             if (buyerSignatures != null && !buyerSignatures.isEmpty() && buyerSignatures.get(0) != null && !buyerSignatures.get(0).isEmpty()) {
                 String buyerSign1 = buyerSignatures.get(0);
                 log.info("Processing buyer signature - length: {}", buyerSign1.length());
-                
+
                 // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
                 if (buyerSign1.startsWith("data:image")) {
                     buyerSign1 = buyerSign1.substring(buyerSign1.indexOf(",") + 1);
                 }
-                
+
                 // Base64 문자열을 byte array로 변환
                 try {
                     byte[] signatureBytes = Base64.getDecoder().decode(buyerSign1);
