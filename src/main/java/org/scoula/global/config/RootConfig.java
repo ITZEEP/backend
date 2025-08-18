@@ -1,5 +1,9 @@
 package org.scoula.global.config;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.scoula.global.auth.config.SecurityConfig;
 import org.scoula.global.email.config.MailConfig;
 import org.scoula.global.file.config.S3Config;
@@ -12,9 +16,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 
 /** 루트 설정 클래스 - 전체 애플리케이션의 공통 설정을 관리합니다 */
 @Configuration
@@ -64,7 +73,24 @@ public class RootConfig {
           ObjectMapper objectMapper = new ObjectMapper();
           objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
           objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-          objectMapper.registerModule(new JavaTimeModule());
+          objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+          // JavaTimeModule with custom date formats
+          JavaTimeModule javaTimeModule = new JavaTimeModule();
+
+          // LocalDate formatter (yyyy-MM-dd)
+          DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+          javaTimeModule.addSerializer(LocalDate.class, new LocalDateSerializer(dateFormatter));
+          javaTimeModule.addDeserializer(LocalDate.class, new LocalDateDeserializer(dateFormatter));
+
+          // LocalDateTime formatter (yyyy-MM-dd HH:mm:ss)
+          DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+          javaTimeModule.addSerializer(
+                  LocalDateTime.class, new LocalDateTimeSerializer(dateTimeFormatter));
+          javaTimeModule.addDeserializer(
+                  LocalDateTime.class, new LocalDateTimeDeserializer(dateTimeFormatter));
+
+          objectMapper.registerModule(javaTimeModule);
           return objectMapper;
       }
 }
