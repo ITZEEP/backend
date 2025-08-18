@@ -180,9 +180,9 @@ public class ContractServiceImpl implements ContractService {
       // 스텝 변경
       contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP0);
 
-        // 2초 대기
+        // 짧은 대기 (200ms)
         try {
-            Thread.sleep(2000);
+            Thread.sleep(200);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -231,14 +231,14 @@ public class ContractServiceImpl implements ContractService {
 
                 // 2초 대기
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(200); // 200ms로 단축
 
                   // 다음 단계 메세지 보내기
                   contractChatService.AiMessage(contractChatId, step3StartMessage);
 
                   // 스텝 변경
                   contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.STEP2);
-                    Thread.sleep(2000);
+                    Thread.sleep(200); // 200ms로 단축
 
                   // 특약 초안 메시지
                   contractChatService.AiMessageBtn(contractChatId, "특약 초안이 생성되었습니다. 각 조항을 검토하고 수락 / 거절을 선택하세요.");
@@ -680,11 +680,11 @@ public class ContractServiceImpl implements ContractService {
             log.info("DTO 필드 확인 - leaseType: {}, ownerNickname: {}, buyerNickname: {}, addr1: {}",
                     dto.getLeaseType(), dto.getOwnerNickname(), dto.getBuyerNickname(), dto.getAddr1());
 
-            // 서명 이미지를 빈 문자열로 초기화 (서명 없는 미리보기용)
-            dto.setOwnerSign1Base64("");
-            dto.setOwnerSign2Base64("");
-            dto.setOwnerSign3Base64("");
-            dto.setBuyerSignBase64("");
+            // 서명 이미지를 빈 byte array로 초기화 (서명 없는 미리보기용)
+            dto.setOwnerSign1Base64(new byte[0]);
+            dto.setOwnerSign2Base64(new byte[0]);
+            dto.setOwnerSign3Base64(new byte[0]);
+            dto.setBuyerSignBase64(new byte[0]);
 
             // JSON으로 전송
             HttpHeaders headers = new HttpHeaders();
@@ -949,9 +949,8 @@ public class ContractServiceImpl implements ContractService {
 
         dto.setSupplyArea(String.valueOf(document.getExclusiveArea()));
 
-        // 체크박스
-        dto.setHasTaxArrears(false); // 초기값
-        dto.setHasPriorFixedDate(false); // 초기값
+        // 체크박스 - 초기에는 설정하지 않음 (null로 유지)
+        // dto.setHasTaxArrears와 dto.setHasPriorFixedDate는 호출하지 않음
 
         // 금액 정보
         dto.setTextDepositPrice(convertToKoreanWon(document.getDepositPrice()));
@@ -2155,41 +2154,86 @@ public class ContractServiceImpl implements ContractService {
             log.info("Setting signatures from status data");
             
             if (ownerSignatures != null && !ownerSignatures.isEmpty()) {
-                if (ownerSignatures.size() > 0 && ownerSignatures.get(0) != null) {
+                if (ownerSignatures.size() > 0 && ownerSignatures.get(0) != null && !ownerSignatures.get(0).isEmpty()) {
                     String ownerSign1 = ownerSignatures.get(0);
-                    // 이미 순수 Base64 문자열이므로 그대로 설정
-                    dto.setOwnerSign1Base64(ownerSign1);
-                    log.info("Owner signature 1 set - length: {}", ownerSign1.length());
+                    // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                    if (ownerSign1.startsWith("data:image")) {
+                        ownerSign1 = ownerSign1.substring(ownerSign1.indexOf(",") + 1);
+                    }
+                    // Base64 문자열을 byte array로 변환
+                    try {
+                        byte[] signatureBytes = Base64.getDecoder().decode(ownerSign1);
+                        dto.setOwnerSign1Base64(signatureBytes);
+                        log.info("Owner signature 1 set - byte array size: {}", signatureBytes.length);
+                    } catch (IllegalArgumentException e) {
+                        log.error("Failed to decode owner signature 1 from Base64: {}", e.getMessage());
+                        dto.setOwnerSign1Base64(new byte[0]);
+                    }
+                } else {
+                    dto.setOwnerSign1Base64(new byte[0]);
+                    log.warn("Owner signature 1 is null or empty");
                 }
-                if (ownerSignatures.size() > 1 && ownerSignatures.get(1) != null) {
+                if (ownerSignatures.size() > 1 && ownerSignatures.get(1) != null && !ownerSignatures.get(1).isEmpty()) {
                     String ownerSign2 = ownerSignatures.get(1);
-                    dto.setOwnerSign2Base64(ownerSign2);
-                    log.info("Owner signature 2 set - length: {}", ownerSign2.length());
+                    // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                    if (ownerSign2.startsWith("data:image")) {
+                        ownerSign2 = ownerSign2.substring(ownerSign2.indexOf(",") + 1);
+                    }
+                    try {
+                        byte[] signatureBytes = Base64.getDecoder().decode(ownerSign2);
+                        dto.setOwnerSign2Base64(signatureBytes);
+                        log.info("Owner signature 2 set - byte array size: {}", signatureBytes.length);
+                    } catch (IllegalArgumentException e) {
+                        log.error("Failed to decode owner signature 2 from Base64: {}", e.getMessage());
+                        dto.setOwnerSign2Base64(new byte[0]);
+                    }
+                } else {
+                    dto.setOwnerSign2Base64(new byte[0]);
                 }
-                if (ownerSignatures.size() > 2 && ownerSignatures.get(2) != null) {
+                if (ownerSignatures.size() > 2 && ownerSignatures.get(2) != null && !ownerSignatures.get(2).isEmpty()) {
                     String ownerSign3 = ownerSignatures.get(2);
-                    dto.setOwnerSign3Base64(ownerSign3);
-                    log.info("Owner signature 3 set - length: {}", ownerSign3.length());
+                    // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                    if (ownerSign3.startsWith("data:image")) {
+                        ownerSign3 = ownerSign3.substring(ownerSign3.indexOf(",") + 1);
+                    }
+                    try {
+                        byte[] signatureBytes = Base64.getDecoder().decode(ownerSign3);
+                        dto.setOwnerSign3Base64(signatureBytes);
+                        log.info("Owner signature 3 set - byte array size: {}", signatureBytes.length);
+                    } catch (IllegalArgumentException e) {
+                        log.error("Failed to decode owner signature 3 from Base64: {}", e.getMessage());
+                        dto.setOwnerSign3Base64(new byte[0]);
+                    }
+                } else {
+                    dto.setOwnerSign3Base64(new byte[0]);
                 }
             } else {
-                dto.setOwnerSign1Base64("");
-                dto.setOwnerSign2Base64("");
-                dto.setOwnerSign3Base64("");
+                dto.setOwnerSign1Base64(new byte[0]);
+                dto.setOwnerSign2Base64(new byte[0]);
+                dto.setOwnerSign3Base64(new byte[0]);
             }
 
-            if (buyerSignatures != null && !buyerSignatures.isEmpty() && buyerSignatures.get(0) != null) {
+            if (buyerSignatures != null && !buyerSignatures.isEmpty() && buyerSignatures.get(0) != null && !buyerSignatures.get(0).isEmpty()) {
                 String buyerSign1 = buyerSignatures.get(0);
                 log.info("Processing buyer signature - length: {}", buyerSign1.length());
                 
-                // 이미 순수 Base64 문자열이므로 그대로 설정
-                dto.setBuyerSignBase64(buyerSign1);
-                log.info("Buyer signature set - length: {}", buyerSign1.length());
-                if (buyerSign1.length() > 50) {
-                    log.info("Buyer signature preview: {}", buyerSign1.substring(0, 50) + "...");
+                // data:image/png;base64, prefix 제거 (Redis에서 가져온 데이터에 포함되어 있음)
+                if (buyerSign1.startsWith("data:image")) {
+                    buyerSign1 = buyerSign1.substring(buyerSign1.indexOf(",") + 1);
+                }
+                
+                // Base64 문자열을 byte array로 변환
+                try {
+                    byte[] signatureBytes = Base64.getDecoder().decode(buyerSign1);
+                    dto.setBuyerSignBase64(signatureBytes);
+                    log.info("Buyer signature set - byte array size: {}", signatureBytes.length);
+                } catch (IllegalArgumentException e) {
+                    log.error("Failed to decode buyer signature from Base64: {}", e.getMessage());
+                    dto.setBuyerSignBase64(new byte[0]);
                 }
             } else {
-                log.warn("No buyer signature provided - setting empty string");
-                dto.setBuyerSignBase64("");
+                log.warn("No buyer signature provided - setting empty byte array");
+                dto.setBuyerSignBase64(new byte[0]);
             }
 
             log.info("Signatures set - Owner: {}, Buyer: {}",
@@ -2198,18 +2242,15 @@ public class ContractServiceImpl implements ContractService {
 
             // 서명 데이터가 실제로 있는지 확인
             log.info("Final DTO check before sending to AI server:");
-            log.info("  - Owner Sign1 empty: {}, length: {}",
-                    dto.getOwnerSign1Base64().isEmpty(),
-                    dto.getOwnerSign1Base64().length());
-            log.info("  - Buyer Sign1 empty: {}, length: {}",
-                    dto.getBuyerSignBase64().isEmpty(),
-                    dto.getBuyerSignBase64().length());
+            log.info("  - Owner Sign1 byte array size: {}",
+                    dto.getOwnerSign1Base64() != null ? dto.getOwnerSign1Base64().length : 0);
+            log.info("  - Buyer Sign byte array size: {}",
+                    dto.getBuyerSignBase64() != null ? dto.getBuyerSignBase64().length : 0);
 
             // 임차인 서명이 정말 설정되었는지 최종 확인
-            if (dto.getBuyerSignBase64() != null && !dto.getBuyerSignBase64().isEmpty()) {
+            if (dto.getBuyerSignBase64() != null && dto.getBuyerSignBase64().length > 0) {
                 log.info("✓ Buyer signature is SET and will be sent to AI server");
-                log.info("  Buyer signature data starts with: {}",
-                        dto.getBuyerSignBase64().substring(0, Math.min(30, dto.getBuyerSignBase64().length())));
+                log.info("  Buyer signature byte array size: {}", dto.getBuyerSignBase64().length);
             } else {
                 log.error("✗ Buyer signature is NULL or EMPTY - AI server will NOT receive buyer signature!");
             }

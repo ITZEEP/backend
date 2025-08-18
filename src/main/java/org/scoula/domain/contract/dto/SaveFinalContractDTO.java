@@ -73,11 +73,11 @@ public class SaveFinalContractDTO {
       // 특약사항
       private List<String> special; // 특약사항 리스트
 
-      // 서명 이미지 (base64 인코딩)
-      private String ownerSign1Base64;
-      private String ownerSign2Base64;
-      private String ownerSign3Base64;
-      private String buyerSignBase64;
+      // 서명 이미지 (byte array로 변경)
+      private byte[] ownerSign1Base64;
+      private byte[] ownerSign2Base64;
+      private byte[] ownerSign3Base64;
+      private byte[] buyerSignBase64;
 
       public static SaveFinalContractDTO toDTO(
               DBFinalContractDTO dto,
@@ -103,8 +103,7 @@ public class SaveFinalContractDTO {
                   .totalFloorArea("100") // 기본값 설정
                   .addr2(document.getHomeAddr2())
                   .supplyArea(String.valueOf(document.getExclusiveArea()))
-                  .hasTaxArrears(dto.isHasTaxArrears())
-                  .hasPriorFixedDate(dto.isHasPriorFixedDate())
+                  // hasTaxArrears와 hasPriorFixedDate는 설정하지 않음 (null로 유지)
                   .textDepositPrice(textDepositPrice)
                   .depositPrice(String.valueOf(document.getDepositPrice()))
                   .monthlyRent(String.valueOf(document.getMonthlyRent()))
