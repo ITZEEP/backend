@@ -9,7 +9,7 @@
             CONCAT(h.addr1, ' ', h.addr2) AS address,
             h.residence_type AS buildingType,
             cc.contract_start_at AS contractDate,
-            fc.contract_pdf_url AS fileUrl,
+            fc.contract_pdf_key AS fileUrl,
             CASE 
                 WHEN fc.contract_id IS NOT NULL THEN 'COMPLETED'
                 ELSE cc.status

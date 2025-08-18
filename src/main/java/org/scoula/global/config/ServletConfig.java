@@ -1,5 +1,8 @@
 package org.scoula.global.config;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
@@ -18,9 +21,6 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -98,33 +98,36 @@ public class ServletConfig implements WebMvcConfigurer {
       @Override
       public void addFormatters(FormatterRegistry registry) {
           // Add LocalDate converter
-          registry.addConverter(new Converter<String, LocalDate>() {
-              @Override
-              public LocalDate convert(String source) {
-                  if (source == null || source.isEmpty()) {
-                      return null;
-                  }
-                  return LocalDate.parse(source, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-              }
-          });
-          
+          registry.addConverter(
+                  new Converter<String, LocalDate>() {
+                      @Override
+                      public LocalDate convert(String source) {
+                          if (source == null || source.isEmpty()) {
+                              return null;
+                          }
+                          return LocalDate.parse(source, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                      }
+                  });
+
           // Add LocalDateTime converter
-          registry.addConverter(new Converter<String, LocalDateTime>() {
-              @Override
-              public LocalDateTime convert(String source) {
-                  if (source == null || source.isEmpty()) {
-                      return null;
-                  }
-                  // Try different formats
-                  try {
-                      return LocalDateTime.parse(source, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                  } catch (Exception e) {
-                      // If that fails, try ISO format
-                      return LocalDateTime.parse(source + "T00:00:00");
-                  }
-              }
-          });
-          
+          registry.addConverter(
+                  new Converter<String, LocalDateTime>() {
+                      @Override
+                      public LocalDateTime convert(String source) {
+                          if (source == null || source.isEmpty()) {
+                              return null;
+                          }
+                          // Try different formats
+                          try {
+                              return LocalDateTime.parse(
+                                      source, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                          } catch (Exception e) {
+                              // If that fails, try ISO format
+                              return LocalDateTime.parse(source + "T00:00:00");
+                          }
+                      }
+                  });
+
           // Add default date formatters
           DateTimeFormatterRegistrar registrar = new DateTimeFormatterRegistrar();
           registrar.setDateFormatter(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -144,6 +147,7 @@ public class ServletConfig implements WebMvcConfigurer {
                           "http://www.itzeep.ariogi.kr")
                   .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                   .allowedHeaders("*")
+                  .exposedHeaders("Authorization", "Content-Type", "Content-Disposition")
                   .allowCredentials(true)
                   .maxAge(3600);
       }

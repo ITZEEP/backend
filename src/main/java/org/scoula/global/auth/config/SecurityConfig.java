@@ -65,11 +65,14 @@ public class SecurityConfig {
                           "http://localhost:5173",
                           "http://localhost:8080",
                           "https://itzeep.ariogi.kr",
+                          "https://www.itzeep.ariogi.kr",
+                          "http://itzeep.ariogi.kr",
+                          "http://www.itzeep.ariogi.kr",
                           "https://api.itzeep.ariogi.kr"));
           configuration.setAllowedMethods(
                   Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
           configuration.setAllowedHeaders(Arrays.asList("*"));
-          configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+          configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type", "Content-Disposition"));
           configuration.setAllowCredentials(true);
           configuration.setMaxAge(3600L);
 
