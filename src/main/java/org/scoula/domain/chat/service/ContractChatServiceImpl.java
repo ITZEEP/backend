@@ -2514,16 +2514,13 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
                       for (int i = 0; i < violations.size(); i++) {
                           LegalityDTO.Violation violation = violations.get(i);
-                          String sanitizedViolation = violation == null ? "null" : violation.toString().replaceAll("[\\r\\n]", " ");
+                          String sanitizedViolation =
+                                  violation == null
+                                          ? "null"
+                                          : violation.toString().replaceAll("[\\r\\n]", " ");
                           log.info("위반 사항 {}: {}", i + 1, sanitizedViolation);
                           StringBuilder violationMessage = new StringBuilder();
-                          violationMessage.append(
-                                  // 위반 유형
-                                  String.format(
-                                          "%s\n",
-                                          violation.getViolationType() != null
-                                                  ? violation.getViolationType()
-                                                  : "정보 없음"));
+
                           violationMessage.append(
                                   // 관련 법령
                                   String.format(
@@ -2566,7 +2563,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                                       String.format(
                                               "✅ 개선 방안\n %s\n", violation.getImprovementExample()));
                           }
-                          String sanitizedMessage = violationMessage.toString().replaceAll("[\\r\\n]", " ");
+                          String sanitizedMessage =
+                                  violationMessage.toString().replaceAll("[\\r\\n]", " ");
                           log.info("전송할 메시지: {}", sanitizedMessage);
                           AiMessageLegal(contractChatId, violationMessage.toString());
 
@@ -2862,47 +2860,48 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           stringRedisTemplate.opsForValue().set(key, value);
       }
 
-    @Override
-    public Map<String, Object> acceptFinalContract(Long contractChatId, Long buyerId, Boolean isAccepted) {
-        if (!isUserInContractChat(contractChatId, buyerId)) {
-            throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-        }
+      @Override
+      public Map<String, Object> acceptFinalContract(
+              Long contractChatId, Long buyerId, Boolean isAccepted) {
+          if (!isUserInContractChat(contractChatId, buyerId)) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
 
-        ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-        if (contractChat == null) {
-            throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
-        }
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
 
-        Long ownerId = contractChat.getOwnerId();
+          Long ownerId = contractChat.getOwnerId();
 
-        if (!buyerId.equals(contractChat.getBuyerId())) {
-            throw new BusinessException(
-                    ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 확정 수락을 할 수 있습니다.");
-        }
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 확정 수락을 할 수 있습니다.");
+          }
 
-        String redisKey = "final-contract:request:" + contractChatId;
-        String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+          String redisKey = "final-contract:request:" + contractChatId;
+          String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
 
-        if (storedOwnerId == null) {
-            throw new BusinessException(
-                    ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "확정 요청이 존재하지 않습니다.");
-        }
+          if (storedOwnerId == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "확정 요청이 존재하지 않습니다.");
+          }
 
-        if (!storedOwnerId.equals(ownerId.toString())) {
-            throw new BusinessException(
-                    ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
-        }
+          if (!storedOwnerId.equals(ownerId.toString())) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
+          }
 
-        stringRedisTemplate.delete(redisKey);
+          stringRedisTemplate.delete(redisKey);
 
-        if (isAccepted) {
-            contractMongoRepository.clearSpecialContracts(contractChatId);
-            contractMongoRepository.saveSpecialContract(contractChatId);
-            AiMessage(contractChatId, "임차인이 최종 계약서를 수락했습니다! 계약서 서명하러 갈께요!");
-        } else {
-            AiMessage(contractChatId, "임차인이 최종 계약서를 거절했습니다. 추가 협상이 필요합니다.");
-        }
+          if (isAccepted) {
+              contractMongoRepository.clearSpecialContracts(contractChatId);
+              contractMongoRepository.saveSpecialContract(contractChatId);
+              AiMessage(contractChatId, "임차인이 최종 계약서를 수락했습니다! 계약서 서명하러 갈께요!");
+          } else {
+              AiMessage(contractChatId, "임차인이 최종 계약서를 거절했습니다. 추가 협상이 필요합니다.");
+          }
 
-        return Map.of("accepted", isAccepted);
-    }
+          return Map.of("accepted", isAccepted);
+      }
 }
