@@ -16,7 +16,7 @@
             <AppenderRef ref="console"/>
         </Logger>
 
-        <Logger name="org.scoula" level="WARN" additivity="false" >
+        <Logger name="org.scoula" level="DEBUG" additivity="false" >
             <AppenderRef ref="console"/>
         </Logger>
         
