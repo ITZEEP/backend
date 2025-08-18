@@ -75,25 +75,6 @@ public interface ContractService {
        */
       Void updateDepositPrice(Long contractChatId, Long userId);
 
-      //      /**
-      //       * @param contractChatId 채팅방 아이디
-      //       * @param userId 유저 아이디
-      //       * @return 계약서 내용을 보내기
-      //       */
-      //      ContractDTO getContracts(Long contractChatId, Long userId);
-
-      /** * step4 start 특약을 개약 테이블에 저장하기 * * @param contractChatId 채팅방 아이디 * @param userId 유저 아이디 */
-      Void saveSpecialContract(Long contractChatId, Long userId);
-
-      /**
-       * step4 (init) 계약서를 AI로 보내고, 적법성 받기
-       *
-       * @param contractChatId 채팅방 아이디
-       * @param userId 유저 아이디
-       * @return AI가 계약서를 보고 주는 적법성을 리턴값으로 보내기
-       */
-      LegalityDTO getLegality(Long contractChatId, Long userId);
-
       /**
        * step4 적법성 검사 후 수정된 특약으로 변경
        *
