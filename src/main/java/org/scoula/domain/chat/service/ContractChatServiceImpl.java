@@ -494,9 +494,6 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       @Override
       @Transactional
       public void enterContractChatRoom(Long contractChatId, Long userId) {
-          log.info("=== enterContractChatRoom 시작 ===");
-          log.info("contractChatId: {}, userId: {}", contractChatId, userId);
-
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
