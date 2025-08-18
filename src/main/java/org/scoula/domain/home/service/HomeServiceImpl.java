@@ -282,6 +282,7 @@ public class HomeServiceImpl implements HomeService {
                                       .viewCnt(home.getViewCnt())
                                       .likeCnt(home.getLikeCnt())
                                       .roomCnt(home.getRoomCnt())
+                                      .chatCnt(home.getChatCnt())
                                       .supplyArea(home.getSupplyArea())
                                       .imageUrls(
                                               mainImageUrl != null
@@ -317,6 +318,7 @@ public class HomeServiceImpl implements HomeService {
                                       .homeStatus(home.getHomeStatus())
                                       .viewCnt(home.getViewCnt())
                                       .likeCnt(home.getLikeCnt())
+                                      .chatCnt(home.getChatCnt())
                                       .roomCnt(home.getRoomCnt())
                                       .supplyArea(home.getSupplyArea())
                                       .exclusiveArea(home.getExclusiveArea())
