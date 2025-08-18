@@ -2090,6 +2090,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                   return "?step=3&round=3";
               case ROUND4:
                   return "?step=3&round=4";
+              case COMPLETE:
+                  return "?step=3&round=4";
               default:
                   return null;
           }
@@ -2806,8 +2808,11 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           }
           Long contractChatRoomId = contractChatId.getContractChatId();
           String param = getContractChatStatus(contractChatId.getStatus());
-
-          return baseUrl + contractChatUrl + contractChatRoomId.toString() + param;
+          if (contractChatId.getStatus() == ContractChat.ContractStatus.COMPLETE) {
+              return baseUrl + contractChatUrl + "complete/" + (contractChatRoomId.toString());
+          } else {
+              return baseUrl + contractChatUrl + contractChatRoomId.toString() + param;
+          }
       }
 
       private void broadcastPresence(Long contractChatId) {
@@ -2897,6 +2902,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           if (isAccepted) {
               contractMongoRepository.clearSpecialContracts(contractChatId);
               contractMongoRepository.saveSpecialContract(contractChatId);
+              contractChatMapper.updateStatus(contractChatId, ContractChat.ContractStatus.COMPLETE);
               AiMessage(contractChatId, "임차인이 최종 계약서를 수락했습니다! 계약서 서명하러 갈께요!");
           } else {
               AiMessage(contractChatId, "임차인이 최종 계약서를 거절했습니다. 추가 협상이 필요합니다.");

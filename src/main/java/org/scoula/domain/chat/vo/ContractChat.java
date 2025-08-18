@@ -30,7 +30,8 @@ public class ContractChat {
           ROUND2,
           ROUND3,
           ROUND4,
-          STEP4
+          STEP4,
+          COMPLETE
       }
 
       // 현재 라운드 번호 계산 메서드
