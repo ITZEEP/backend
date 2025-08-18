@@ -2491,28 +2491,18 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           try {
               log.info("적법성 검사 API 호출 시작 - contractChatId: {}", contractChatId);
               Object legalityResponse = contractFixService.getLegality(contractChatId, buyerId);
-              log.info("적법성 검사 응답: {}", legalityResponse);
-
+              String sanitizedLegalityResponse;
+              try {
+                  ObjectMapper objectMapper = new ObjectMapper();
+                  sanitizedLegalityResponse = objectMapper.writeValueAsString(legalityResponse);
+              } catch (Exception ex) {
+                  sanitizedLegalityResponse = String.valueOf(legalityResponse);
+              }
+              sanitizedLegalityResponse = sanitizedLegalityResponse.replaceAll("[\\r\\n]", " ");
+              log.info("적법성 검사 응답: {}", sanitizedLegalityResponse);
               if (legalityResponse instanceof LegalityDTO) {
                   LegalityDTO legalityDTO = (LegalityDTO) legalityResponse;
                   log.info("LegalityDTO로 응답 파싱 성공");
-
-                  // 디버깅용 로그 추가 (중첩 구조로 수정)
-                  log.info("=== LegalityDTO 필드 확인 ===");
-                  log.info("success: {}", legalityDTO.getSuccess());
-                  log.info("message: {}", legalityDTO.getMessage());
-                  log.info("error: {}", legalityDTO.getError());
-                  log.info("timestamp: {}", legalityDTO.getTimestamp());
-                  log.info("data: {}", legalityDTO.getData());
-
-                  if (legalityDTO.getData() != null) {
-                      log.info("=== Payload 확인 ===");
-                      log.info("contractChatId: {}", legalityDTO.getData().getContractChatId());
-                      log.info("validationStatus: {}", legalityDTO.getData().getValidationStatus());
-                      log.info("totalViolations: {}", legalityDTO.getData().getTotalViolations());
-                      log.info("violations: {}", legalityDTO.getData().getViolations());
-                      log.info("validatedAt: {}", legalityDTO.getData().getValidatedAt());
-                  }
 
                   // violations 처리 (중첩 구조로 접근)
                   if (legalityDTO.getData() != null
@@ -2524,8 +2514,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
                       for (int i = 0; i < violations.size(); i++) {
                           LegalityDTO.Violation violation = violations.get(i);
-                          log.info("위반 사항 {}: {}", i + 1, violation);
-
+                          String sanitizedViolation = violation == null ? "null" : violation.toString().replaceAll("[\\r\\n]", " ");
+                          log.info("위반 사항 {}: {}", i + 1, sanitizedViolation);
                           StringBuilder violationMessage = new StringBuilder();
                           violationMessage.append(
                                   // 위반 유형
@@ -2576,8 +2566,8 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
                                       String.format(
                                               "✅ 개선 방안\n %s\n", violation.getImprovementExample()));
                           }
-
-                          log.info("전송할 메시지: {}", violationMessage.toString());
+                          String sanitizedMessage = violationMessage.toString().replaceAll("[\\r\\n]", " ");
+                          log.info("전송할 메시지: {}", sanitizedMessage);
                           AiMessageLegal(contractChatId, violationMessage.toString());
 
                           try {
