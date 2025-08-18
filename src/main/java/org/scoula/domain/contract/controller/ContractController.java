@@ -1,9 +1,13 @@
 package org.scoula.domain.contract.controller;
 
+import java.util.Map;
+
+import org.scoula.domain.chat.dto.FinalContractDeletionResponseDto;
 import org.scoula.domain.contract.dto.*;
 import org.scoula.global.auth.dto.CustomUserDetails;
 import org.scoula.global.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -114,4 +118,14 @@ public interface ContractController {
               @PathVariable Long contractChatId,
               @AuthenticationPrincipal CustomUserDetails userDetails,
               @RequestBody SpecialContractUpdateDTO dto);
+
+      @ApiOperation(value = "최종 계약서 확정 요청 (임대인)", notes = "임대인이 최종 특약서에 대한 확정을 요청합니다.")
+      ResponseEntity<ApiResponse<String>> requestFinalContract(
+              @PathVariable Long contractChatId, Authentication authentication);
+
+      @ApiOperation(value = "최종 계약서 확정 수락 (임차인)", notes = "임차인이 임대인의 최종 특약서 확정 요청을 수락합니다.")
+      ResponseEntity<ApiResponse<Map<String, Object>>> acceptFinalContract(
+              @PathVariable Long contractChatId,
+              @RequestBody FinalContractDeletionResponseDto responseDto,
+              Authentication authentication);
 }

@@ -17,12 +17,16 @@ import org.scoula.domain.chat.repository.ContractChatMessageRepository;
 import org.scoula.domain.chat.repository.SpecialContractMongoRepository;
 import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
+import org.scoula.domain.contract.dto.LegalityDTO;
+import org.scoula.domain.contract.repository.ContractMongoRepository;
+import org.scoula.domain.contract.service.ContractFixServiceInterface;
 import org.scoula.domain.precontract.service.PreContractDataService;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
+@Log4j2
 public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       private final ContractChatMapper contractChatMapper;
@@ -42,9 +46,10 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       private final ContractChatMessageRepository contractChatMessageRepository;
       private final SimpMessagingTemplate messagingTemplate;
       private final ChatServiceInterface chatService;
+      private final ContractMongoRepository contractMongoRepository;
       private final AiClauseImproveService aiClauseImproveService;
       private final PreContractDataService preContractDataService;
-
+      private final ContractFixServiceInterface contractFixService;
       private final Map<String, Set<Long>> contractChatOnlineUsers = new ConcurrentHashMap<>();
       private final RedisTemplate<String, String> stringRedisTemplate;
       private final ObjectMapper objectMapper = new ObjectMapper();
@@ -98,6 +103,26 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           if (!isUserInContractChat(dto.getContractChatId(), dto.getSenderId())) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+          enterContractChatRoom(dto.getContractChatId(), dto.getSenderId());
+
+          boolean canSend = canSendContractMessage(dto.getContractChatId());
+          if (!canSend) {
+              log.warn(
+                      "메시지 전송 차단 - contractChatId: {}, senderId: {}",
+                      dto.getContractChatId(),
+                      dto.getSenderId());
+
+              // 에러 메시지를 발송자에게만 전송 (저장하지 않음)
+              Map<String, Object> errorInfo =
+                      Map.of(
+                              "error", "OFFLINE_USER",
+                              "message", "상대방이 오프라인 상태입니다. 상대방이 접속한 후 메시지를 보내주세요.");
+
+              messagingTemplate.convertAndSendToUser(
+                      dto.getSenderId().toString(), "/queue/contract/error", errorInfo);
+
+              return;
           }
 
           ContractChatDocument messageDocument =
@@ -160,6 +185,23 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       public void AiMessageBtn(Long contractChatId, String content) {
           final Long ai = 9998L;
+
+          ContractChatDocument aiMessage =
+                  ContractChatDocument.builder()
+                          .contractChatId(contractChatId.toString())
+                          .senderId(ai)
+                          .receiverId(null)
+                          .content(content)
+                          .sendTime(LocalDateTime.now().toString())
+                          .build();
+
+          contractChatMessageRepository.saveMessage(aiMessage);
+          contractChatMapper.updateLastMessage(contractChatId, content);
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, aiMessage);
+      }
+
+      public void AiMessageLegal(Long contractChatId, String content) {
+          final Long ai = 9996L;
 
           ContractChatDocument aiMessage =
                   ContractChatDocument.builder()
@@ -452,23 +494,46 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       @Override
       @Transactional
       public void enterContractChatRoom(Long contractChatId, Long userId) {
+          log.info("=== enterContractChatRoom 시작 ===");
+          log.info("contractChatId: {}, userId: {}", contractChatId, userId);
+
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
 
-          setContractChatUserOnline(userId, contractChatId);
+          // 방 멤버십 Set에 사용자 추가
+          stringRedisTemplate.opsForSet().add(roomKey(contractChatId), userId.toString());
+          // 사용자 현재 방 Key에 방 ID 저장 (역참조용)
+          stringRedisTemplate
+                  .opsForValue()
+                  .set(userCurrentRoomKey(userId), contractChatId.toString());
+
+          broadcastPresence(contractChatId);
+          log.info("=== enterContractChatRoom 완료 ===");
       }
 
       /** {@inheritDoc} */
       @Override
       @Transactional
       public void leaveContractChatRoom(Long contractChatId, Long userId) {
+          // Redis: 방에서 사용자 제거 및 역참조 정리
+          stringRedisTemplate.opsForSet().remove(roomKey(contractChatId), userId.toString());
+          stringRedisTemplate.delete(userCurrentRoomKey(userId));
           setContractChatUserOffline(userId, contractChatId);
+          broadcastPresence(contractChatId);
+
+          log.info("====== 사용자 채팅방 퇴장 ======");
       }
 
       /** {@inheritDoc} */
       @Override
       public Map<String, Object> getContractChatOnlineStatus(Long contractChatId, Long userId) {
+          log.info("=== getContractChatOnlineStatus(REDIS) 시작 ===");
+          log.info("contractChatId: {}, userId: {}", contractChatId, userId);
+
+          // 디버깅용 전체 온라인 사용자 출력
+          debugContractChatOnlineUsers(contractChatId);
+
           if (!isUserInContractChat(contractChatId, userId)) {
               throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
           }
@@ -485,13 +550,43 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
           boolean bothInRoom = ownerInContractRoom && buyerInContractRoom;
 
-          return Map.of(
-                  "ownerInContractRoom", ownerInContractRoom,
-                  "buyerInContractRoom", buyerInContractRoom,
-                  "bothInRoom", bothInRoom,
-                  "canChat", bothInRoom,
-                  "ownerId", contractChat.getOwnerId(),
-                  "buyerId", contractChat.getBuyerId());
+          log.info(
+                  "Owner({}) 온라인: {}, Buyer({}) 온라인: {}, 둘 다 온라인: {}",
+                  contractChat.getOwnerId(),
+                  ownerInContractRoom,
+                  contractChat.getBuyerId(),
+                  buyerInContractRoom,
+                  bothInRoom);
+
+          Map<String, Object> result =
+                  Map.of(
+                          "ownerInContractRoom", ownerInContractRoom,
+                          "buyerInContractRoom", buyerInContractRoom,
+                          "bothInRoom", bothInRoom,
+                          "canChat", bothInRoom,
+                          "ownerId", contractChat.getOwnerId(),
+                          "buyerId", contractChat.getBuyerId());
+
+          log.info("=== getContractChatOnlineStatus 완료: {} ===", result);
+          return result;
+      }
+
+      // 디버깅용 메서드 (REDIS 기반)
+      public void debugContractChatOnlineUsers(Long contractChatId) {
+          log.info("=== 현재 모든 온라인 사용자 상태(REDIS) ===");
+          try {
+              String rKey = roomKey(contractChatId);
+              Set<String> members = stringRedisTemplate.opsForSet().members(rKey);
+              log.info("Redis Key: {}, 온라인 사용자(문자열): {}", rKey, members);
+              if (members != null) {
+                  Set<Long> asLongs = members.stream().map(Long::valueOf).collect(Collectors.toSet());
+                  log.info("계약 채팅방 {} 온라인 사용자(Long): {}", contractChatId, asLongs);
+              } else {
+                  log.info("계약 채팅방 {} 온라인 사용자 없음", contractChatId);
+              }
+          } catch (Exception e) {
+              log.warn("온라인 사용자 상태 로드 중 오류: {}", e.getMessage());
+          }
       }
 
       /** {@inheritDoc} */
@@ -531,18 +626,25 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       /** {@inheritDoc} */
       private void setContractChatUserOnline(Long userId, Long contractChatId) {
-          String key = "contract-chat-" + contractChatId;
+          String key = getContractChatKey(contractChatId);
           contractChatOnlineUsers
                   .computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet())
                   .add(userId);
+          log.debug(
+                  "사용자 {}가 계약 채팅방 {} 온라인 상태로 설정. 현재 온라인 사용자: {}",
+                  userId,
+                  contractChatId,
+                  contractChatOnlineUsers.get(key));
       }
 
       /** {@inheritDoc} */
       private void setContractChatUserOffline(Long userId, Long contractChatId) {
-          String key = "contract-chat-" + contractChatId;
+          String key = getContractChatKey(contractChatId);
           Set<Long> users = contractChatOnlineUsers.get(key);
           if (users != null) {
               users.remove(userId);
+              log.debug(
+                      "사용자 {}가 계약 채팅방 {} 오프라인 상태로 설정. 현재 온라인 사용자: {}", userId, contractChatId, users);
               if (users.isEmpty()) {
                   contractChatOnlineUsers.remove(key);
               }
@@ -551,10 +653,28 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
 
       /** {@inheritDoc} */
       private boolean isUserInContractChatRoom(Long userId, Long contractChatId) {
-          String key = "contract-chat-" + contractChatId;
-          Set<Long> users = contractChatOnlineUsers.get(key);
-          boolean isOnline = users != null && users.contains(userId);
+          String rKey = roomKey(contractChatId);
+          Boolean member = stringRedisTemplate.opsForSet().isMember(rKey, userId.toString());
+          boolean isOnline = Boolean.TRUE.equals(member);
+          log.debug(
+                  "사용자 {} 계약 채팅방 {} 온라인 상태 확인(REDIS): {}, key={}",
+                  userId,
+                  contractChatId,
+                  isOnline,
+                  rKey);
           return isOnline;
+      }
+
+      private String getContractChatKey(Long contractChatId) {
+          return "contract-chat-" + contractChatId;
+      }
+
+      private String roomKey(Long contractChatId) {
+          return "contract:room:" + contractChatId + ":users";
+      }
+
+      private String userCurrentRoomKey(Long userId) {
+          return "contract:user:" + userId + ":current-room";
       }
 
       /** {@inheritDoc} */
@@ -2351,12 +2471,145 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String confirmationMessage = "🎉 임차인이 최종 특약서를 수락했습니다! 특약서가 확정되었습니다.";
 
           AiMessage(contractChatId, confirmationMessage);
-          AiMessageNext(
-                  contractChatId,
-                  "다음은 마지막 4단계: ‘적법성 검토' 단계입니다.\n"
-                          + "\n"
-                          + "해당 계약 내용을 기준으로 법률적 적합성을 분석할게요. 잠시만 기다려주세요.");
 
+          // [적법성 검사] 계약서 1 몽고DB에 특약 저장
+          contractFixService.saveSpecialContract(contractChatId, buyerId);
+          try {
+              Thread.sleep(2000);
+          } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+          }
+          AiMessageNext(contractChatId, "다음은 마지막 4단계: '적법성 검토' 단계입니다.");
+          try {
+              Thread.sleep(2000);
+          } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+          }
+          AiMessage(contractChatId, "AI가 지금까지 작성된 계약서의 적법성을 분석중이에요!\n 잠시만 기다려주세요!");
+
+          // api/contract/{contractChatId}/legality
+          try {
+              log.info("적법성 검사 API 호출 시작 - contractChatId: {}", contractChatId);
+              Object legalityResponse = contractFixService.getLegality(contractChatId, buyerId);
+              String sanitizedLegalityResponse;
+              try {
+                  ObjectMapper objectMapper = new ObjectMapper();
+                  sanitizedLegalityResponse = objectMapper.writeValueAsString(legalityResponse);
+              } catch (Exception ex) {
+                  sanitizedLegalityResponse = String.valueOf(legalityResponse);
+              }
+              sanitizedLegalityResponse = sanitizedLegalityResponse.replaceAll("[\\r\\n]", " ");
+              log.info("적법성 검사 응답: {}", sanitizedLegalityResponse);
+              if (legalityResponse instanceof LegalityDTO) {
+                  LegalityDTO legalityDTO = (LegalityDTO) legalityResponse;
+                  log.info("LegalityDTO로 응답 파싱 성공");
+
+                  // violations 처리 (중첩 구조로 접근)
+                  if (legalityDTO.getData() != null
+                          && legalityDTO.getData().getViolations() != null
+                          && !legalityDTO.getData().getViolations().isEmpty()) {
+                      List<LegalityDTO.Violation> violations = legalityDTO.getData().getViolations();
+                      log.info("위반 사항 발견됨: {}개", violations.size());
+                      AiMessage(contractChatId, "⚠️ 적법성 검사 결과, 일부 문제점이 발견되었습니다:");
+
+                      for (int i = 0; i < violations.size(); i++) {
+                          LegalityDTO.Violation violation = violations.get(i);
+                          String sanitizedViolation =
+                                  violation == null
+                                          ? "null"
+                                          : violation.toString().replaceAll("[\\r\\n]", " ");
+                          log.info("위반 사항 {}: {}", i + 1, sanitizedViolation);
+                          StringBuilder violationMessage = new StringBuilder();
+
+                          violationMessage.append(
+                                  // 관련 법령
+                                  String.format(
+                                          "%s\n" + "\n",
+                                          violation.getLawName() != null
+                                                  ? violation.getLawName()
+                                                  : "정보 없음"));
+
+                          violationMessage.append(
+                                  // 위반 내용
+                                  String.format(
+                                          (i + 1) + ". %s\n" + "\n",
+                                          violation.getViolationContent() != null
+                                                  ? violation.getViolationContent()
+                                                  : "정보 없음"));
+                          violationMessage.append(
+                                  // 설명
+                                  String.format(
+                                          "%s\n" + "\n",
+                                          violation.getExplanation() != null
+                                                  ? violation.getExplanation()
+                                                  : "정보 없음"));
+
+                          if (violation.getOriginalClause() != null
+                                  && !violation.getOriginalClause().trim().isEmpty()) {
+                              violationMessage.append(
+                                      String.format(
+                                              "📝 문제가 된 조항\n %s\n", violation.getOriginalClause()));
+                          }
+
+                          if (violation.getLegalBasis() != null
+                                  && !violation.getLegalBasis().trim().isEmpty()) {
+                              violationMessage.append(
+                                      String.format("📚 법적 근거\n %s\n", violation.getLegalBasis()));
+                          }
+
+                          if (violation.getImprovementExample() != null
+                                  && !violation.getImprovementExample().trim().isEmpty()) {
+                              violationMessage.append(
+                                      String.format(
+                                              "✅ 개선 방안\n %s\n", violation.getImprovementExample()));
+                          }
+                          String sanitizedMessage =
+                                  violationMessage.toString().replaceAll("[\\r\\n]", " ");
+                          log.info("전송할 메시지: {}", sanitizedMessage);
+                          AiMessageLegal(contractChatId, violationMessage.toString());
+
+                          try {
+                              Thread.sleep(2000);
+                          } catch (InterruptedException e) {
+                              Thread.currentThread().interrupt();
+                          }
+                      }
+
+                      AiMessage(contractChatId, "위 문제점들을 검토하시고 필요시 임대인께서 수정 요청을 해주세요.");
+                  } else {
+                      log.info("위반 사항 없음");
+                      AiMessage(contractChatId, "✅ 적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
+                      try {
+                          Thread.sleep(2000);
+                      } catch (InterruptedException e) {
+                          Thread.currentThread().interrupt();
+                      }
+                      AiMessage(contractChatId, "최종 계약서 서명하러 갈께요!");
+                  }
+              } else if (legalityResponse instanceof Map) {
+                  // 기존 Map 처리 로직
+                  Map<String, Object> responseMap = (Map<String, Object>) legalityResponse;
+                  Object violationsObj = responseMap.get("violations");
+
+                  if (violationsObj instanceof List) {
+                      List<Map<String, Object>> violations =
+                              (List<Map<String, Object>>) violationsObj;
+                      if (!violations.isEmpty()) {
+                          AiMessage(contractChatId, "⚠️ 적법성 검사 결과, 일부 문제점이 발견되었습니다:");
+                      } else {
+                          AiMessage(contractChatId, "✅ 적법성 검사 완료! 계약서에 법적 문제가 발견되지 않았습니다.");
+                      }
+                  }
+              } else {
+                  log.warn(
+                          "응답 타입을 인식할 수 없음: {}",
+                          legalityResponse != null ? legalityResponse.getClass() : "null");
+                  AiMessage(contractChatId, "❌ 적법성 검사 응답 형식을 인식할 수 없습니다.");
+              }
+          } catch (Exception e) {
+              log.error("적법성 검사 결과 처리 중 오류 발생", e);
+              AiMessage(contractChatId, "❌ 적법성 검사 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+          }
           return Map.of(
                   "message",
                   "최종 특약서가 확정되었습니다.",
@@ -2555,5 +2808,100 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           String param = getContractChatStatus(contractChatId.getStatus());
 
           return baseUrl + contractChatUrl + contractChatRoomId.toString() + param;
+      }
+
+      private void broadcastPresence(Long contractChatId) {
+          ContractChat c = contractChatMapper.findByContractChatId(contractChatId);
+          if (c == null) return;
+
+          boolean ownerIn = isUserInContractChatRoom(c.getOwnerId(), contractChatId);
+          boolean buyerIn = isUserInContractChatRoom(c.getBuyerId(), contractChatId);
+          boolean both = ownerIn && buyerIn;
+
+          Map<String, Object> payload =
+                  Map.of(
+                          "type", "PRESENCE",
+                          "ownerInContractRoom", ownerIn,
+                          "buyerInContractRoom", buyerIn,
+                          "bothInRoom", both,
+                          "canChat", both,
+                          "ownerId", c.getOwnerId(),
+                          "buyerId", c.getBuyerId());
+          messagingTemplate.convertAndSend("/topic/contract-chat/" + contractChatId, payload);
+      }
+
+      @Override
+      public void requestFinalContract(Long contractChatId, Long ownerId) {
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          if (!ownerId.equals(contractChat.getOwnerId())) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          Optional<FinalSpecialContractDocument> finalContractOpt =
+                  specialContractMongoRepository.findFinalContractByContractChatId(contractChatId);
+
+          if (finalContractOpt.isEmpty()) {
+              throw new IllegalArgumentException("최종 특약서가 생성되지 않았습니다.");
+          }
+
+          AiMessageBtn(contractChatId, "임대인이 최종 계약서 확인을 요청하였습니다");
+
+          String key = "final-contract:request:" + contractChatId;
+          String existingValue = stringRedisTemplate.opsForValue().get(key);
+          if (existingValue != null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_ALREADY_EXISTS, "이미 확정 요청이 진행 중입니다.");
+          }
+          String value = ownerId.toString();
+          stringRedisTemplate.opsForValue().set(key, value);
+      }
+
+      @Override
+      public Map<String, Object> acceptFinalContract(
+              Long contractChatId, Long buyerId, Boolean isAccepted) {
+          if (!isUserInContractChat(contractChatId, buyerId)) {
+              throw new BusinessException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+          }
+
+          ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
+          if (contractChat == null) {
+              throw new EntityNotFoundException("계약 채팅방을 찾을 수 없습니다: " + contractChatId);
+          }
+
+          Long ownerId = contractChat.getOwnerId();
+
+          if (!buyerId.equals(contractChat.getBuyerId())) {
+              throw new BusinessException(
+                      ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "임차인만 확정 수락을 할 수 있습니다.");
+          }
+
+          String redisKey = "final-contract:request:" + contractChatId;
+          String storedOwnerId = stringRedisTemplate.opsForValue().get(redisKey);
+
+          if (storedOwnerId == null) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_NOT_FOUND, "확정 요청이 존재하지 않습니다.");
+          }
+
+          if (!storedOwnerId.equals(ownerId.toString())) {
+              throw new BusinessException(
+                      ChatErrorCode.CONTRACT_END_REQUEST_INVALID, "확정 요청 정보가 유효하지 않습니다.");
+          }
+
+          stringRedisTemplate.delete(redisKey);
+
+          if (isAccepted) {
+              contractMongoRepository.clearSpecialContracts(contractChatId);
+              contractMongoRepository.saveSpecialContract(contractChatId);
+              AiMessage(contractChatId, "임차인이 최종 계약서를 수락했습니다! 계약서 서명하러 갈께요!");
+          } else {
+              AiMessage(contractChatId, "임차인이 최종 계약서를 거절했습니다. 추가 협상이 필요합니다.");
+          }
+
+          return Map.of("accepted", isAccepted);
       }
 }

@@ -24,7 +24,8 @@ public interface TenantPreContractMapper {
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 
       // identity_verification에서 identity_id 가져오기
-      Optional<Long> selectIdentityId(@Param("userId") Long userId);
+      Optional<Long> selectIdentityId(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userId);
 
       // risk_check에 맞는 risk_id가 있는지 확인하기
       Optional<Long> selectRiskId(
@@ -36,6 +37,9 @@ public interface TenantPreContractMapper {
 
       // RentType 조회 (전/월세)
       Optional<String> selectRentType(
+              @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
+
+      Optional<String> selectRentTypeAll(
               @Param("contractChatId") Long contractChatId, @Param("userId") Long userid);
 
       // tenant_preCheck_check에 기본 세팅 하기 (나머지는 다 Null)

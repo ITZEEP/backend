@@ -95,4 +95,20 @@ public class ServletConfig implements WebMvcConfigurer {
                       }
                   });
       }
+
+      //      @Override
+      //      public void addCorsMappings(CorsRegistry registry) {
+      //          registry.addMapping("/**")
+      //                  .allowedOrigins(
+      //                          "http://localhost:5173",
+      //                          "http://localhost:8080",
+      //                          "https://itzeep.ariogi.kr",
+      //                          "https://www.itzeep.ariogi.kr",
+      //                          "http://itzeep.ariogi.kr",
+      //                          "http://www.itzeep.ariogi.kr")
+      //                  .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+      //                  .allowedHeaders("*")
+      //                  .allowCredentials(true)
+      //                  .maxAge(3600);
+      //      }
 }

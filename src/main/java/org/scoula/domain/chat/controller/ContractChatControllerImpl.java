@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.scoula.domain.chat.document.ContractChatDocument;
@@ -30,11 +31,11 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 @RestController
 @RequestMapping("/api/chat/contract")
-@Slf4j
+@Log4j2
 public class ContractChatControllerImpl implements ContractChatController {
 
       private final ContractChatServiceInterface contractChatService;
@@ -302,11 +303,26 @@ public class ContractChatControllerImpl implements ContractChatController {
       @MessageMapping("/contract/chat/enter")
       public void enterContractChatRoom(@Payload Map<String, Long> payload, Principal principal) {
           try {
+              log.info("=== WebSocket 계약 채팅방 입장 시작 ===");
+              log.info("payload: {}", payload);
+              log.info("principal: {}", principal != null ? principal.getName() : "null");
+              log.info("Thread: {}", Thread.currentThread().getName());
+
               Long userId = payload.get("userId");
               Long contractChatId = payload.get("contractChatId");
+
+              log.info("추출된 userId: {}, contractChatId: {}", userId, contractChatId);
+
+              if (userId == null || contractChatId == null) {
+                  log.error("필수 파라미터 누락 - userId: {}, contractChatId: {}", userId, contractChatId);
+                  return;
+              }
+
               contractChatService.enterContractChatRoom(contractChatId, userId);
 
               notifyContractChatOnlineStatus(contractChatId, userId, true);
+
+              log.info("=== WebSocket 계약 채팅방 입장 완료 ===");
           } catch (Exception e) {
               log.error("계약 채팅방 입장 실패", e);
           }
@@ -418,7 +434,7 @@ public class ContractChatControllerImpl implements ContractChatController {
               if (contractChat == null) {
                   throw new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
               }
-              String role = userId == contractChat.getOwnerId() ? "임대인입니다" : "임차인입니다";
+              String role = Objects.equals(userId, contractChat.getOwnerId()) ? "임대인" : "임차인";
 
               Map<String, Object> contractInfo =
                       Map.of(
@@ -938,8 +954,24 @@ public class ContractChatControllerImpl implements ContractChatController {
           }
       }
 
-      @Override
-      @GetMapping("/{contractChatId}/status")
+      // 디버깅용 임시 엔드포인트
+      @PostMapping("/{contractChatId}/debug/enter")
+      public ResponseEntity<ApiResponse<String>> debugEnterContractChatRoom(
+              @PathVariable Long contractChatId, Authentication authentication) {
+          try {
+              Long userId = getUserIdFromAuthentication(authentication);
+              log.info("=== HTTP 디버그 계약 채팅방 입장 ===");
+              log.info("contractChatId: {}, userId: {}", contractChatId, userId);
+
+              contractChatService.enterContractChatRoom(contractChatId, userId);
+
+              return ResponseEntity.ok(ApiResponse.success("입장 완료"));
+          } catch (Exception e) {
+              log.error("디버그 입장 실패", e);
+              return ResponseEntity.badRequest().body(ApiResponse.error("입장 실패: " + e.getMessage()));
+          }
+      }
+
       public ResponseEntity<ApiResponse<String>> getContractStatus(
               @PathVariable Long contractChatId, Authentication authentication) {
           Long userId = getUserIdFromAuthentication(authentication);

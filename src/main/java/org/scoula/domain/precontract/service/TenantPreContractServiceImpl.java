@@ -3,9 +3,11 @@ package org.scoula.domain.precontract.service;
 import java.util.Optional;
 
 import org.scoula.domain.chat.dto.ChatMessageRequestDto;
+import org.scoula.domain.chat.mapper.ChatRoomMapper;
 import org.scoula.domain.chat.mapper.ContractChatMapper;
 import org.scoula.domain.chat.service.ChatServiceInterface;
 import org.scoula.domain.chat.service.ContractChatServiceInterface;
+import org.scoula.domain.chat.vo.ChatRoom;
 import org.scoula.domain.chat.vo.ContractChat;
 import org.scoula.domain.precontract.dto.tenant.*;
 import org.scoula.domain.precontract.enums.RentType;
@@ -34,6 +36,7 @@ public class TenantPreContractServiceImpl implements TenantPreContractService {
       private final ChatServiceInterface chatService;
       private final ContractChatMapper contractChatMapper;
       private final ContractChatServiceInterface contractChatService;
+      private final ChatRoomMapper chatRoomMapper;
 
       @Value("${front.base.url}")
       private String URL;
@@ -82,7 +85,7 @@ public class TenantPreContractServiceImpl implements TenantPreContractService {
           // 1-1. identity_id 가져오기
           Long identityId =
                   tenantMapper
-                          .selectIdentityId(userId)
+                          .selectIdentityId(contractChatId, userId)
                           .orElseThrow(
                                   () -> new BusinessException(PreContractErrorCode.TENANT_SELECT));
 
@@ -359,12 +362,21 @@ public class TenantPreContractServiceImpl implements TenantPreContractService {
           }
 
           ContractChat contractChat = contractChatMapper.findByContractChatId(contractChatId);
-
-          String contractChatUrls = URL + precontractUrl + (contractChatId.toString()) + ownerUrl;
-
+          ChatRoom chatRoom =
+                  chatRoomMapper.findByUserAndHome(
+                          contractChat.getOwnerId(),
+                          contractChat.getBuyerId(),
+                          contractChat.getHomeId());
+          String contractChatUrls =
+                  URL
+                          + precontractUrl
+                          + (contractChatId.toString())
+                          + ownerUrl
+                          + "&homeId="
+                          + (contractChat.getHomeId().toString());
           ChatMessageRequestDto linkMessages =
                   ChatMessageRequestDto.builder()
-                          .chatRoomId(contractChatId)
+                          .chatRoomId(chatRoom.getChatRoomId())
                           .senderId(contractChat.getBuyerId())
                           .receiverId(contractChat.getOwnerId())
                           .content(contractChatUrls)
