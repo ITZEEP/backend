@@ -40,8 +40,11 @@ public class MyPageContractDto {
               value = "계약 상태",
               example = "STEP1",
               allowableValues =
-                      "STEP0, STEP1, STEP2, STEP4, ROUND0, ROUND1, ROUND2, ROUND3, COMPLETED")
+                      "STEP0, STEP1, STEP2, STEP4, ROUND0, ROUND1, ROUND2, ROUND3, ROUND4, COMPLETED")
       private String status; // MyBatis에서 String으로 받음
+
+      @ApiModelProperty(value = "사용자 유형", example = "임차인", allowableValues = "BUYER, OWNER")
+      private String userType;
 
       // Enum 변환 메서드
       public ContractStatus getStatusEnum() {

@@ -21,6 +21,7 @@ public enum ContractStatus {
       ROUND1("ROUND1", "1차 협상"),
       ROUND2("ROUND2", "2차 협상"),
       ROUND3("ROUND3", "3차 협상"),
+      ROUND4("ROUND4", "특약 최종 협상"),
 
       // 완료 상태 (final_contract 테이블에 존재할 때)
       COMPLETED("COMPLETED", "계약 완료");
@@ -61,7 +62,11 @@ public enum ContractStatus {
 
       /** 협상 단계인지 확인 */
       public boolean isNegotiationRound() {
-          return this == ROUND0 || this == ROUND1 || this == ROUND2 || this == ROUND3;
+          return this == ROUND0
+                  || this == ROUND1
+                  || this == ROUND2
+                  || this == ROUND3
+                  || this == ROUND4;
       }
 
       /** 계약 단계인지 확인 */

@@ -10,11 +10,12 @@
             h.residence_type AS buildingType,
             cc.contract_start_at AS contractDate,
             fc.contract_pdf_key AS fileUrl,
+            cc.status AS status,
+            h.lease_type AS leaseType,
             CASE 
-                WHEN fc.contract_id IS NOT NULL THEN 'COMPLETED'
-                ELSE cc.status
-            END AS status,
-            h.lease_type AS leaseType
+                WHEN cc.owner_id = #{userId} THEN 'OWNER'
+                WHEN cc.buyer_id = #{userId} THEN 'BUYER'
+            END AS userType
         FROM contract_chat cc
                  JOIN home h ON cc.home_id = h.home_id
                  LEFT JOIN final_contract fc ON cc.contract_chat_id = fc.contract_id

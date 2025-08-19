@@ -210,13 +210,22 @@ public class HomeControllerImpl implements HomeController {
       public ResponseEntity<ApiResponse<Void>> deleteHome(
               @PathVariable Integer homeId, Authentication authentication) {
 
-          Integer userId = getCurrentUserId(authentication);
+          log.info("===== 매물 삭제 API 호출 시작 =====");
+          log.info("homeId: {}", homeId);
+          log.info("authentication: {}", authentication);
 
-          log.info("매물 삭제 요청: homeId={}, userId={}", homeId, userId);
+          try {
+              Integer userId = getCurrentUserId(authentication);
+              log.info("매물 삭제 요청: homeId={}, userId={}", homeId, userId);
 
-          homeService.deleteHome(homeId, userId);
+              homeService.deleteHome(homeId, userId);
 
-          return ResponseEntity.ok(ApiResponse.success(null, "매물이 성공적으로 삭제되었습니다."));
+              log.info("매물 삭제 성공: homeId={}", homeId);
+              return ResponseEntity.ok(ApiResponse.success(null, "매물이 성공적으로 삭제되었습니다."));
+          } catch (Exception e) {
+              log.error("매물 삭제 실패: homeId={}, error={}", homeId, e.getMessage(), e);
+              throw e;
+          }
       }
 
       @Override

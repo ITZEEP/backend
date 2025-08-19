@@ -8,6 +8,7 @@ import org.scoula.domain.home.dto.HomeCreateDTO;
 import org.scoula.domain.home.dto.HomeResponseDTO;
 import org.scoula.domain.home.dto.HomeSearchDTO;
 import org.scoula.domain.home.enums.HomeStatus;
+import org.scoula.domain.home.exception.HomeErrorCode;
 import org.scoula.domain.home.mapper.HomeMapper;
 import org.scoula.domain.home.vo.*;
 import org.scoula.global.common.exception.BusinessException;
@@ -387,8 +388,50 @@ public class HomeServiceImpl implements HomeService {
       }
 
       @Override
+      @Transactional
       public void deleteHome(Integer homeId, Integer userId) {
-          log.info("매물 삭제 완료: homeId={}, userId={}", homeId, userId);
+          log.info("매물 삭제 요청: homeId={}, userId={}", homeId, userId);
+
+          // 1. 매물 정보 조회
+          HomeVO home = homeMapper.selectHomeById(homeId);
+          if (home == null) {
+              throw new BusinessException(HomeErrorCode.HOME_NOT_FOUND);
+          }
+
+          // 2. 매물 주인 확인
+          if (!home.getUserId().equals(userId)) {
+              log.warn(
+                      "매물 삭제 권한 없음: homeId={}, ownerId={}, requestUserId={}",
+                      homeId,
+                      home.getUserId(),
+                      userId);
+              throw new BusinessException(HomeErrorCode.HOME_ACCESS_DENIED);
+          }
+
+          // 3. 관련 이미지 S3에서 삭제
+          List<HomeImageVO> images = homeMapper.selectHomeImagesByHomeId(homeId);
+          if (images != null && !images.isEmpty()) {
+              for (HomeImageVO image : images) {
+                  try {
+                      if (image.getImageUrl() != null) {
+                          s3Service.deleteFile(image.getImageUrl());
+                          log.info("S3 이미지 삭제 성공: {}", image.getImageUrl());
+                      }
+                  } catch (Exception e) {
+                      log.error("S3 이미지 삭제 실패: {}", image.getImageUrl(), e);
+                  }
+              }
+          }
+
+          // 4. DB에서 매물 관련 데이터 삭제 (CASCADE로 이미지, 찜 등도 자동 삭제)
+          int deleteCount = homeMapper.deleteHome(homeId);
+
+          if (deleteCount > 0) {
+              log.info("매물 삭제 성공: homeId={}, userId={}", homeId, userId);
+          } else {
+              log.error("매물 삭제 실패: homeId={}, userId={}", homeId, userId);
+              throw new BusinessException(HomeErrorCode.HOME_DELETE_FAILED);
+          }
       }
 
       @Override

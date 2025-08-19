@@ -23,7 +23,8 @@ public enum HomeErrorCode implements IErrorCode {
 
       // 매물 관련 일반 에러
       HOME_NOT_FOUND("HOME_010", HttpStatus.NOT_FOUND, "매물을 찾을 수 없습니다"),
-      HOME_ACCESS_DENIED("HOME_011", HttpStatus.FORBIDDEN, "매물에 대한 권한이 없습니다");
+      HOME_ACCESS_DENIED("HOME_011", HttpStatus.FORBIDDEN, "매물에 대한 권한이 없습니다"),
+      HOME_DELETE_FAILED("HOME_012", HttpStatus.INTERNAL_SERVER_ERROR, "매물 삭제에 실패했습니다");
 
       private final String code;
       private final HttpStatus httpStatus;
