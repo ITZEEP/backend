@@ -1081,8 +1081,20 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
           if (document.isProcessed()) {
               return Map.of("message", "이미 처리된 선택입니다.", "completed", true);
           }
-          AiMessage(contractChatId, "특약 대화가 시작됩니다!");
-          return processRoundResults(contractChatId, document, currentStatus, isOwner);
+
+          Object result = processRoundResults(contractChatId, document, currentStatus, isOwner);
+
+          if (result instanceof Map) {
+              Map<String, Object> resultMap = (Map<String, Object>) result;
+              boolean hasNextRound = resultMap.containsKey("nextRound");
+              boolean isCompleted = resultMap.getOrDefault("completed", false).equals(true);
+
+              if (hasNextRound || !isCompleted) {
+                  AiMessage(contractChatId, "특약 대화가 시작됩니다!");
+              }
+          }
+
+          return result;
       }
 
       private List<Integer> getAvailableOrders(
