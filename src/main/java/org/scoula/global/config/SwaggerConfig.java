@@ -1,7 +1,7 @@
 package org.scoula.global.config;
 
 import java.security.Principal;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
@@ -46,8 +46,8 @@ public class SwaggerConfig {
                   .paths(PathSelectors.any())
                   .build()
                   .apiInfo(apiInfo())
-                  .securityContexts(Arrays.asList(securityContext()))
-                  .securitySchemes(Arrays.asList(apiKey()))
+                  .securityContexts(Collections.singletonList(securityContext()))
+                  .securitySchemes(List.of(apiKey()))
                   .ignoredParameterTypes(
                           AuthenticationPrincipal.class, Authentication.class, Principal.class);
       }
@@ -73,6 +73,6 @@ public class SwaggerConfig {
                   new AuthorizationScope("global", "accessEverything");
           AuthorizationScope[] authorizationScopes = new AuthorizationScope[1];
           authorizationScopes[0] = authorizationScope;
-          return Arrays.asList(new SecurityReference("JWT", authorizationScopes));
+          return List.of(new SecurityReference("JWT", authorizationScopes));
       }
 }

@@ -41,8 +41,8 @@ public class TenantPreContractServiceImpl implements TenantPreContractService {
       @Value("${front.base.url}")
       private String URL;
 
-      private String precontractUrl = "/pre-contract/";
-      private String ownerUrl = "/owner?step=1";
+      private final String precontractUrl = "/pre-contract/";
+      private final String ownerUrl = "/owner?step=1";
 
       // =============== 사기 위험도 확인 & 기본 세팅 ==================
 

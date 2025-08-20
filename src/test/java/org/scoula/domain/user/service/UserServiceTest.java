@@ -3,7 +3,6 @@ package org.scoula.domain.user.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.doAnswer;
@@ -140,8 +139,6 @@ class UserServiceTest {
               when(socialAccountMapper.selectBySocialIdAndSocialType(socialId, socialType))
                       .thenReturn(Optional.of(existingSocialAccount));
               when(userMapper.selectById(userId)).thenReturn(Optional.of(existingUser));
-              when(profileImageService.uploadProfileImageFromUrl(profileImageUrl, userId))
-                      .thenReturn("https://s3.amazonaws.com/bucket/profile/1-new.jpg");
 
               // when
               User result =
@@ -152,8 +149,9 @@ class UserServiceTest {
               assertThat(result).isNotNull();
               assertThat(result.getUserId()).isEqualTo(userId);
 
-              verify(userMapper).update(any(User.class));
-              verify(profileImageService).uploadProfileImageFromUrl(profileImageUrl, userId);
+              // 기존 소셜 계정이 있는 경우 정보 업데이트 하지 않고 그대로 반환
+              verify(userMapper, never()).update(any(User.class));
+              verify(profileImageService, never()).uploadProfileImageFromUrl(anyString(), anyLong());
               verify(userMapper, never()).insert(any(User.class));
               verify(socialAccountMapper, never()).insert(any(SocialAccount.class));
           }
@@ -278,7 +276,20 @@ class UserServiceTest {
                       .thenReturn(Optional.empty());
               when(userMapper.selectByEmail(anyString())).thenReturn(Optional.empty());
               when(userMapper.existsByNickname(anyString())).thenReturn(false);
-              when(profileImageService.uploadProfileImageFromUrl(anyString(), anyLong()))
+
+              // Mock userMapper.insert to set userId
+              doAnswer(
+                              invocation -> {
+                                  User user = invocation.getArgument(0);
+                                  // Simulate database setting the ID after insert
+                                  user.setUserId(1L);
+                                  return null;
+                              })
+                      .when(userMapper)
+                      .insert(any(User.class));
+
+              // Mock 실패 상황으로 - 실제 userId가 설정된 후 호출됨
+              when(profileImageService.uploadProfileImageFromUrl(profileImageUrl, 1L))
                       .thenThrow(new RuntimeException("S3 업로드 실패"));
 
               // when & then - Should not throw exception

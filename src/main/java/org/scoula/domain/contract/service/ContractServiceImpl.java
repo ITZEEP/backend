@@ -523,7 +523,7 @@ public class ContractServiceImpl implements ContractService {
             updateSpecialContract(contractChatId, userId, dto);
             String resultMessage;
             resultMessage =
-                    String.format("적법성 수정 후 레디스에서 삭제되었습니다.");
+                    "적법성 수정 후 레디스에서 삭제되었습니다.";
 
             stringRedisTemplate.delete(redisKey);
             contractChatService.AiMessage(contractChatId, resultMessage);
@@ -796,9 +796,9 @@ public class ContractServiceImpl implements ContractService {
             com.itextpdf.kernel.pdf.PdfDocument pdfDoc = new com.itextpdf.kernel.pdf.PdfDocument(writer);
             com.itextpdf.layout.Document document = new com.itextpdf.layout.Document(pdfDoc);
 
-            // 한글 폰트 설정 (기본 폰트 사용)
+            // 기본 폰트 설정 (한글은 브라우저에서 렌더링)
             com.itextpdf.kernel.font.PdfFont font = com.itextpdf.kernel.font.PdfFontFactory.createFont(
-                    "Helvetica", "Identity-H", com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                    com.itextpdf.io.font.constants.StandardFonts.HELVETICA);
 
             // 제목
             document.add(new com.itextpdf.layout.element.Paragraph("부동산 임대차 계약서")
@@ -1010,7 +1010,7 @@ public class ContractServiceImpl implements ContractService {
         int maintenanceFee = document.getMaintenanceFee();
 
         int finalContract = contractMapper.insertFinalContractInit(contractChatId, depositPrice, monthlyRent, maintenanceFee);
-        if (finalContract != 1) throw new BusinessException(ContractException.CONTRACT_DB_INSERT);
+        if (finalContract < 1) throw new BusinessException(ContractException.CONTRACT_DB_INSERT);
 
         // DB에서 값을 가져온다
         DBFinalContractDTO dbDTO = contractMapper.selectFinalContractPDF(contractChatId);
@@ -1905,12 +1905,10 @@ public class ContractServiceImpl implements ContractService {
             : contractMapper.selectMail(userId);
 
         String subject = "[ITZeep] 계약서 PDF를 보내드립니다.";
-        String text = String.format(
-            "요청하신 계약서를 보내드립니다.\n\n" +
-            "PDF 열람 비밀번호: 귀하의 생년월일 6자리(YYMMDD)\n" +
-            "예시: 1990년 1월 1일생 → 900101\n\n" +
-            "문의사항이 있으시면 언제든 연락 주시기 바랍니다."
-        );
+        String text = "요청하신 계약서를 보내드립니다.\n\n" +
+        "PDF 열람 비밀번호: 귀하의 생년월일 6자리(YYMMDD)\n" +
+        "예시: 1990년 1월 1일생 → 900101\n\n" +
+        "문의사항이 있으시면 언제든 연락 주시기 바랍니다.";
 
         emailService.sendEmailWithAttachment(email, subject, text, pdfContract.getFile().getAbsolutePath());
 
@@ -1993,7 +1991,6 @@ public class ContractServiceImpl implements ContractService {
           Long buyerContractId = contractMapper.getBuyerId(contractChatId);
 
           if (userId.equals(ownerContractId)) {
-              validateIsOwner(contractChatId, userId);
               return;
           }
 

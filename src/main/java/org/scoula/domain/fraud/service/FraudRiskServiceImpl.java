@@ -312,7 +312,7 @@ public class FraudRiskServiceImpl implements FraudRiskService {
           }
 
           String filename = file.getOriginalFilename();
-          if (filename == null || !hasValidExtension(filename)) {
+          if (!hasValidExtension(filename)) {
               throw new FraudRiskException(
                       FraudErrorCode.UNSUPPORTED_DOCUMENT_TYPE, fileType + "은(는) PDF 파일만 업로드 가능합니다.");
           }
@@ -414,14 +414,18 @@ public class FraudRiskServiceImpl implements FraudRiskService {
        * @return 생성된 S3 파일 경로
        */
       private String buildS3FilePath(Long userId, Long homeId, String filePrefix) {
-          StringBuilder pathBuilder = new StringBuilder();
-          pathBuilder.append(S3_BASE_PATH).append("/");
-          pathBuilder.append(userId).append("/");
-          pathBuilder.append(filePrefix).append("_");
-          pathBuilder.append(homeId != null ? homeId : "quick").append("_");
-          pathBuilder.append(System.currentTimeMillis());
-          pathBuilder.append(FILE_EXTENSION);
-          return pathBuilder.toString();
+          String pathBuilder =
+                  S3_BASE_PATH
+                          + "/"
+                          + userId
+                          + "/"
+                          + filePrefix
+                          + "_"
+                          + (homeId != null ? homeId : "quick")
+                          + "_"
+                          + System.currentTimeMillis()
+                          + FILE_EXTENSION;
+          return pathBuilder;
       }
 
       /**

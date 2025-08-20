@@ -8,15 +8,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.scoula.global.auth.filter.AuthenticationErrorFilter;
 import org.scoula.global.auth.filter.JwtAuthenticationFilter;
-import org.scoula.global.auth.filter.JwtUsernamePasswordAuthenticationFilter;
 import org.scoula.global.auth.handler.CustomAccessDeniedHandler;
 import org.scoula.global.auth.handler.CustomAuthenticationEntryPoint;
+import org.scoula.global.auth.handler.LoginFailureHandler;
+import org.scoula.global.auth.handler.LoginSuccessHandler;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
@@ -37,6 +37,8 @@ class SecurityConfigTest {
       private AuthenticationErrorFilter mockAuthenticationErrorFilter;
       private CustomAccessDeniedHandler mockAccessDeniedHandler;
       private CustomAuthenticationEntryPoint mockAuthenticationEntryPoint;
+      private LoginSuccessHandler mockLoginSuccessHandler;
+      private LoginFailureHandler mockLoginFailureHandler;
 
       @BeforeEach
       void setUp() {
@@ -46,6 +48,8 @@ class SecurityConfigTest {
           mockAuthenticationErrorFilter = mock(AuthenticationErrorFilter.class);
           mockAccessDeniedHandler = mock(CustomAccessDeniedHandler.class);
           mockAuthenticationEntryPoint = mock(CustomAuthenticationEntryPoint.class);
+          mockLoginSuccessHandler = mock(LoginSuccessHandler.class);
+          mockLoginFailureHandler = mock(LoginFailureHandler.class);
 
           // SecurityConfig 인스턴스 생성
           securityConfig =
@@ -54,15 +58,11 @@ class SecurityConfigTest {
                           mockJwtAuthenticationFilter,
                           mockAuthenticationErrorFilter,
                           mockAccessDeniedHandler,
-                          mockAuthenticationEntryPoint);
+                          mockAuthenticationEntryPoint,
+                          mockLoginSuccessHandler,
+                          mockLoginFailureHandler);
 
-          // JwtUsernamePasswordAuthenticationFilter Mock 주입
-          JwtUsernamePasswordAuthenticationFilter mockJwtUsernamePasswordAuthenticationFilter =
-                  mock(JwtUsernamePasswordAuthenticationFilter.class);
-          ReflectionTestUtils.setField(
-                  securityConfig,
-                  "jwtUsernamePasswordAuthenticationFilter",
-                  mockJwtUsernamePasswordAuthenticationFilter);
+          // JwtUsernamePasswordAuthenticationFilter는 메서드로 생성되므로 별도 주입 불필요
       }
 
       @Test

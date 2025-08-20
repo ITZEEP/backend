@@ -911,7 +911,7 @@ public class EncryptionUtil {
           }
 
           public static class ContractKeyStatusBuilder {
-              private ContractKeyStatus status = new ContractKeyStatus();
+              private final ContractKeyStatus status = new ContractKeyStatus();
 
               public ContractKeyStatusBuilder fileId(String fileId) {
                   status.fileId = fileId;
@@ -995,7 +995,7 @@ public class EncryptionUtil {
           }
 
           public static class ContractEncryptionResultBuilder {
-              private ContractEncryptionResult result = new ContractEncryptionResult();
+              private final ContractEncryptionResult result = new ContractEncryptionResult();
 
               public ContractEncryptionResultBuilder fileId(String fileId) {
                   result.fileId = fileId;
@@ -1082,6 +1082,6 @@ public class EncryptionUtil {
           }
 
           String redisKey = String.format(REDIS_KEY_PATTERN, contractChatId);
-          return Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
+          return redisTemplate.hasKey(redisKey);
       }
 }

@@ -2,6 +2,7 @@ package org.scoula.global.common.util;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 
 import org.springframework.web.multipart.MultipartFile;
@@ -135,16 +136,8 @@ public final class MultipartFileUtils {
       }
 
       /** 운영 코드에서 사용할 간단한 MultipartFile 구현체 (파일을 래핑) */
-      private static final class FileMultipartFile implements MultipartFile {
-          private final File file;
-          private final String originalFilename;
-          private final String contentType;
-
-          FileMultipartFile(File file, String originalFilename, String contentType) {
-              this.file = file;
-              this.originalFilename = originalFilename;
-              this.contentType = contentType;
-          }
+      private record FileMultipartFile(File file, String originalFilename, String contentType)
+              implements MultipartFile {
 
           @Override
           public String getName() {
@@ -183,10 +176,7 @@ public final class MultipartFileUtils {
 
           @Override
           public void transferTo(File dest) throws IOException {
-              Files.copy(
-                      file.toPath(),
-                      dest.toPath(),
-                      java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+              Files.copy(file.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
           }
       }
 }

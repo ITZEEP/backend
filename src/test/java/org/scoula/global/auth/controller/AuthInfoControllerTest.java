@@ -4,7 +4,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,7 +58,7 @@ class AuthInfoControllerTest {
                               .nickname("테스트사용자")
                               .profileImageUrl("http://example.com/profile.jpg")
                               .gender("MALE")
-                              .authorities(Arrays.asList("ROLE_USER"))
+                              .authorities(List.of("ROLE_USER"))
                               .issuedAt("2024-01-01 12:00:00")
                               .expiresAt("2024-01-02 12:00:00")
                               .remainingTime(86400L)

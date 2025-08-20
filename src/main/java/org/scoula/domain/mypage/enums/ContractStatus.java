@@ -24,6 +24,7 @@ public enum ContractStatus {
       ROUND4("ROUND4", "특약 최종 협상"),
 
       // 완료 상태 (final_contract 테이블에 존재할 때)
+      COMPLETE("COMPLETE", "계약 완료"),
       COMPLETED("COMPLETED", "계약 완료");
 
       private final String value;
@@ -57,7 +58,7 @@ public enum ContractStatus {
 
       /** 계약이 진행 중인지 확인 */
       public boolean isInProgress() {
-          return this != COMPLETED;
+          return this != COMPLETED && this != COMPLETE;
       }
 
       /** 협상 단계인지 확인 */

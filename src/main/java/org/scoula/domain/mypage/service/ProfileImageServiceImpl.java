@@ -71,7 +71,7 @@ public class ProfileImageServiceImpl implements ProfileImageService {
           // 새 이미지 업로드
           String originalFilename = file.getOriginalFilename();
           String extension = extractExtension(originalFilename);
-          String fileName = UUID.randomUUID().toString() + extension;
+          String fileName = UUID.randomUUID() + extension;
           String key = "profile-images/" + userId + "/" + fileName;
 
           try {
@@ -162,7 +162,7 @@ public class ProfileImageServiceImpl implements ProfileImageService {
                   String extension = determineExtension(contentType);
 
                   // 파일명 생성
-                  String fileName = UUID.randomUUID().toString() + extension;
+                  String fileName = UUID.randomUUID() + extension;
                   String key = "profile-images/" + userId + "/" + fileName;
 
                   // ByteArrayInputStream을 MultipartFile로 변환하여 S3에 업로드

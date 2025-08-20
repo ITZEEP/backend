@@ -35,8 +35,7 @@ public final class UploadFileName {
           FilenameParts parts = parseFilename(originalFilename);
           String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMATTER);
 
-          return String.format(
-                  "%s%s%s.%s", parts.getName(), SEPARATOR, timestamp, parts.getExtension());
+          return String.format("%s%s%s.%s", parts.name(), SEPARATOR, timestamp, parts.extension());
       }
 
       /**
@@ -50,7 +49,7 @@ public final class UploadFileName {
           validateFilename(originalFilename);
 
           String extension = extractFileExtension(originalFilename);
-          return UUID.randomUUID().toString() + "." + extension;
+          return UUID.randomUUID() + "." + extension;
       }
 
       /**
@@ -126,21 +125,5 @@ public final class UploadFileName {
           return new FilenameParts(name, extension);
       }
 
-      private static class FilenameParts {
-          private final String name;
-          private final String extension;
-
-          public FilenameParts(String name, String extension) {
-              this.name = name;
-              this.extension = extension;
-          }
-
-          public String getName() {
-              return name;
-          }
-
-          public String getExtension() {
-              return extension;
-          }
-      }
+      private record FilenameParts(String name, String extension) {}
 }

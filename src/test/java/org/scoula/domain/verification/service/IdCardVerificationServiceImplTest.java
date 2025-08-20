@@ -44,8 +44,8 @@ class IdCardVerificationServiceImplTest {
       @InjectMocks private IdCardVerificationServiceImpl verificationService;
 
       private IdCardVerificationRequest request;
-      private String apiUrl = "https://apick.app/rest/identi_card/1";
-      private String apiKey = "test-api-key";
+      private final String apiUrl = "https://apick.app/rest/identi_card/1";
+      private final String apiKey = "test-api-key";
 
       @BeforeEach
       void setUp() {
@@ -61,7 +61,6 @@ class IdCardVerificationServiceImplTest {
           // @Value 필드 주입
           ReflectionTestUtils.setField(verificationService, "apiUrl", apiUrl);
           ReflectionTestUtils.setField(verificationService, "apiKey", apiKey);
-          ReflectionTestUtils.setField(verificationService, "timeout", 30000);
       }
 
       @Test

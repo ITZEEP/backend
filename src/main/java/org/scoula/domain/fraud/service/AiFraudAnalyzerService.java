@@ -1,6 +1,11 @@
 package org.scoula.domain.fraud.service;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -22,6 +27,7 @@ import org.scoula.domain.home.vo.HomeVO;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.util.LogSanitizerUtil;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -887,15 +893,10 @@ public class AiFraudAnalyzerService {
       }
 
       /** MultipartFile을 Spring Resource로 변환하는 래퍼 클래스 */
-      private static class MultipartFileResource implements org.springframework.core.io.Resource {
-          private final MultipartFile multipartFile;
-
-          public MultipartFileResource(MultipartFile multipartFile) {
-              this.multipartFile = multipartFile;
-          }
+      private record MultipartFileResource(MultipartFile multipartFile) implements Resource {
 
           @Override
-          public InputStream getInputStream() throws java.io.IOException {
+          public InputStream getInputStream() throws IOException {
               return multipartFile.getInputStream();
           }
 
@@ -905,7 +906,7 @@ public class AiFraudAnalyzerService {
           }
 
           @Override
-          public long contentLength() throws java.io.IOException {
+          public long contentLength() throws IOException {
               return multipartFile.getSize();
           }
 
@@ -936,29 +937,28 @@ public class AiFraudAnalyzerService {
           }
 
           @Override
-          public java.net.URL getURL() throws java.io.IOException {
-              throw new java.io.FileNotFoundException();
+          public URL getURL() throws IOException {
+              throw new FileNotFoundException();
           }
 
           @Override
-          public java.net.URI getURI() throws java.io.IOException {
-              throw new java.io.FileNotFoundException();
+          public URI getURI() throws IOException {
+              throw new FileNotFoundException();
           }
 
           @Override
-          public java.io.File getFile() throws java.io.IOException {
-              throw new java.io.FileNotFoundException();
+          public File getFile() throws IOException {
+              throw new FileNotFoundException();
           }
 
           @Override
-          public long lastModified() throws java.io.IOException {
+          public long lastModified() throws IOException {
               return -1;
           }
 
           @Override
-          public org.springframework.core.io.Resource createRelative(String relativePath)
-                  throws java.io.IOException {
-              throw new java.io.FileNotFoundException();
+          public Resource createRelative(String relativePath) throws IOException {
+              throw new FileNotFoundException();
           }
       }
 }

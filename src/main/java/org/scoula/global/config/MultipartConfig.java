@@ -13,7 +13,7 @@ public class MultipartConfig {
       private static final String LOCATION = System.getProperty("java.io.tmpdir");
       private static final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
       private static final long MAX_REQUEST_SIZE = 20L * 1024 * 1024; // 20MB
-      private static final int FILE_SIZE_THRESHOLD = 1 * 1024 * 1024; // 1MB
+      private static final int FILE_SIZE_THRESHOLD = 1024 * 1024; // 1MB
 
       @Bean
       public MultipartResolver multipartResolver() {

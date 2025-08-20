@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -103,7 +103,7 @@ class FraudRiskControllerImplTest {
           void getRiskCheckList_Success() throws Exception {
               // given
               List<RiskCheckListResponse> content =
-                      Arrays.asList(
+                      Collections.singletonList(
                               RiskCheckListResponse.builder()
                                       .riskCheckId(1L)
                                       .address("서울시 강남구")
@@ -275,7 +275,7 @@ class FraudRiskControllerImplTest {
                               .riskCheckId(1L)
                               .riskType(RiskType.SAFE)
                               .analyzedAt(LocalDateTime.now())
-                              .detailGroups(Arrays.asList())
+                              .detailGroups(List.of())
                               .build();
 
               when(fraudRiskService.analyzeRisk(anyLong(), any(RiskAnalysisRequest.class)))
@@ -399,7 +399,7 @@ class FraudRiskControllerImplTest {
           void getLikedHomes_Success() throws Exception {
               // given
               List<LikedHomeResponse> likedHomes =
-                      Arrays.asList(
+                      Collections.singletonList(
                               LikedHomeResponse.builder()
                                       .homeId(100L)
                                       .address("서울시 강남구")
@@ -430,7 +430,7 @@ class FraudRiskControllerImplTest {
           void getChattingHomes_Success() throws Exception {
               // given
               List<LikedHomeResponse> content =
-                      Arrays.asList(
+                      Collections.singletonList(
                               LikedHomeResponse.builder()
                                       .homeId(200L)
                                       .address("서울시 송파구")

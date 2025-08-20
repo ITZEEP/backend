@@ -9,6 +9,7 @@ import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -336,6 +337,9 @@ class FraudRiskServiceImplTest {
           @DisplayName("정상적인 위험도 분석 요청 시 성공")
           void analyzeRisk_Success() {
               // given
+              // 매물 존재 여부 확인을 통과하도록 설정
+              when(fraudRiskMapper.existsHome(request.getHomeId())).thenReturn(true);
+
               RiskCheckVO mockRiskCheck =
                       RiskCheckVO.builder()
                               .riskckId(1L)
@@ -368,7 +372,7 @@ class FraudRiskServiceImplTest {
                       .thenReturn(RiskType.SAFE);
 
               List<RiskCheckDetailVO> mockDetails =
-                      Arrays.asList(
+                      Collections.singletonList(
                               RiskCheckDetailVO.builder()
                                       .title1("갑기본정보")
                                       .title2("소유 및 주소")
@@ -396,6 +400,9 @@ class FraudRiskServiceImplTest {
           @DisplayName("위험도 분석 중 예외 발생 시 예외 전파")
           void analyzeRisk_Exception_ThrowsException() {
               // given
+              // 매물 존재 여부 확인을 통과하도록 설정
+              when(fraudRiskMapper.existsHome(request.getHomeId())).thenReturn(true);
+
               doThrow(new RuntimeException("DB 오류"))
                       .when(fraudRiskMapper)
                       .insertRiskCheck(any(RiskCheckVO.class));
@@ -444,6 +451,9 @@ class FraudRiskServiceImplTest {
           @DisplayName("AI 서비스에서 FraudRiskException 발생 시 그대로 전파")
           void analyzeRisk_FraudRiskExceptionFromAi_PropagatesException() {
               // given
+              // 먼저 매물 존재 여부 확인을 통과하도록 설정
+              when(fraudRiskMapper.existsHome(request.getHomeId())).thenReturn(true);
+
               doAnswer(
                               invocation -> {
                                   RiskCheckVO arg = invocation.getArgument(0);
@@ -463,7 +473,7 @@ class FraudRiskServiceImplTest {
               // when & then
               assertThatThrownBy(() -> fraudRiskService.analyzeRisk(userId, request))
                       .isInstanceOf(FraudRiskException.class)
-                      .hasMessageContaining("AI 서비스 불가");
+                      .hasMessageContaining("AI 분석 중 오류가 발생했습니다");
           }
       }
 
@@ -479,7 +489,7 @@ class FraudRiskServiceImplTest {
               PageRequest pageRequest = PageRequest.builder().page(1).size(10).build();
 
               List<RiskCheckListResponse> mockList =
-                      Arrays.asList(
+                      Collections.singletonList(
                               RiskCheckListResponse.builder()
                                       .riskCheckId(1L)
                                       .address("서울시 강남구")
@@ -530,7 +540,7 @@ class FraudRiskServiceImplTest {
                       .thenReturn(mockResponse);
 
               List<RiskCheckDetailVO> mockDetails =
-                      Arrays.asList(
+                      Collections.singletonList(
                               RiskCheckDetailVO.builder()
                                       .title1("갑기본정보")
                                       .title2("소유 정보")
@@ -647,7 +657,7 @@ class FraudRiskServiceImplTest {
               // given
               Long userId = 1L;
               List<LikedHomeResponse> mockHomes =
-                      Arrays.asList(
+                      Collections.singletonList(
                               LikedHomeResponse.builder()
                                       .homeId(100L)
                                       .address("서울시 강남구")
@@ -680,7 +690,7 @@ class FraudRiskServiceImplTest {
               PageRequest pageRequest = PageRequest.builder().page(1).size(10).build();
 
               List<LikedHomeResponse> mockHomes =
-                      Arrays.asList(
+                      Collections.singletonList(
                               LikedHomeResponse.builder()
                                       .homeId(200L)
                                       .address("서울시 송파구")
@@ -941,7 +951,7 @@ class FraudRiskServiceImplTest {
               when(fraudRiskMapper.selectRiskCheckById(riskCheckId)).thenReturn(mockRiskCheck);
 
               when(fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId))
-                      .thenReturn(Arrays.asList()); // 빈 리스트
+                      .thenReturn(List.of()); // 빈 리스트
 
               // when
               RiskCheckSummaryResponse response =
@@ -971,7 +981,7 @@ class FraudRiskServiceImplTest {
               when(fraudRiskMapper.selectRiskCheckById(riskCheckId)).thenReturn(mockRiskCheck);
 
               when(fraudRiskMapper.selectRiskCheckDetailByRiskCheckId(riskCheckId))
-                      .thenReturn(Arrays.asList());
+                      .thenReturn(List.of());
 
               // when
               RiskCheckSummaryResponse response =

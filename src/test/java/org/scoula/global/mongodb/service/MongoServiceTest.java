@@ -124,7 +124,7 @@ class MongoServiceTest {
       void find_WithQuery_ShouldReturnMatchingDocuments() {
           // given
           Query query = new Query();
-          List<TestDocument> documents = Arrays.asList(new TestDocument("1", "검색된 문서", "검색된 내용"));
+          List<TestDocument> documents = List.of(new TestDocument("1", "검색된 문서", "검색된 내용"));
           when(mongoTemplate.find(query, TestDocument.class, testCollectionName))
                   .thenReturn(documents);
 

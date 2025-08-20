@@ -58,7 +58,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
       @Value("${front.base.url}")
       private String baseUrl;
 
-      private String contractChatUrl = "/contract/";
+      private final String contractChatUrl = "/contract/";
 
       /** {@inheritDoc} */
       @Override
@@ -2502,8 +2502,7 @@ public class ContractChatServiceImpl implements ContractChatServiceInterface {
               }
               sanitizedLegalityResponse = sanitizedLegalityResponse.replaceAll("[\\r\\n]", " ");
               log.info("적법성 검사 응답: {}", sanitizedLegalityResponse);
-              if (legalityResponse instanceof LegalityDTO) {
-                  LegalityDTO legalityDTO = (LegalityDTO) legalityResponse;
+              if (legalityResponse instanceof LegalityDTO legalityDTO) {
                   log.info("LegalityDTO로 응답 파싱 성공");
 
                   // violations 처리 (중첩 구조로 접근)

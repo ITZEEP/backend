@@ -1,6 +1,7 @@
 package org.scoula.global.auth.config;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.scoula.global.auth.filter.AuthenticationErrorFilter;
 import org.scoula.global.auth.filter.JwtAuthenticationFilter;
@@ -71,8 +72,9 @@ public class SecurityConfig {
                           "https://api.itzeep.ariogi.kr"));
           configuration.setAllowedMethods(
                   Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-          configuration.setAllowedHeaders(Arrays.asList("*"));
-          configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type", "Content-Disposition"));
+          configuration.setAllowedHeaders(List.of("*"));
+          configuration.setExposedHeaders(
+                  Arrays.asList("Authorization", "Content-Type", "Content-Disposition"));
           configuration.setAllowCredentials(true);
           configuration.setMaxAge(3600L);
 
@@ -126,14 +128,33 @@ public class SecurityConfig {
                                                   new AntPathRequestMatcher(
                                                           "/api", HttpMethod.GET.name()),
                                                   new AntPathRequestMatcher("/api/health"),
+                                                  new AntPathRequestMatcher("/api/test-exception"),
                                                   new AntPathRequestMatcher("/api/auth/login"),
                                                   new AntPathRequestMatcher("/api/auth/signup"),
                                                   new AntPathRequestMatcher("/api/auth/refresh"),
                                                   new AntPathRequestMatcher("/api/auth/oauth/**"),
                                                   new AntPathRequestMatcher(
-                                                          "/oauth2/**"), // OAuth2 엔드포인트 추가
+                                                          "/api/auth/kakao/login-url"),
                                                   new AntPathRequestMatcher(
-                                                          "/api/homes/**"), // 매물 조회는 인증 불필요
+                                                          "/oauth2/**"), // OAuth2 엔드포인트 추가
+                                                  // 매물 조회 관련 공개 API (인증 불필요)
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/{homeId}",
+                                                          HttpMethod.GET.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes", HttpMethod.GET.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/search", HttpMethod.GET.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/facilities/categories",
+                                                          HttpMethod.GET.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/facilities/categories/{categoryId}/items",
+                                                          HttpMethod.GET.name()),
+                                                  // 신분증 검증 테스트 (공개)
+                                                  new AntPathRequestMatcher(
+                                                          "/api/verification/idcard/test",
+                                                          HttpMethod.POST.name()),
                                                   new AntPathRequestMatcher(
                                                           "/ws/**"), // WebSocket 엔드포인트
                                                   new AntPathRequestMatcher(
@@ -145,9 +166,34 @@ public class SecurityConfig {
                                                   new AntPathRequestMatcher("/swagger-resources/**"),
                                                   new AntPathRequestMatcher("/webjars/**"))
                                           .permitAll()
-                                          // 사기 위험도 분석 API는 인증 필요
+                                          // 인증 필요 API (사용자별 작업)
                                           .requestMatchers(
-                                                  new AntPathRequestMatcher("/api/fraud-risk/**"))
+                                                  // 매물 관리 (생성, 수정, 삭제, 상태변경, 내 매물, 찜하기)
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes", HttpMethod.POST.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/{homeId}",
+                                                          HttpMethod.PUT.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/{homeId}",
+                                                          HttpMethod.DELETE.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/{homeId}/status",
+                                                          HttpMethod.PATCH.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/my", HttpMethod.GET.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/{homeId}/like",
+                                                          HttpMethod.POST.name()),
+                                                  new AntPathRequestMatcher(
+                                                          "/api/homes/likes", HttpMethod.GET.name()),
+                                                  // 마이페이지, 채팅, 계약, 사전계약, 사기위험도분석, 인증정보
+                                                  new AntPathRequestMatcher("/api/mypage/**"),
+                                                  new AntPathRequestMatcher("/api/chat/**"),
+                                                  new AntPathRequestMatcher("/api/contract/**"),
+                                                  new AntPathRequestMatcher("/api/pre-contract/**"),
+                                                  new AntPathRequestMatcher("/api/fraud-risk/**"),
+                                                  new AntPathRequestMatcher("/api/auth/info/**"))
                                           .authenticated()
                                           // 나머지 모든 요청은 인증 필요
                                           .anyRequest()

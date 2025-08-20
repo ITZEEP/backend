@@ -73,6 +73,11 @@
                            ON biv.user_id = cc.buyer_id
                                AND biv.contract_id = cc.contract_chat_id
         WHERE cc.contract_chat_id = #{contractChatId}
+        ON DUPLICATE KEY UPDATE
+            deposit_price = VALUES(deposit_price),
+            monthly_rent = VALUES(monthly_rent),
+            maintenance_fee = VALUES(maintenance_fee),
+            created_at = NOW()
     </insert>
 
 
@@ -90,8 +95,6 @@
             h.addr2 AS homeAddr2,
             hd.land_category AS landCategory,
             hd.area AS area,
---             rc.purpose AS purpose,
---             rc.total_floor_area AS totalFloorArea,
             opc.has_tax_arrears AS hasTaxArrears,
             opc.has_prior_fixed_date AS hasPriorFixedDate,
             owi.payment_due_day AS paymentDueDay,
@@ -106,16 +109,13 @@
         FROM contract_chat cc
                  LEFT JOIN home h ON cc.home_id = h.home_id
                  LEFT JOIN home_detail hd ON cc.home_id = hd.home_id
-        LEFT JOIN risk_check rc
-        ON rc.home_id = cc.home_id
-            AND rc.checked_at >= CURDATE()
-            AND rc.checked_at &lt; CURDATE() + INTERVAL 1 DAY
                  LEFT JOIN owner_precontract_check opc ON cc.contract_chat_id = opc.contract_chat_id
                  LEFT JOIN owner_wolse_info owi ON cc.contract_chat_id = owi.contract_chat_id
                  LEFT JOIN tenant_precontract_check tpc ON cc.contract_chat_id = tpc.contract_chat_id
                  LEFT JOIN identity_verification oiv ON oiv.user_id = cc.owner_id AND oiv.contract_id = cc.contract_chat_id
                  LEFT JOIN identity_verification biv ON biv.user_id = cc.buyer_id AND biv.contract_id = cc.contract_chat_id
         WHERE cc.contract_chat_id = #{contractChatId}
+        LIMIT 1
     </select>
 
     <resultMap id="FinalContractResultMap" type="org.scoula.domain.contract.vo.FinalContract">

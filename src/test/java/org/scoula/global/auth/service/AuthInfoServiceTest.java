@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -210,9 +210,7 @@ class AuthInfoServiceTest {
 
               Authentication authentication =
                       new UsernamePasswordAuthenticationToken(
-                              username,
-                              "password",
-                              Arrays.asList(new SimpleGrantedAuthority("ROLE_USER")));
+                              username, "password", List.of(new SimpleGrantedAuthority("ROLE_USER")));
 
               when(securityContext.getAuthentication()).thenReturn(authentication);
               when(userDetailsService.loadUserByUsername(username)).thenReturn(userDetails);
@@ -286,7 +284,7 @@ class AuthInfoServiceTest {
                       new UsernamePasswordAuthenticationToken(
                               username,
                               "password",
-                              Arrays.asList(new SimpleGrantedAuthority("ROLE_ADMIN")));
+                              List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
               when(securityContext.getAuthentication()).thenReturn(authentication);
               when(userDetailsService.loadUserByUsername(username)).thenReturn(userDetails);
@@ -327,10 +325,10 @@ class AuthInfoServiceTest {
                       authInfoService.validateTokenInfo(token);
 
               // then
-              assertThat(result.isValid()).isTrue();
-              assertThat(result.isExpired()).isFalse();
-              assertThat(result.isBlacklisted()).isFalse();
-              assertThat(result.getRemainingTime()).isEqualTo(3600L);
+              assertThat(result.valid()).isTrue();
+              assertThat(result.expired()).isFalse();
+              assertThat(result.blacklisted()).isFalse();
+              assertThat(result.remainingTime()).isEqualTo(3600L);
           }
 
           @Test
@@ -348,10 +346,10 @@ class AuthInfoServiceTest {
                       authInfoService.validateTokenInfo(token);
 
               // then
-              assertThat(result.isValid()).isFalse();
-              assertThat(result.isExpired()).isTrue();
-              assertThat(result.isBlacklisted()).isFalse();
-              assertThat(result.getRemainingTime()).isEqualTo(0L);
+              assertThat(result.valid()).isFalse();
+              assertThat(result.expired()).isTrue();
+              assertThat(result.blacklisted()).isFalse();
+              assertThat(result.remainingTime()).isEqualTo(0L);
           }
 
           @Test
@@ -369,10 +367,10 @@ class AuthInfoServiceTest {
                       authInfoService.validateTokenInfo(token);
 
               // then
-              assertThat(result.isValid()).isFalse();
-              assertThat(result.isExpired()).isFalse();
-              assertThat(result.isBlacklisted()).isTrue();
-              assertThat(result.getRemainingTime()).isEqualTo(1800L);
+              assertThat(result.valid()).isFalse();
+              assertThat(result.expired()).isFalse();
+              assertThat(result.blacklisted()).isTrue();
+              assertThat(result.remainingTime()).isEqualTo(1800L);
           }
       }
 

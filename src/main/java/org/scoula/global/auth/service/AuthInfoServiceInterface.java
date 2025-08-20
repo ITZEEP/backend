@@ -36,34 +36,6 @@ public interface AuthInfoServiceInterface {
       TokenValidationInfo validateTokenInfo(String token);
 
       /** 토큰 유효성 정보 */
-      class TokenValidationInfo {
-          private final boolean valid;
-          private final boolean expired;
-          private final boolean blacklisted;
-          private final long remainingTime;
-
-          public TokenValidationInfo(
-                  boolean valid, boolean expired, boolean blacklisted, long remainingTime) {
-              this.valid = valid;
-              this.expired = expired;
-              this.blacklisted = blacklisted;
-              this.remainingTime = remainingTime;
-          }
-
-          public boolean isValid() {
-              return valid;
-          }
-
-          public boolean isExpired() {
-              return expired;
-          }
-
-          public boolean isBlacklisted() {
-              return blacklisted;
-          }
-
-          public long getRemainingTime() {
-              return remainingTime;
-          }
-      }
+      record TokenValidationInfo(
+              boolean valid, boolean expired, boolean blacklisted, long remainingTime) {}
 }

@@ -12,7 +12,7 @@ public class WebConfig extends AbstractAnnotationConfigDispatcherServletInitiali
       final String LOCATION = System.getProperty("java.io.tmpdir");
       final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
       final long MAX_REQUEST_SIZE = 20L * 1024 * 1024; // 20MB
-      final int FILE_SIZE_THRESHOLD = 1 * 1024 * 1024; // 1MB - Reduced for better memory management
+      final int FILE_SIZE_THRESHOLD = 1024 * 1024; // 1MB - Reduced for better memory management
 
       @Override
       public void onStartup(ServletContext servletContext) throws ServletException {

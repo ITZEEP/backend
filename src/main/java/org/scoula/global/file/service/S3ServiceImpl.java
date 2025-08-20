@@ -304,7 +304,7 @@ public class S3ServiceImpl extends AbstractExternalService implements S3ServiceI
           if (originalFilename != null && originalFilename.contains(".")) {
               extension = originalFilename.substring(originalFilename.lastIndexOf("."));
           }
-          return UUID.randomUUID().toString() + extension;
+          return UUID.randomUUID() + extension;
       }
 
       /** {@inheritDoc} */
@@ -406,7 +406,7 @@ public class S3ServiceImpl extends AbstractExternalService implements S3ServiceI
                               }
 
                               // S3 키 생성 (profile-images/userId/UUID.확장자)
-                              String fileName = UUID.randomUUID().toString() + extension;
+                              String fileName = UUID.randomUUID() + extension;
                               String key = "profile-images/" + userId + "/" + fileName;
 
                               // S3에 업로드

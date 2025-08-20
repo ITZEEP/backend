@@ -56,8 +56,8 @@ public class ChatServiceImpl implements ChatServiceInterface {
       @Value("${front.base.url}")
       private String URL;
 
-      private String PRECONTRACTURL = "/pre-contract/";
-      private String BUYERURL = "/buyer?step=1";
+      private final String PRECONTRACTURL = "/pre-contract/";
+      private final String BUYERURL = "/buyer?step=1";
 
       /** {@inheritDoc} */
       @Override

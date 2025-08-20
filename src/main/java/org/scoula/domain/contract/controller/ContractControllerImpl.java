@@ -1,5 +1,6 @@
 package org.scoula.domain.contract.controller;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -484,7 +485,7 @@ public class ContractControllerImpl implements ContractController {
           // MultipartFile에서 문자열 추출
           String dtoText;
           try {
-              dtoText = new String(dtoFile.getBytes(), "UTF-8");
+              dtoText = new String(dtoFile.getBytes(), StandardCharsets.UTF_8);
           } catch (Exception e) {
               log.error("DTO 파일 읽기 실패: {}", e.getMessage());
               throw new IllegalArgumentException("DTO 파일을 읽을 수 없습니다.");

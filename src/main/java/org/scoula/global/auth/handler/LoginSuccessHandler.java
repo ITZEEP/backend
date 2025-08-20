@@ -55,14 +55,5 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
       }
 
       // 로그인 응답 DTO
-      @lombok.Getter
-      private static class AuthResult {
-          private final String token;
-          private final AuthenticatedUserInfo user;
-
-          public AuthResult(String token, AuthenticatedUserInfo user) {
-              this.token = token;
-              this.user = user;
-          }
-      }
+      private record AuthResult(String token, AuthenticatedUserInfo user) {}
 }

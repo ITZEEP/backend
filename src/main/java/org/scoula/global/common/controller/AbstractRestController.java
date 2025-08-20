@@ -69,8 +69,7 @@ public abstract class AbstractRestController {
 
       /** 에러 응답을 생성합니다. */
       protected <T> ResponseEntity<ApiResponse<T>> handleError(Exception e, String message) {
-          if (e instanceof BusinessException) {
-              BusinessException businessException = (BusinessException) e;
+          if (e instanceof BusinessException businessException) {
               log.warn(
                       "Business exception: {} - {}",
                       businessException.getErrorCode().getCode(),
