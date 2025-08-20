@@ -37,4 +37,5 @@ public class HomeVO {
       private Float area;
       private String landCategory;
       private Integer homeFloor;
+      private Boolean isLiked;
 }

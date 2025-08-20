@@ -33,7 +33,8 @@ public interface HomeController {
       @ApiOperation(value = "매물 상세 조회", notes = "매물 ID로 상세 정보를 조회합니다.")
       @GetMapping("/{homeId}")
       ResponseEntity<ApiResponse<HomeResponseDTO>> getHome(
-              @ApiParam(value = "매물 ID", required = true) @PathVariable Integer homeId);
+              @ApiParam(value = "매물 ID", required = true) @PathVariable Integer homeId,
+              Authentication authentication);
 
       @ApiOperation(value = "매물 목록 조회", notes = "페이징된 매물 목록을 조회합니다.")
       @GetMapping
@@ -42,12 +43,14 @@ public interface HomeController {
                       @RequestParam(defaultValue = "1")
                       int page,
               @ApiParam(value = "페이지 크기", defaultValue = "21") @RequestParam(defaultValue = "21")
-                      int size);
+                      int size,
+              Authentication authentication);
 
       @ApiOperation(value = "매물 검색", notes = "조건에 따라 매물을 검색합니다.")
       @GetMapping("/search")
       ResponseEntity<PageResponse<HomeResponseDTO>> searchHomes(
-              @ApiParam(value = "검색 조건") @ModelAttribute HomeSearchDTO searchDTO);
+              @ApiParam(value = "검색 조건") @ModelAttribute HomeSearchDTO searchDTO,
+              Authentication authentication);
 
       @ApiOperation(
               value = "매물 수정",

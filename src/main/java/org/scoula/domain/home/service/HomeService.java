@@ -7,6 +7,7 @@ import org.scoula.domain.home.dto.HomeResponseDTO;
 import org.scoula.domain.home.dto.HomeSearchDTO;
 import org.scoula.domain.home.vo.FacilityCategory;
 import org.scoula.domain.home.vo.FacilityItem;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface HomeService {
@@ -16,13 +17,13 @@ public interface HomeService {
       Integer createHome(HomeCreateDTO createDTO, List<MultipartFile> images, Integer userId);
 
       // 매물 조회
-      HomeResponseDTO getHome(Integer homeId);
+      HomeResponseDTO getHome(Integer homeId, Authentication authentication);
 
       // 매물 목록 조회
-      List<HomeResponseDTO> getHomeList(int page, int size);
+      List<HomeResponseDTO> getHomeList(int page, int size, Authentication authentication);
 
       // 매물 검색
-      List<HomeResponseDTO> searchHomes(HomeSearchDTO searchDTO);
+      List<HomeResponseDTO> searchHomes(HomeSearchDTO searchDTO, Authentication authentication);
 
       // 매물 수정 (이미지 선택사항)
       void updateHome(

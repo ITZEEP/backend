@@ -56,6 +56,7 @@ public class HomeResponseDTO {
       private List<HomeMaintenanceFeeVO> maintenanceFees;
 
       private List<String> imageUrls;
+      private Boolean isLiked;
       private LocalDate createdAt;
       private LocalDate updatedAt;
 }

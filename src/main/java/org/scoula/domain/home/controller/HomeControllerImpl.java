@@ -98,11 +98,12 @@ public class HomeControllerImpl implements HomeController {
 
       @Override
       @GetMapping("/{homeId}")
-      public ResponseEntity<ApiResponse<HomeResponseDTO>> getHome(@PathVariable Integer homeId) {
+      public ResponseEntity<ApiResponse<HomeResponseDTO>> getHome(
+              @PathVariable Integer homeId, Authentication authentication) {
 
           log.info("매물 상세 조회 요청: homeId={}", homeId);
 
-          HomeResponseDTO home = homeService.getHome(homeId);
+          HomeResponseDTO home = homeService.getHome(homeId, authentication);
 
           return ResponseEntity.ok(ApiResponse.success(home, "매물 조회가 완료되었습니다."));
       }
@@ -111,11 +112,12 @@ public class HomeControllerImpl implements HomeController {
       @GetMapping
       public ResponseEntity<PageResponse<HomeResponseDTO>> getHomeList(
               @RequestParam(defaultValue = "1") int page,
-              @RequestParam(defaultValue = "21") int size) {
+              @RequestParam(defaultValue = "21") int size,
+              Authentication authentication) {
 
           log.info("매물 목록 조회 요청: page={}, size={}", page, size);
 
-          List<HomeResponseDTO> homes = homeService.getHomeList(page, size);
+          List<HomeResponseDTO> homes = homeService.getHomeList(page, size, authentication);
           int totalCount = homeService.getTotalHomeCount();
 
           PageRequest pageRequest = PageRequest.builder().page(page).size(size).build();
@@ -126,7 +128,7 @@ public class HomeControllerImpl implements HomeController {
       @Override
       @GetMapping("/search")
       public ResponseEntity<PageResponse<HomeResponseDTO>> searchHomes(
-              @ModelAttribute HomeSearchDTO searchDTO) {
+              @ModelAttribute HomeSearchDTO searchDTO, Authentication authentication) {
 
           log.info(
                   "매물 검색 요청: residenceType={}, leaseType={}, addr1={}",
@@ -135,7 +137,7 @@ public class HomeControllerImpl implements HomeController {
                   searchDTO.getAddr1());
           log.info("최대 월세 필터 값: {}", searchDTO.getMaxMonthlyRent());
 
-          List<HomeResponseDTO> homes = homeService.searchHomes(searchDTO);
+          List<HomeResponseDTO> homes = homeService.searchHomes(searchDTO, authentication);
           int totalCount = homeService.getHomeCountByCondition(searchDTO);
           PageRequest pageRequest =
                   PageRequest.builder().page(searchDTO.getPage()).size(searchDTO.getSize()).build();

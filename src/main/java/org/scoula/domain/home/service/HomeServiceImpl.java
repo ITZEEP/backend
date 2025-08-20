@@ -2,6 +2,7 @@ package org.scoula.domain.home.service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.scoula.domain.home.dto.HomeCreateDTO;
@@ -11,9 +12,12 @@ import org.scoula.domain.home.enums.HomeStatus;
 import org.scoula.domain.home.exception.HomeErrorCode;
 import org.scoula.domain.home.mapper.HomeMapper;
 import org.scoula.domain.home.vo.*;
+import org.scoula.domain.user.service.UserServiceInterface;
+import org.scoula.domain.user.vo.User;
 import org.scoula.global.common.exception.BusinessException;
 import org.scoula.global.common.exception.CommonErrorCode;
 import org.scoula.global.file.service.S3ServiceInterface;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +33,7 @@ public class HomeServiceImpl implements HomeService {
 
       private final HomeMapper homeMapper;
       private final S3ServiceInterface s3Service;
+      private final UserServiceInterface userService;
 
       @Override
       public Integer createHome(HomeCreateDTO createDTO, List<MultipartFile> images, Integer userId) {
@@ -192,7 +197,7 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       @Transactional(readOnly = true)
-      public HomeResponseDTO getHome(Integer homeId) {
+      public HomeResponseDTO getHome(Integer homeId, Authentication authentication) {
           homeMapper.incrementViewCount(homeId);
 
           HomeVO home = homeMapper.selectHomeById(homeId);
@@ -220,6 +225,19 @@ public class HomeServiceImpl implements HomeService {
 
           List<HomeMaintenanceFeeVO> maintenanceFees =
                   homeMapper.selectHomeMaintenanceFeesByHomeId(homeId);
+
+          // 찜 여부 확인 (로그인한 경우에만)
+          Boolean isLiked = null;
+          if (authentication != null && authentication.isAuthenticated()) {
+              try {
+                  Integer userId = getCurrentUserId(authentication);
+                  int exists = homeMapper.selectHomeLikeExists(userId, homeId);
+                  isLiked = exists > 0;
+              } catch (Exception e) {
+                  log.warn("찜 여부 확인 실패, 기본값으로 설정: homeId={}", homeId, e);
+                  isLiked = false;
+              }
+          }
 
           return HomeResponseDTO.builder()
                   .homeId(home.getHomeId())
@@ -251,6 +269,7 @@ public class HomeServiceImpl implements HomeService {
                   .maintenanceFees(maintenanceFees)
                   .description(homeDetail != null ? homeDetail.getDescription() : null)
                   .imageUrls(imageUrls)
+                  .isLiked(isLiked)
                   .createdAt(home.getCreatedAt())
                   .updatedAt(home.getUpdatedAt())
                   .build();
@@ -258,8 +277,20 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       @Transactional(readOnly = true)
-      public List<HomeResponseDTO> searchHomes(HomeSearchDTO searchDTO) {
+      public List<HomeResponseDTO> searchHomes(
+              HomeSearchDTO searchDTO, Authentication authentication) {
           List<HomeVO> homes = homeMapper.selectHomeListByCondition(searchDTO);
+
+          // 로그인한 유저의 ID 가져오기
+          Integer currentUserId = null;
+          if (authentication != null && authentication.isAuthenticated()) {
+              try {
+                  currentUserId = getCurrentUserId(authentication);
+              } catch (Exception e) {
+                  log.debug("인증된 사용자 정보를 가져올 수 없음: {}", e.getMessage());
+              }
+          }
+          final Integer userId = currentUserId;
 
           return homes.stream()
                   .map(
@@ -268,6 +299,14 @@ public class HomeServiceImpl implements HomeService {
                                       homeMapper.selectHomeImagesByHomeId(home.getHomeId());
                               String mainImageUrl =
                                       images.isEmpty() ? null : images.get(0).getImageUrl();
+
+                              // 찜 여부 확인
+                              Boolean isLiked = null;
+                              if (userId != null) {
+                                  int exists =
+                                          homeMapper.selectHomeLikeExists(userId, home.getHomeId());
+                                  isLiked = exists > 0;
+                              }
 
                               return HomeResponseDTO.builder()
                                       .homeId(home.getHomeId())
@@ -289,6 +328,7 @@ public class HomeServiceImpl implements HomeService {
                                               mainImageUrl != null
                                                       ? List.of(mainImageUrl)
                                                       : List.of())
+                                      .isLiked(isLiked)
                                       .createdAt(home.getCreatedAt())
                                       .build();
                           })
@@ -297,9 +337,20 @@ public class HomeServiceImpl implements HomeService {
 
       @Override
       @Transactional(readOnly = true)
-      public List<HomeResponseDTO> getHomeList(int page, int size) {
+      public List<HomeResponseDTO> getHomeList(int page, int size, Authentication authentication) {
           int offset = (page - 1) * size;
           List<HomeVO> homes = homeMapper.selectHomeList(offset, size);
+
+          // 로그인한 유저의 ID 가져오기
+          Integer currentUserId = null;
+          if (authentication != null && authentication.isAuthenticated()) {
+              try {
+                  currentUserId = getCurrentUserId(authentication);
+              } catch (Exception e) {
+                  log.debug("인증된 사용자 정보를 가져올 수 없음: {}", e.getMessage());
+              }
+          }
+          final Integer userId = currentUserId;
 
           return homes.stream()
                   .map(
@@ -308,6 +359,14 @@ public class HomeServiceImpl implements HomeService {
                                       homeMapper.selectHomeImagesByHomeId(home.getHomeId());
                               String mainImageUrl =
                                       images.isEmpty() ? null : images.get(0).getImageUrl();
+
+                              // 찜 여부 확인
+                              Boolean isLiked = null;
+                              if (userId != null) {
+                                  int exists =
+                                          homeMapper.selectHomeLikeExists(userId, home.getHomeId());
+                                  isLiked = exists > 0;
+                              }
 
                               return HomeResponseDTO.builder()
                                       .homeId(home.getHomeId())
@@ -328,6 +387,7 @@ public class HomeServiceImpl implements HomeService {
                                               mainImageUrl != null
                                                       ? List.of(mainImageUrl)
                                                       : List.of())
+                                      .isLiked(isLiked)
                                       .createdAt(home.getCreatedAt())
                                       .build();
                           })
@@ -442,7 +502,41 @@ public class HomeServiceImpl implements HomeService {
       @Override
       @Transactional(readOnly = true)
       public List<HomeResponseDTO> getHomesByUser(Integer userId) {
-          return List.of();
+          List<HomeVO> userHomes = homeMapper.selectHomeListByUserId(userId);
+
+          return userHomes.stream()
+                  .map(
+                          home -> {
+                              List<HomeImageVO> images =
+                                      homeMapper.selectHomeImagesByHomeId(home.getHomeId());
+                              String mainImageUrl =
+                                      images.isEmpty() ? null : images.get(0).getImageUrl();
+
+                              // 본인 매물이므로 좋아요 여부는 확인하지 않음
+                              return HomeResponseDTO.builder()
+                                      .homeId(home.getHomeId())
+                                      .addr1(home.getAddr1())
+                                      .addr2(home.getAddr2())
+                                      .residenceType(home.getResidenceType())
+                                      .leaseType(home.getLeaseType())
+                                      .depositPrice(home.getDepositPrice())
+                                      .monthlyRent(home.getMonthlyRent())
+                                      .maintenaceFee(home.getMaintenaceFee())
+                                      .homeStatus(home.getHomeStatus())
+                                      .viewCnt(home.getViewCnt())
+                                      .likeCnt(home.getLikeCnt())
+                                      .chatCnt(home.getChatCnt())
+                                      .roomCnt(home.getRoomCnt())
+                                      .supplyArea(home.getSupplyArea())
+                                      .exclusiveArea(home.getExclusiveArea())
+                                      .imageUrls(
+                                              mainImageUrl != null
+                                                      ? List.of(mainImageUrl)
+                                                      : List.of())
+                                      .createdAt(home.getCreatedAt())
+                                      .build();
+                          })
+                  .collect(Collectors.toList());
       }
 
       @Override
@@ -505,6 +599,60 @@ public class HomeServiceImpl implements HomeService {
       @Override
       @Transactional(readOnly = true)
       public List<HomeResponseDTO> getHomeLikes(Integer userId) {
-          return List.of();
+          List<HomeVO> likedHomes = homeMapper.selectHomeLikesByUserId(userId);
+
+          return likedHomes.stream()
+                  .map(
+                          home -> {
+                              List<HomeImageVO> images =
+                                      homeMapper.selectHomeImagesByHomeId(home.getHomeId());
+                              String mainImageUrl =
+                                      images.isEmpty() ? null : images.get(0).getImageUrl();
+
+                              return HomeResponseDTO.builder()
+                                      .homeId(home.getHomeId())
+                                      .addr1(home.getAddr1())
+                                      .addr2(home.getAddr2())
+                                      .residenceType(home.getResidenceType())
+                                      .leaseType(home.getLeaseType())
+                                      .depositPrice(home.getDepositPrice())
+                                      .monthlyRent(home.getMonthlyRent())
+                                      .maintenaceFee(home.getMaintenaceFee())
+                                      .homeStatus(home.getHomeStatus())
+                                      .viewCnt(home.getViewCnt())
+                                      .likeCnt(home.getLikeCnt())
+                                      .chatCnt(home.getChatCnt())
+                                      .roomCnt(home.getRoomCnt())
+                                      .supplyArea(home.getSupplyArea())
+                                      .exclusiveArea(home.getExclusiveArea())
+                                      .imageUrls(
+                                              mainImageUrl != null
+                                                      ? List.of(mainImageUrl)
+                                                      : List.of())
+                                      .isLiked(true) // 찜한 매물 목록이므로 항상 true
+                                      .createdAt(home.getCreatedAt())
+                                      .build();
+                          })
+                  .collect(Collectors.toList());
+      }
+
+      /** Authentication에서 사용자 ID를 추출하는 메서드 */
+      private Integer getCurrentUserId(Authentication authentication) {
+          if (authentication == null || !authentication.isAuthenticated()) {
+              throw new BusinessException(CommonErrorCode.AUTHENTICATION_FAILED, "인증되지 않은 사용자입니다.");
+          }
+
+          String currentUserEmail = authentication.getName();
+          Optional<User> currentUserOpt = userService.findByEmail(currentUserEmail);
+
+          if (currentUserOpt.isEmpty()) {
+              throw new BusinessException(CommonErrorCode.AUTHENTICATION_FAILED, "사용자를 찾을 수 없습니다.");
+          }
+
+          User currentUser = currentUserOpt.get();
+          Long userId = currentUser.getUserId();
+
+          // Long을 Integer로 변환 (기존 코드와의 호환성을 위해)
+          return userId.intValue();
       }
 }
