@@ -52,8 +52,7 @@ public class FCMService {
               return true;
 
           } catch (Exception e) {
-              if (e instanceof FirebaseMessagingException) {
-                  FirebaseMessagingException fme = (FirebaseMessagingException) e;
+              if (e instanceof FirebaseMessagingException fme) {
 
                   if (fme.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
                       log.warn("유효하지 않은 FCM 토큰 감지 - UserId: {}, 토큰 삭제 처리", userId);
